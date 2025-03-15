@@ -27,7 +27,7 @@ struct App {
     output: Vec<String>,
     cursor_position: usize,
     current_dir: PathBuf,
-    // AI assistant fields
+    // AI assistant fieldsg
     ai_input: String,
     ai_output: Vec<String>,
     ai_cursor_position: usize,
@@ -60,7 +60,11 @@ enum Panel {
 
 impl App {
     fn new() -> Self {
-        let current_dir = env::current_dir().unwrap_or_else(|_| PathBuf::from("/"));
+        // Always start at the root directory
+        let current_dir = PathBuf::from("/");
+        
+        // Set the current working directory to the root
+        let _ = env::set_current_dir(&current_dir);
 
         // Initial output messages
         let initial_output = vec![
@@ -173,7 +177,8 @@ impl App {
         self.input.clear();
         self.cursor_position = 0;
         
-        // Auto-scroll to the bottom when new content is added
+        // Set scroll to 0 to always show the most recent output at the bottom
+        // In the Paragraph widget, scroll is applied from the bottom when using negative values
         self.terminal_scroll = 0;
     }
 
@@ -410,17 +415,58 @@ fn run_app<B: tui::backend::Backend>(
                     .collect::<Vec<Line>>(),
             );
 
-            let output_paragraph = Paragraph::new(output_text)
-                .block(
-                    Block::default()
-                        .borders(Borders::ALL)
-                        .border_type(BorderType::Rounded)
-                        .title("Terminal Output"),
-                )
-                .wrap(Wrap { trim: true })
-                .scroll((app.terminal_scroll as u16, 0));
-
-            f.render_widget(output_paragraph, terminal_chunks[0]);
+            // Calculate the total height of the output content
+            // We need to count the actual number of lines that will be displayed,
+            // including separators and wrapped lines
+            let mut actual_line_count = 0;
+            for (i, line) in app.output.iter().enumerate() {
+                // Count the line itself
+                actual_line_count += 1;
+                
+                // Add a separator line before commands (except the first one)
+                if line.starts_with("> ") && i > 0 {
+                    actual_line_count += 1;
+                }
+            }
+            
+            // Calculate the visible height of the terminal area (minus borders)
+            let visible_height = terminal_chunks[0].height.saturating_sub(2);
+            
+            // If auto-scrolling is enabled (terminal_scroll is 0), show the last line
+            if app.terminal_scroll == 0 {
+                // Calculate the scroll position to show the last line
+                let scroll_position = if actual_line_count > visible_height as usize {
+                    (actual_line_count - visible_height as usize) as u16
+                } else {
+                    0
+                };
+                
+                // Create the paragraph with the calculated scroll position
+                let output_paragraph = Paragraph::new(output_text)
+                    .block(
+                        Block::default()
+                            .borders(Borders::ALL)
+                            .border_type(BorderType::Rounded)
+                            .title("Terminal Output"),
+                    )
+                    .wrap(Wrap { trim: true })
+                    .scroll((scroll_position, 0));
+                
+                f.render_widget(output_paragraph, terminal_chunks[0]);
+            } else {
+                // Manual scrolling - use the user-specified scroll position
+                let output_paragraph = Paragraph::new(output_text)
+                    .block(
+                        Block::default()
+                            .borders(Borders::ALL)
+                            .border_type(BorderType::Rounded)
+                            .title("Terminal Output"),
+                    )
+                    .wrap(Wrap { trim: true })
+                    .scroll((app.terminal_scroll as u16, 0));
+                
+                f.render_widget(output_paragraph, terminal_chunks[0]);
+            }
 
             // Input area with current directory as title
             let input_text = Text::from(app.input.as_str());
@@ -475,17 +521,58 @@ fn run_app<B: tui::backend::Backend>(
                     .collect::<Vec<Line>>(),
             );
 
-            let ai_output_paragraph = Paragraph::new(ai_output_text)
-                .block(
-                    Block::default()
-                        .borders(Borders::ALL)
-                        .border_type(BorderType::Rounded)
-                        .title("AI Assistant"),
-                )
-                .wrap(Wrap { trim: true })
-                .scroll((app.assistant_scroll as u16, 0));
-
-            f.render_widget(ai_output_paragraph, assistant_chunks[0]);
+            // Calculate the total height of the AI output content
+            // We need to count the actual number of lines that will be displayed,
+            // including separators and wrapped lines
+            let mut actual_ai_line_count = 0;
+            for (i, line) in app.ai_output.iter().enumerate() {
+                // Count the line itself
+                actual_ai_line_count += 1;
+                
+                // Add a separator line before user messages (except the first one)
+                if line.starts_with("> ") && i > 0 {
+                    actual_ai_line_count += 1;
+                }
+            }
+            
+            // Calculate the visible height of the assistant area (minus borders)
+            let ai_visible_height = assistant_chunks[0].height.saturating_sub(2);
+            
+            // If auto-scrolling is enabled (assistant_scroll is 0), show the last line
+            if app.assistant_scroll == 0 {
+                // Calculate the scroll position to show the last line
+                let ai_scroll_position = if actual_ai_line_count > ai_visible_height as usize {
+                    (actual_ai_line_count - ai_visible_height as usize) as u16
+                } else {
+                    0
+                };
+                
+                // Create the paragraph with the calculated scroll position
+                let ai_output_paragraph = Paragraph::new(ai_output_text)
+                    .block(
+                        Block::default()
+                            .borders(Borders::ALL)
+                            .border_type(BorderType::Rounded)
+                            .title("AI Assistant"),
+                    )
+                    .wrap(Wrap { trim: true })
+                    .scroll((ai_scroll_position, 0));
+                
+                f.render_widget(ai_output_paragraph, assistant_chunks[0]);
+            } else {
+                // Manual scrolling - use the user-specified scroll position
+                let ai_output_paragraph = Paragraph::new(ai_output_text)
+                    .block(
+                        Block::default()
+                            .borders(Borders::ALL)
+                            .border_type(BorderType::Rounded)
+                            .title("AI Assistant"),
+                    )
+                    .wrap(Wrap { trim: true })
+                    .scroll((app.assistant_scroll as u16, 0));
+                
+                f.render_widget(ai_output_paragraph, assistant_chunks[0]);
+            }
 
             // AI input area
             let ai_input_text = Text::from(app.ai_input.as_str());
@@ -615,7 +702,7 @@ fn run_app<B: tui::backend::Backend>(
                                         app.ai_input.clear();
                                         app.ai_cursor_position = 0;
                                         
-                                        // Auto-scroll to the bottom when new content is added
+                                        // Set scroll to 0 to always show the most recent output at the bottom
                                         app.assistant_scroll = 0;
                                     }
                                 }
@@ -655,13 +742,15 @@ fn run_app<B: tui::backend::Backend>(
                             Panel::Terminal => {
                                 app.input.insert(app.cursor_position, c);
                                 app.cursor_position += 1;
-                                // Reset scroll to bottom when typing
+                                
+                                // Set scroll to 0 to always show the most recent output
                                 app.terminal_scroll = 0;
                             }
                             Panel::Assistant => {
                                 app.ai_input.insert(app.ai_cursor_position, c);
                                 app.ai_cursor_position += 1;
-                                // Reset scroll to bottom when typing
+                                
+                                // Set scroll to 0 to always show the most recent output
                                 app.assistant_scroll = 0;
                             }
                         },

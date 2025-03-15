@@ -8,6 +8,8 @@ cargo build --release
 echo "Creating application bundle..."
 mkdir -p AI-Terminal.app/Contents/{MacOS,Resources}
 cp target/release/ai-terminal AI-Terminal.app/Contents/MacOS/
+cp run.sh AI-Terminal.app/Contents/MacOS/
+cp Info.plist AI-Terminal.app/Contents/
 
 # Make sure the run script is executable
 chmod +x AI-Terminal.app/Contents/MacOS/run.sh
