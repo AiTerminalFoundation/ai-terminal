@@ -45,6 +45,9 @@ struct App {
     assistant_scroll: usize,
     // Command status tracking
     command_status: Vec<CommandStatus>,
+    // Command history
+    command_history: Vec<String>,
+    command_history_index: Option<usize>,
 }
 
 enum CommandStatus {
@@ -75,6 +78,7 @@ impl App {
             "Drag the divider between panels to resize them.".to_string(),
             "Use PageUp/PageDown or mouse wheel to scroll through output.".to_string(),
             "Use Alt+Up/Down to scroll through output.".to_string(),
+            "Use Up/Down arrow keys to navigate through command history.".to_string(),
         ];
 
         // Initial AI output messages
@@ -118,6 +122,9 @@ impl App {
             assistant_scroll: 0,
             // Initialize command status tracking
             command_status,
+            // Initialize command history
+            command_history: Vec::new(),
+            command_history_index: None,
         }
     }
 
@@ -127,6 +134,20 @@ impl App {
         if command.is_empty() {
             return;
         }
+
+        // Add command to history (only if it's not empty and not the same as the last command)
+        if !command.is_empty() && (self.command_history.is_empty() || self.command_history.last().unwrap() != command) {
+            // Add to history
+            self.command_history.push(command.to_string());
+            
+            // Limit history to 30 commands
+            if self.command_history.len() > 30 {
+                self.command_history.remove(0);
+            }
+        }
+        
+        // Reset history index
+        self.command_history_index = None;
 
         // Add command to output
         self.output.push(format!("> {}", command));
@@ -652,6 +673,28 @@ fn run_app<B: tui::backend::Backend>(
                                         }
                                     }
                                 }
+                            } else {
+                                // Navigate command history (up = older commands)
+                                match app.active_panel {
+                                    Panel::Terminal => {
+                                        if !app.command_history.is_empty() {
+                                            let new_index = match app.command_history_index {
+                                                Some(idx) if idx > 0 => Some(idx - 1),
+                                                None => Some(app.command_history.len() - 1),
+                                                Some(idx) => Some(idx),
+                                            };
+                                            
+                                            app.command_history_index = new_index;
+                                            if let Some(idx) = new_index {
+                                                app.input = app.command_history[idx].clone();
+                                                app.cursor_position = app.input.len();
+                                            }
+                                        }
+                                    }
+                                    Panel::Assistant => {
+                                        // No history navigation for assistant panel
+                                    }
+                                }
                             }
                         }
                         KeyCode::Down => {
@@ -667,6 +710,28 @@ fn run_app<B: tui::backend::Backend>(
                                         if app.assistant_scroll > 0 {
                                             app.assistant_scroll -= 1;
                                         }
+                                    }
+                                }
+                            } else {
+                                // Navigate command history (down = newer commands)
+                                match app.active_panel {
+                                    Panel::Terminal => {
+                                        if let Some(idx) = app.command_history_index {
+                                            if idx < app.command_history.len() - 1 {
+                                                // Move to newer command
+                                                let new_idx = idx + 1;
+                                                app.command_history_index = Some(new_idx);
+                                                app.input = app.command_history[new_idx].clone();
+                                            } else {
+                                                // At the newest command, clear input
+                                                app.command_history_index = None;
+                                                app.input.clear();
+                                            }
+                                            app.cursor_position = app.input.len();
+                                        }
+                                    }
+                                    Panel::Assistant => {
+                                        // No history navigation for assistant panel
                                     }
                                 }
                             }
