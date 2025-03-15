@@ -75,7 +75,7 @@ fn ask_ollama(message: &str, model: &str) -> Result<String, Box<dyn Error>> {
     Use this context to provide more relevant and accurate responses. \
     When you see 'System Info:' followed by OS details, and 'Last terminal command:' followed by 'Output:', \
     this is providing you with the context of what the user just did in their terminal. \
-    The actual user query follows after 'User query:'.";
+    The actual user query follows after 'User query.'.";
     
     let request = OllamaRequest {
         model: model.to_string(),
@@ -143,6 +143,8 @@ struct App {
     last_terminal_context: Option<(String, Vec<String>)>, // (command, output)
     // System information
     os_info: String,
+    // Auto-execute commands
+    auto_execute_commands: bool,
 }
 
 enum CommandStatus {
@@ -189,8 +191,8 @@ impl App {
             "Make sure Ollama is running locally (http://localhost:11434).".to_string(),
             "Available models depend on what you've pulled with Ollama.".to_string(),
             "Default model: llama3.2:latest (you can change this with /model <model_name>).".to_string(),
-            "The first command from AI responses will be automatically placed in your terminal input.".to_string(),
-            "Use Alt+L to recall the last AI command at any time.".to_string(),
+            "The first command from AI responses will be automatically placed in your terminal input and executed.".to_string(),
+            "Use Alt+L to recall and execute the last AI command at any time.".to_string(),
             "Type /help for more information about available commands.".to_string(),
         ];
 
@@ -242,6 +244,8 @@ impl App {
             last_terminal_context: None,
             // System information
             os_info,
+            // Auto-execute commands (enabled by default)
+            auto_execute_commands: true,
         }
     }
 
@@ -670,10 +674,11 @@ impl App {
                     self.ai_output.push("  /help - Show this help message".to_string());
                     self.ai_output.push("  /clear - Clear the chat history".to_string());
                     self.ai_output.push("  /models - List available models (requires Ollama to be running)".to_string());
+                    self.ai_output.push("  /autoexec - Toggle automatic execution of commands".to_string());
                     self.ai_output.push("".to_string());
                     self.ai_output.push("Features:".to_string());
-                    self.ai_output.push("  - The first command from AI responses will be automatically placed in your terminal input".to_string());
-                    self.ai_output.push("  - Use Alt+L to recall the last AI command at any time".to_string());
+                    self.ai_output.push("  - The first command from AI responses will be automatically placed in your terminal input and executed".to_string());
+                    self.ai_output.push("  - Use Alt+L to recall and execute the last AI command at any time".to_string());
                     self.ai_output.push("  - Click on the 📋 icon to copy a specific command to the terminal".to_string());
                     self.ai_output.push("  - The last terminal command and its output are included as context for the AI".to_string());
                     self.ai_output.push("  - System information is provided to the AI for better command compatibility".to_string());
@@ -711,6 +716,15 @@ impl App {
                             self.ai_output.push("Make sure Ollama is running (http://localhost:11434)".to_string());
                             self.ai_output.push("You can install Ollama from https://ollama.ai".to_string());
                         }
+                    }
+                },
+                "/autoexec" => {
+                    // Toggle auto-execution of commands
+                    self.auto_execute_commands = !self.auto_execute_commands;
+                    if self.auto_execute_commands {
+                        self.ai_output.push("Auto-execution of commands is now enabled.".to_string());
+                    } else {
+                        self.ai_output.push("Auto-execution of commands is now disabled.".to_string());
                     }
                 },
                 _ => {
@@ -775,16 +789,12 @@ impl App {
                     if let Some(first_cmd) = commands.first() {
                         self.last_ai_command = Some(first_cmd.clone());
                         
-                        // Automatically place the first command in the terminal input
-                        self.input = first_cmd.clone();
-                        self.cursor_position = self.input.len();
-                        
-                        // Switch focus to the terminal panel
-                        self.active_panel = Panel::Terminal;
+                        // Automatically place the first command in the terminal input and execute it
+                        self.copy_command_to_terminal(first_cmd, true);
                         
                         // Add a message about the auto-filled command
                         self.ai_output.push("".to_string());
-                        self.ai_output.push(format!("✅ First command automatically placed in terminal input: {}", first_cmd));
+                        self.ai_output.push(format!("✅ First command automatically placed in terminal input and executed: {}", first_cmd));
                     }
                     
                     self.ai_output.push("".to_string());
@@ -809,7 +819,7 @@ impl App {
     }
 
     // Copy a command to the terminal input
-    fn copy_command_to_terminal(&mut self, command: &str) {
+    fn copy_command_to_terminal(&mut self, command: &str, force_execute: bool) {
         // Set the terminal input to the command
         self.input = command.to_string();
         self.cursor_position = self.input.len();
@@ -822,6 +832,11 @@ impl App {
         
         // Set scroll to 0 to always show the most recent output at the bottom
         self.assistant_scroll = 0;
+        
+        // Automatically execute the command if requested or if auto-execute is enabled
+        if force_execute || self.auto_execute_commands {
+            self.execute_command();
+        }
     }
 }
 
@@ -841,6 +856,16 @@ fn main() -> Result<(), io::Error> {
         original_hook(panic_info);
     }));
 
+    // Check if we're running as a macOS app bundle
+    let is_app_bundle = cfg!(target_os = "macos") && env::var("APP_BUNDLE").is_ok();
+    
+    // If running as a macOS app bundle, set the current directory to the user's home directory
+    if is_app_bundle {
+        if let Some(home_dir) = dirs_next::home_dir() {
+            let _ = env::set_current_dir(&home_dir);
+        }
+    }
+
     // Setup terminal
     enable_raw_mode()?;
     let mut stdout = io::stdout();
@@ -856,6 +881,17 @@ fn main() -> Result<(), io::Error> {
 
     // Create app state
     let mut app = App::new();
+    
+    // If running as a macOS app, update the initial output
+    if is_app_bundle {
+        app.output.push("Running as a macOS application bundle.".to_string());
+        app.output.push("Current directory set to your home directory.".to_string());
+        
+        // Update the current directory in the app state
+        if let Some(home_dir) = dirs_next::home_dir() {
+            app.current_dir = home_dir;
+        }
+    }
 
     // Main loop
     let result = run_app(&mut terminal, &mut app);
@@ -1076,14 +1112,14 @@ fn run_app<B: tui::backend::Backend>(
                                 Line::from(vec![
                                     Span::styled(
                                         format!(" {} ", display_text),
-                                        Style::default().fg(Color::Black).bg(Color::White),
+                                        Style::default().fg(Color::Black).bg(Color::White)
                                     )
                                 ])
                             } else {
                                 Line::from(vec![
                                     Span::styled(
                                         format!(" {} ", display_text),
-                                        Style::default().fg(Color::White),
+                                        Style::default().fg(Color::White)
                                     )
                                 ])
                             }
@@ -1315,28 +1351,6 @@ fn run_app<B: tui::backend::Backend>(
                                         }
                                     }
                                 }
-                            } else {
-                                // Navigate command history (up = older commands)
-                                match app.active_panel {
-                                    Panel::Terminal => {
-                                        if !app.command_history.is_empty() {
-                                            let new_index = match app.command_history_index {
-                                                Some(idx) if idx > 0 => Some(idx - 1),
-                                                None => Some(app.command_history.len() - 1),
-                                                Some(idx) => Some(idx),
-                                            };
-                                            
-                                            app.command_history_index = new_index;
-                                            if let Some(idx) = new_index {
-                                                app.input = app.command_history[idx].clone();
-                                                app.cursor_position = app.input.len();
-                                            }
-                                        }
-                                    }
-                                    Panel::Assistant => {
-                                        // No history navigation for assistant panel
-                                    }
-                                }
                             }
                         }
                         KeyCode::Down => {
@@ -1352,28 +1366,6 @@ fn run_app<B: tui::backend::Backend>(
                                         if app.assistant_scroll > 0 {
                                             app.assistant_scroll -= 1;
                                         }
-                                    }
-                                }
-                            } else {
-                                // Navigate command history (down = newer commands)
-                                match app.active_panel {
-                                    Panel::Terminal => {
-                                        if let Some(idx) = app.command_history_index {
-                                            if idx < app.command_history.len() - 1 {
-                                                // Move to newer command
-                                                let new_idx = idx + 1;
-                                                app.command_history_index = Some(new_idx);
-                                                app.input = app.command_history[new_idx].clone();
-                                            } else {
-                                                // At the newest command, clear input
-                                                app.command_history_index = None;
-                                                app.input.clear();
-                                            }
-                                            app.cursor_position = app.input.len();
-                                        }
-                                    }
-                                    Panel::Assistant => {
-                                        // No history navigation for assistant panel
                                     }
                                 }
                             }
@@ -1423,14 +1415,8 @@ fn run_app<B: tui::backend::Backend>(
                         KeyCode::Char('l') => {
                             if key.modifiers == KeyModifiers::ALT {
                                 // Recall the last AI command
-                                if let Some(last_cmd) = &app.last_ai_command {
-                                    app.input = last_cmd.clone();
-                                    app.cursor_position = app.input.len();
-                                    app.active_panel = Panel::Terminal;
-                                    
-                                    // Add a message about the recalled command
-                                    app.ai_output.push(format!("✅ Last command recalled: {}", last_cmd));
-                                    app.assistant_scroll = 0;
+                                if let Some(last_cmd) = app.last_ai_command.clone() {
+                                    app.copy_command_to_terminal(&last_cmd, true);
                                 }
                             } else {
                                 // Handle regular 'l' character input
@@ -1593,7 +1579,7 @@ fn run_app<B: tui::backend::Backend>(
                                                 
                                                 // Now copy the command if we found one
                                                 if let Some(cmd) = commands_to_copy.first() {
-                                                    app.copy_command_to_terminal(cmd);
+                                                    app.copy_command_to_terminal(cmd, true);
                                                 }
                                             }
                                         }
