@@ -6,3 +6,4 @@ edition = "2021"
 [dependencies]
 crossterm = "0.27.0"
 tui = { package = "ratatui", version = "0.24.0" }
+dirs-next = "2.0.0"
