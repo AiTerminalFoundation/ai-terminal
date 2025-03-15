@@ -135,23 +135,8 @@ impl App {
         self.command_status.push(CommandStatus::Running);
         let command_index = self.command_status.len() - 1;
 
-        // Special debug command to test colors
-        if command == "test-colors" {
-            self.output.push("Testing command status colors:".to_string());
-            self.output.push("> Success command (green)".to_string());
-            self.command_status.push(CommandStatus::Success);
-            
-            self.output.push("> Failure command (red)".to_string());
-            self.command_status.push(CommandStatus::Failure);
-            
-            self.output.push("> Running command (yellow)".to_string());
-            self.command_status.push(CommandStatus::Running);
-            
-            // Update current command status
-            self.command_status[command_index] = CommandStatus::Success;
-        }
         // Handle cd command specially
-        else if command.starts_with("cd ") {
+        if command.starts_with("cd ") {
             let path = command.trim_start_matches("cd ").trim();
             let success = self.change_directory(path);
             
@@ -161,6 +146,9 @@ impl App {
             } else {
                 self.command_status[command_index] = CommandStatus::Failure;
             }
+            
+            // Add a separator after the command output
+            self.output.push("─".repeat(40));
         } else {
             // Execute the command
             let (output, success) = self.run_command(command);
@@ -172,6 +160,9 @@ impl App {
             } else {
                 self.command_status[command_index] = CommandStatus::Failure;
             }
+            
+            // Add a separator after the command output
+            self.output.push("─".repeat(40));
         }
 
         self.input.clear();
@@ -380,33 +371,40 @@ fn run_app<B: tui::backend::Backend>(
                     .flat_map(|(i, line)| {
                         let mut lines = Vec::new();
                         
+                        // Now add the line itself with appropriate styling
                         if line.starts_with("> ") {
-                            // Command line - add a separator before it
-                            if i > 0 {
-                                lines.push(Line::from(vec![
-                                    Span::styled(
-                                        "─".repeat(terminal_chunks[0].width as usize - 2),
-                                        Style::default().fg(Color::DarkGray),
-                                    )
-                                ]));
-                            }
+                            // Find the corresponding command status if available
+                            let command_index = app.output
+                                .iter()
+                                .take(i + 1)
+                                .filter(|l| l.starts_with("> "))
+                                .count() - 1;
                             
-                            // Get command status color
-                            let command_color = if i < app.command_status.len() {
-                                match app.command_status[i] {
+                            // Choose color based on command status
+                            let command_color = if command_index < app.command_status.len() {
+                                match app.command_status[command_index] {
                                     CommandStatus::Success => Color::Green,
                                     CommandStatus::Failure => Color::Red,
                                     CommandStatus::Running => Color::Yellow,
                                 }
                             } else {
-                                Color::White
+                                Color::Yellow // Default color if status not found
                             };
                             
                             // Add the command with appropriate color
                             lines.push(Line::from(vec![
                                 Span::styled(line.clone(), Style::default().fg(command_color))
                             ]));
+                        } else if line.starts_with("─") {
+                            // This is a separator line, style it appropriately
+                            lines.push(Line::from(vec![
+                                Span::styled(
+                                    "─".repeat(terminal_chunks[0].width as usize - 2),
+                                    Style::default().fg(Color::DarkGray)
+                                )
+                            ]));
                         } else {
+                            // Regular output line
                             lines.push(Line::from(line.clone()));
                         }
                         
@@ -414,20 +412,12 @@ fn run_app<B: tui::backend::Backend>(
                     })
                     .collect::<Vec<Line>>(),
             );
+            
+            // Remove the divider at the very end of all output
+            let output_text = Text::from(output_text.lines);
 
             // Calculate the total height of the output content
-            // We need to count the actual number of lines that will be displayed,
-            // including separators and wrapped lines
-            let mut actual_line_count = 0;
-            for (i, line) in app.output.iter().enumerate() {
-                // Count the line itself
-                actual_line_count += 1;
-                
-                // Add a separator line before commands (except the first one)
-                if line.starts_with("> ") && i > 0 {
-                    actual_line_count += 1;
-                }
-            }
+            let actual_line_count = app.output.len();
             
             // Calculate the visible height of the terminal area (minus borders)
             let visible_height = terminal_chunks[0].height.saturating_sub(2);
@@ -436,7 +426,7 @@ fn run_app<B: tui::backend::Backend>(
             if app.terminal_scroll == 0 {
                 // Calculate the scroll position to show the last line
                 let scroll_position = if actual_line_count > visible_height as usize {
-                    (actual_line_count - visible_height as usize) as u16
+                    (actual_line_count - visible_height as usize + 1) as u16
                 } else {
                     0
                 };
@@ -497,20 +487,19 @@ fn run_app<B: tui::backend::Backend>(
                     .flat_map(|(i, line)| {
                         let mut lines = Vec::new();
                         
+                        // Now add the line itself
                         if line.starts_with("> ") {
-                            // User message - add a separator before it
-                            if i > 0 {
-                                lines.push(Line::from(vec![
-                                    Span::styled(
-                                        "─".repeat(assistant_chunks[0].width as usize - 2),
-                                        Style::default().fg(Color::DarkGray),
-                                    )
-                                ]));
-                            }
-                            
                             // Add the user message with a distinct color
                             lines.push(Line::from(vec![
                                 Span::styled(line.clone(), Style::default().fg(Color::Cyan))
+                            ]));
+                        } else if line.starts_with("─") {
+                            // This is a separator line, style it appropriately
+                            lines.push(Line::from(vec![
+                                Span::styled(
+                                    "─".repeat(assistant_chunks[0].width as usize - 2),
+                                    Style::default().fg(Color::DarkGray),
+                                )
                             ]));
                         } else {
                             lines.push(Line::from(line.clone()));
@@ -520,20 +509,12 @@ fn run_app<B: tui::backend::Backend>(
                     })
                     .collect::<Vec<Line>>(),
             );
+            
+            // Remove the divider at the very end of all AI output
+            let ai_output_text = Text::from(ai_output_text.lines);
 
             // Calculate the total height of the AI output content
-            // We need to count the actual number of lines that will be displayed,
-            // including separators and wrapped lines
-            let mut actual_ai_line_count = 0;
-            for (i, line) in app.ai_output.iter().enumerate() {
-                // Count the line itself
-                actual_ai_line_count += 1;
-                
-                // Add a separator line before user messages (except the first one)
-                if line.starts_with("> ") && i > 0 {
-                    actual_ai_line_count += 1;
-                }
-            }
+            let actual_ai_line_count = app.ai_output.len();
             
             // Calculate the visible height of the assistant area (minus borders)
             let ai_visible_height = assistant_chunks[0].height.saturating_sub(2);
@@ -542,7 +523,7 @@ fn run_app<B: tui::backend::Backend>(
             if app.assistant_scroll == 0 {
                 // Calculate the scroll position to show the last line
                 let ai_scroll_position = if actual_ai_line_count > ai_visible_height as usize {
-                    (actual_ai_line_count - ai_visible_height as usize) as u16
+                    (actual_ai_line_count - ai_visible_height as usize + 1) as u16
                 } else {
                     0
                 };
@@ -699,6 +680,10 @@ fn run_app<B: tui::backend::Backend>(
                                         app.ai_output.push(format!("> {}", app.ai_input));
                                         app.ai_output
                                             .push("AI response would be sent here.".to_string());
+                                        
+                                        // Add a separator after the message
+                                        app.ai_output.push("─".repeat(40));
+                                        
                                         app.ai_input.clear();
                                         app.ai_cursor_position = 0;
                                         

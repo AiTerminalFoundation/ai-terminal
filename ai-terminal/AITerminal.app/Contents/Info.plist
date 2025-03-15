@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleExecutable</key>
+    <string>standalone_launcher.sh</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.aiterminal.app</string>
+    <key>CFBundleName</key>
+    <string>AITerminal</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleSignature</key>
+    <string>????</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>10.13</string>
+    <key>NSHighResolutionCapable</key>
+    <true/>
+    <key>LSApplicationCategoryType</key>
+    <string>public.app-category.developer-tools</string>
+    <key>LSUIElement</key>
+    <false/>
+    <key>NSAppleEventsUsageDescription</key>
+    <string>AITerminal needs to access the terminal to execute commands.</string>
+    <key>NSHumanReadableCopyright</key>
+    <string>Copyright © 2023 AITerminal. All rights reserved.</string>
+</dict>
+</plist>
