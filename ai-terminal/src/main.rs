@@ -17,7 +17,7 @@ use tui::{
     backend::CrosstermBackend,
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Style},
-    text::{Line, Text, Span},
+    text::{Line, Span, Text},
     widgets::{Block, BorderType, Borders, Paragraph, Wrap},
     Terminal,
 };
@@ -43,6 +43,14 @@ struct App {
     // Scroll state
     terminal_scroll: usize,
     assistant_scroll: usize,
+    // Command status tracking
+    command_status: Vec<CommandStatus>,
+}
+
+enum CommandStatus {
+    Success,
+    Failure,
+    Running,
 }
 
 enum Panel {
@@ -54,29 +62,43 @@ impl App {
     fn new() -> Self {
         let current_dir = env::current_dir().unwrap_or_else(|_| PathBuf::from("/"));
 
+        // Initial output messages
+        let initial_output = vec![
+            "Welcome to AI Terminal! Type commands below.".to_string(),
+            format!("Current directory: {}", current_dir.display()),
+            "Use Alt+Left/Right to resize panels.".to_string(),
+            "Click on a panel to focus it.".to_string(),
+            "Drag the divider between panels to resize them.".to_string(),
+            "Use PageUp/PageDown or mouse wheel to scroll through output.".to_string(),
+            "Use Alt+Up/Down to scroll through output.".to_string(),
+        ];
+
+        // Initial AI output messages
+        let initial_ai_output = vec![
+            "AI Assistant ready. Type your message below.".to_string(),
+            "Use Alt+Left/Right to resize panels.".to_string(),
+            "Click on a panel to focus it.".to_string(),
+            "Drag the divider between panels to resize them.".to_string(),
+            "Use PageUp/PageDown or mouse wheel to scroll through output.".to_string(),
+            "Use Alt+Up/Down to scroll through output.".to_string(),
+        ];
+
+        // Initialize command status for any commands in the initial output
+        let mut command_status = Vec::new();
+        for line in &initial_output {
+            if line.starts_with("> ") {
+                command_status.push(CommandStatus::Success);
+            }
+        }
+
         App {
             input: String::new(),
-            output: vec![
-                "Welcome to AI Terminal! Type commands below.".to_string(),
-                format!("Current directory: {}", current_dir.display()),
-                "Use Alt+Left/Right to resize panels.".to_string(),
-                "Click on a panel to focus it.".to_string(),
-                "Drag the divider between panels to resize them.".to_string(),
-                "Use PageUp/PageDown or mouse wheel to scroll through output.".to_string(),
-                "Use Alt+Up/Down to scroll through output.".to_string(),
-            ],
+            output: initial_output,
             cursor_position: 0,
             current_dir,
             // Initialize AI assistant fields
             ai_input: String::new(),
-            ai_output: vec![
-                "AI Assistant ready. Type your message below.".to_string(),
-                "Use Alt+Left/Right to resize panels.".to_string(),
-                "Click on a panel to focus it.".to_string(),
-                "Drag the divider between panels to resize them.".to_string(),
-                "Use PageUp/PageDown or mouse wheel to scroll through output.".to_string(),
-                "Use Alt+Up/Down to scroll through output.".to_string(),
-            ],
+            ai_output: initial_ai_output,
             ai_cursor_position: 0,
             active_panel: Panel::Terminal,
             // Default to 50% split
@@ -90,6 +112,8 @@ impl App {
             // Initialize scroll state
             terminal_scroll: 0,
             assistant_scroll: 0,
+            // Initialize command status tracking
+            command_status,
         }
     }
 
@@ -100,16 +124,50 @@ impl App {
             return;
         }
 
+        // Add command to output
         self.output.push(format!("> {}", command));
+        
+        // Add a placeholder for command status
+        self.command_status.push(CommandStatus::Running);
+        let command_index = self.command_status.len() - 1;
 
+        // Special debug command to test colors
+        if command == "test-colors" {
+            self.output.push("Testing command status colors:".to_string());
+            self.output.push("> Success command (green)".to_string());
+            self.command_status.push(CommandStatus::Success);
+            
+            self.output.push("> Failure command (red)".to_string());
+            self.command_status.push(CommandStatus::Failure);
+            
+            self.output.push("> Running command (yellow)".to_string());
+            self.command_status.push(CommandStatus::Running);
+            
+            // Update current command status
+            self.command_status[command_index] = CommandStatus::Success;
+        }
         // Handle cd command specially
-        if command.starts_with("cd ") {
+        else if command.starts_with("cd ") {
             let path = command.trim_start_matches("cd ").trim();
-            self.change_directory(path);
+            let success = self.change_directory(path);
+            
+            // Update command status
+            if success {
+                self.command_status[command_index] = CommandStatus::Success;
+            } else {
+                self.command_status[command_index] = CommandStatus::Failure;
+            }
         } else {
             // Execute the command
-            let output = self.run_command(command);
+            let (output, success) = self.run_command(command);
             self.output.extend(output);
+            
+            // Update command status
+            if success {
+                self.command_status[command_index] = CommandStatus::Success;
+            } else {
+                self.command_status[command_index] = CommandStatus::Failure;
+            }
         }
 
         self.input.clear();
@@ -119,13 +177,14 @@ impl App {
         self.terminal_scroll = 0;
     }
 
-    fn run_command(&self, command: &str) -> Vec<String> {
+    fn run_command(&self, command: &str) -> (Vec<String>, bool) {
         let mut result = Vec::new();
+        let mut success = true;
         
         // Split the command into program and arguments
         let parts: Vec<&str> = command.split_whitespace().collect();
         if parts.is_empty() {
-            return result;
+            return (result, success);
         }
 
         let program = parts[0];
@@ -160,17 +219,19 @@ impl App {
                 // Add exit status
                 if !output.status.success() {
                     result.push(format!("Command exited with status: {}", output.status));
+                    success = false;
                 }
             }
             Err(e) => {
                 result.push(format!("Failed to execute command: {}", e));
+                success = false;
             }
         }
 
-        result
+        (result, success)
     }
 
-    fn change_directory(&mut self, path: &str) {
+    fn change_directory(&mut self, path: &str) -> bool {
         let new_dir = if path.starts_with('/') {
             // Absolute path
             PathBuf::from(path)
@@ -185,7 +246,7 @@ impl App {
             } else {
                 self.output
                     .push("Error: Could not determine home directory".to_string());
-                return;
+                return false;
             }
         } else if path == ".." {
             // Parent directory
@@ -194,7 +255,7 @@ impl App {
             } else {
                 self.output
                     .push("Error: Already at root directory".to_string());
-                return;
+                return false;
             }
         } else {
             // Relative path
@@ -209,9 +270,11 @@ impl App {
                     "Changed directory to: {}",
                     self.current_dir.display()
                 ));
+                true
             }
             Err(e) => {
                 self.output.push(format!("Error changing directory: {}", e));
+                false
             }
         }
     }
@@ -309,22 +372,40 @@ fn run_app<B: tui::backend::Backend>(
                 app.output
                     .iter()
                     .enumerate()
-                    .map(|(i, line)| {
+                    .flat_map(|(i, line)| {
+                        let mut lines = Vec::new();
+                        
                         if line.starts_with("> ") {
                             // Command line - add a separator before it
                             if i > 0 {
-                                Line::from(vec![
+                                lines.push(Line::from(vec![
                                     Span::styled(
                                         "─".repeat(terminal_chunks[0].width as usize - 2),
                                         Style::default().fg(Color::DarkGray),
                                     )
-                                ])
-                            } else {
-                                Line::from(line.clone())
+                                ]));
                             }
+                            
+                            // Get command status color
+                            let command_color = if i < app.command_status.len() {
+                                match app.command_status[i] {
+                                    CommandStatus::Success => Color::Green,
+                                    CommandStatus::Failure => Color::Red,
+                                    CommandStatus::Running => Color::Yellow,
+                                }
+                            } else {
+                                Color::White
+                            };
+                            
+                            // Add the command with appropriate color
+                            lines.push(Line::from(vec![
+                                Span::styled(line.clone(), Style::default().fg(command_color))
+                            ]));
                         } else {
-                            Line::from(line.clone())
+                            lines.push(Line::from(line.clone()));
                         }
+                        
+                        lines
                     })
                     .collect::<Vec<Line>>(),
             );
@@ -367,22 +448,29 @@ fn run_app<B: tui::backend::Backend>(
                 app.ai_output
                     .iter()
                     .enumerate()
-                    .map(|(i, line)| {
+                    .flat_map(|(i, line)| {
+                        let mut lines = Vec::new();
+                        
                         if line.starts_with("> ") {
                             // User message - add a separator before it
                             if i > 0 {
-                                Line::from(vec![
+                                lines.push(Line::from(vec![
                                     Span::styled(
                                         "─".repeat(assistant_chunks[0].width as usize - 2),
                                         Style::default().fg(Color::DarkGray),
                                     )
-                                ])
-                            } else {
-                                Line::from(line.clone())
+                                ]));
                             }
+                            
+                            // Add the user message with a distinct color
+                            lines.push(Line::from(vec![
+                                Span::styled(line.clone(), Style::default().fg(Color::Cyan))
+                            ]));
                         } else {
-                            Line::from(line.clone())
+                            lines.push(Line::from(line.clone()));
                         }
+                        
+                        lines
                     })
                     .collect::<Vec<Line>>(),
             );
@@ -567,10 +655,14 @@ fn run_app<B: tui::backend::Backend>(
                             Panel::Terminal => {
                                 app.input.insert(app.cursor_position, c);
                                 app.cursor_position += 1;
+                                // Reset scroll to bottom when typing
+                                app.terminal_scroll = 0;
                             }
                             Panel::Assistant => {
                                 app.ai_input.insert(app.ai_cursor_position, c);
                                 app.ai_cursor_position += 1;
+                                // Reset scroll to bottom when typing
+                                app.assistant_scroll = 0;
                             }
                         },
                         KeyCode::Backspace => match app.active_panel {
