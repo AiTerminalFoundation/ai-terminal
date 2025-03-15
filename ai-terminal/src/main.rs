@@ -22,13 +22,93 @@ use tui::{
     widgets::{Block, BorderType, Borders, Paragraph, Wrap},
     Terminal,
 };
+use serde::{Deserialize, Serialize};
+use reqwest::blocking::Client;
+use std::error::Error;
+
+// Ollama API integration
+const OLLAMA_API_URL: &str = "http://localhost:11434/api/generate";
+const OLLAMA_LIST_MODELS_URL: &str = "http://localhost:11434/api/tags";
+
+#[derive(Serialize)]
+struct OllamaRequest {
+    model: String,
+    prompt: String,
+    stream: bool,
+    system: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct OllamaResponse {
+    model: String,
+    response: String,
+    done: bool,
+}
+
+#[derive(Deserialize)]
+struct OllamaModel {
+    name: String,
+    modified_at: String,
+    size: u64,
+}
+
+#[derive(Deserialize)]
+struct OllamaModelList {
+    models: Vec<OllamaModel>,
+}
+
+/// Function to send a message to Ollama and get a response
+fn ask_ollama(message: &str, model: &str) -> Result<String, Box<dyn Error>> {
+    let client = Client::new();
+    
+    let system_prompt = "You are a helpful AI assistant integrated into a terminal application. \
+    Always respond with valid terminal commands that solve the user's request. \
+    Format your response with a brief explanation followed by the command in a code block like this: \
+    ```\ncommand\n```\n \
+    If multiple commands are needed, list them in sequence with explanations for each. \
+    If you're unsure or the request doesn't require a terminal command, explain why. \
+    \
+    You will receive system information about the user's operating system. \
+    Use this information to provide commands that are compatible with their OS. \
+    \
+    You may also receive context about the last terminal command and its output. \
+    Use this context to provide more relevant and accurate responses. \
+    When you see 'System Info:' followed by OS details, and 'Last terminal command:' followed by 'Output:', \
+    this is providing you with the context of what the user just did in their terminal. \
+    The actual user query follows after 'User query:'.";
+    
+    let request = OllamaRequest {
+        model: model.to_string(),
+        prompt: message.to_string(),
+        stream: false,
+        system: Some(system_prompt.to_string()),
+    };
+    
+    let response = client.post(OLLAMA_API_URL)
+        .json(&request)
+        .send()?
+        .json::<OllamaResponse>()?;
+    
+    Ok(response.response)
+}
+
+/// Function to list available Ollama models
+fn list_ollama_models() -> Result<Vec<String>, Box<dyn Error>> {
+    let client = Client::new();
+    
+    let response = client.get(OLLAMA_LIST_MODELS_URL)
+        .send()?
+        .json::<OllamaModelList>()?;
+    
+    Ok(response.models.into_iter().map(|m| m.name).collect())
+}
 
 struct App {
     input: String,
     output: Vec<String>,
     cursor_position: usize,
     current_dir: PathBuf,
-    // AI assistant fieldsg
+    // AI assistant fields
     ai_input: String,
     ai_output: Vec<String>,
     ai_cursor_position: usize,
@@ -52,6 +132,17 @@ struct App {
     // Autocomplete suggestions
     autocomplete_suggestions: Vec<String>,
     autocomplete_index: Option<usize>,
+    // Ollama integration
+    ollama_model: String,
+    ollama_thinking: bool,
+    // Extracted commands from AI responses
+    extracted_commands: Vec<(usize, String)>, // (line_index, command)
+    // Most recent command from AI assistant
+    last_ai_command: Option<String>,
+    // Last terminal command and output for context
+    last_terminal_context: Option<(String, Vec<String>)>, // (command, output)
+    // System information
+    os_info: String,
 }
 
 enum CommandStatus {
@@ -74,10 +165,14 @@ impl App {
         // Set the current working directory to the root
         let _ = env::set_current_dir(&current_dir);
 
+        // Detect OS information
+        let os_info = detect_os_info();
+
         // Initial output messages
         let initial_output = vec![
             "Welcome to AI Terminal! Type commands below.".to_string(),
             format!("Current directory: {}", current_dir.display()),
+            format!("Operating System: {}", os_info),
             "Use Alt+Left/Right to resize panels.".to_string(),
             "Click on a panel to focus it.".to_string(),
             "Drag the divider between panels to resize them.".to_string(),
@@ -89,12 +184,14 @@ impl App {
 
         // Initial AI output messages
         let initial_ai_output = vec![
-            "AI Assistant ready. Type your message below.".to_string(),
-            "Use Alt+Left/Right to resize panels.".to_string(),
-            "Click on a panel to focus it.".to_string(),
-            "Drag the divider between panels to resize them.".to_string(),
-            "Use PageUp/PageDown or mouse wheel to scroll through output.".to_string(),
-            "Use Alt+Up/Down to scroll through output.".to_string(),
+            "AI Assistant powered by Ollama is ready.".to_string(),
+            "Type your message below and press Enter to send.".to_string(),
+            "Make sure Ollama is running locally (http://localhost:11434).".to_string(),
+            "Available models depend on what you've pulled with Ollama.".to_string(),
+            "Default model: llama3.2:latest (you can change this with /model <model_name>).".to_string(),
+            "The first command from AI responses will be automatically placed in your terminal input.".to_string(),
+            "Use Alt+L to recall the last AI command at any time.".to_string(),
+            "Type /help for more information about available commands.".to_string(),
         ];
 
         // Initialize command status for any commands in the initial output
@@ -134,6 +231,17 @@ impl App {
             // Initialize autocomplete
             autocomplete_suggestions: Vec::new(),
             autocomplete_index: None,
+            // Ollama integration
+            ollama_model: "llama3.2:latest".to_string(),
+            ollama_thinking: false,
+            // Extracted commands from AI responses
+            extracted_commands: Vec::new(),
+            // Most recent command from AI assistant
+            last_ai_command: None,
+            // Last terminal command and output for context
+            last_terminal_context: None,
+            // System information
+            os_info,
         }
     }
 
@@ -165,6 +273,9 @@ impl App {
         self.command_status.push(CommandStatus::Running);
         let command_index = self.command_status.len() - 1;
 
+        // Store the command for context
+        let mut command_output = Vec::new();
+
         // Handle cd command specially
         if command.starts_with("cd ") {
             let path = command.trim_start_matches("cd ").trim();
@@ -173,8 +284,10 @@ impl App {
             // Update command status
             if success {
                 self.command_status[command_index] = CommandStatus::Success;
+                command_output.push(format!("Changed directory to: {}", self.current_dir.display()));
             } else {
                 self.command_status[command_index] = CommandStatus::Failure;
+                command_output.push("Error changing directory".to_string());
             }
             
             // Add a separator after the command output
@@ -182,7 +295,8 @@ impl App {
         } else {
             // Execute the command
             let (output, success) = self.run_command(command);
-            self.output.extend(output);
+            self.output.extend(output.clone());
+            command_output = output;
             
             // Update command status
             if success {
@@ -194,6 +308,9 @@ impl App {
             // Add a separator after the command output
             self.output.push("─".repeat(40));
         }
+
+        // Store the command and its output for context
+        self.last_terminal_context = Some((command.to_string(), command_output));
 
         self.input.clear();
         self.cursor_position = 0;
@@ -527,6 +644,185 @@ impl App {
         // Apply the current suggestion
         self.apply_autocomplete();
     }
+
+    fn send_to_ai_assistant(&mut self) {
+        if self.ai_input.is_empty() {
+            return;
+        }
+
+        let input = self.ai_input.clone();
+        self.ai_output.push(format!("> {}", input));
+        self.ai_input.clear();
+        self.ai_cursor_position = 0;
+        
+        // Clear previous extracted commands
+        self.extracted_commands.clear();
+
+        // Handle special commands
+        if input.starts_with("/") {
+            let parts: Vec<&str> = input.splitn(2, ' ').collect();
+            let command = parts[0];
+            
+            match command {
+                "/help" => {
+                    self.ai_output.push("Available commands:".to_string());
+                    self.ai_output.push("  /model <model_name> - Change the Ollama model".to_string());
+                    self.ai_output.push("  /help - Show this help message".to_string());
+                    self.ai_output.push("  /clear - Clear the chat history".to_string());
+                    self.ai_output.push("  /models - List available models (requires Ollama to be running)".to_string());
+                    self.ai_output.push("".to_string());
+                    self.ai_output.push("Features:".to_string());
+                    self.ai_output.push("  - The first command from AI responses will be automatically placed in your terminal input".to_string());
+                    self.ai_output.push("  - Use Alt+L to recall the last AI command at any time".to_string());
+                    self.ai_output.push("  - Click on the 📋 icon to copy a specific command to the terminal".to_string());
+                    self.ai_output.push("  - The last terminal command and its output are included as context for the AI".to_string());
+                    self.ai_output.push("  - System information is provided to the AI for better command compatibility".to_string());
+                },
+                "/model" => {
+                    if parts.len() > 1 {
+                        let model = parts[1].trim();
+                        self.ollama_model = model.to_string();
+                        self.ai_output.push(format!("Model changed to: {}", model));
+                    } else {
+                        self.ai_output.push(format!("Current model: {}", self.ollama_model));
+                        self.ai_output.push("Usage: /model <model_name>".to_string());
+                    }
+                },
+                "/clear" => {
+                    self.ai_output = vec!["Chat history cleared.".to_string()];
+                    self.extracted_commands.clear();
+                },
+                "/models" => {
+                    self.ai_output.push("Fetching available models...".to_string());
+                    match list_ollama_models() {
+                        Ok(models) => {
+                            if models.is_empty() {
+                                self.ai_output.push("No models found. You need to pull models first.".to_string());
+                                self.ai_output.push("Run 'ollama pull llama2' in the terminal to get started.".to_string());
+                            } else {
+                                self.ai_output.push("Available models:".to_string());
+                                for model in models {
+                                    self.ai_output.push(format!("  - {}", model));
+                                }
+                            }
+                        },
+                        Err(e) => {
+                            self.ai_output.push(format!("Error fetching models: {}", e));
+                            self.ai_output.push("Make sure Ollama is running (http://localhost:11434)".to_string());
+                            self.ai_output.push("You can install Ollama from https://ollama.ai".to_string());
+                        }
+                    }
+                },
+                _ => {
+                    self.ai_output.push(format!("Unknown command: {}", command));
+                }
+            }
+            return;
+        }
+
+        // Send message to Ollama
+        self.ollama_thinking = true;
+        self.ai_output.push("Thinking...".to_string());
+        
+        // Prepare the message with context if available
+        let message_with_context = if let Some((last_cmd, last_output)) = &self.last_terminal_context {
+            let output_text = last_output.join("\n");
+            format!(
+                "System Info: {}\nLast terminal command: {}\nOutput:\n{}\n\nUser query: {}", 
+                self.os_info,
+                last_cmd, 
+                output_text,
+                input
+            )
+        } else {
+            format!(
+                "System Info: {}\n\nUser query: {}", 
+                self.os_info,
+                input
+            )
+        };
+        
+        // In a real implementation, this would be done asynchronously
+        // For simplicity, we're using blocking requests here
+        match ask_ollama(&message_with_context, &self.ollama_model) {
+            Ok(response) => {
+                // Remove the "Thinking..." message
+                if let Some(last) = self.ai_output.last() {
+                    if last == "Thinking..." {
+                        self.ai_output.pop();
+                    }
+                }
+                
+                // Add the response
+                let _start_line_index = self.ai_output.len();
+                self.ai_output.push(response.clone());
+                
+                // Extract commands from the response
+                let commands = extract_commands(&response);
+                if !commands.is_empty() {
+                    // Add a separator
+                    self.ai_output.push("".to_string());
+                    self.ai_output.push("📋 Extracted Commands (first command auto-filled in terminal):".to_string());
+                    
+                    // Store the extracted commands with their line indices
+                    for (i, cmd) in commands.iter().enumerate() {
+                        let cmd_line_index = self.ai_output.len();
+                        self.ai_output.push(format!("[{}] {} 📋", i + 1, cmd));
+                        self.extracted_commands.push((cmd_line_index, cmd.clone()));
+                    }
+                    
+                    // Store the first command for quick access (instead of the last)
+                    if let Some(first_cmd) = commands.first() {
+                        self.last_ai_command = Some(first_cmd.clone());
+                        
+                        // Automatically place the first command in the terminal input
+                        self.input = first_cmd.clone();
+                        self.cursor_position = self.input.len();
+                        
+                        // Switch focus to the terminal panel
+                        self.active_panel = Panel::Terminal;
+                        
+                        // Add a message about the auto-filled command
+                        self.ai_output.push("".to_string());
+                        self.ai_output.push(format!("✅ First command automatically placed in terminal input: {}", first_cmd));
+                    }
+                    
+                    self.ai_output.push("".to_string());
+                    self.ai_output.push("Click on the 📋 icon to copy a specific command to the terminal.".to_string());
+                }
+            },
+            Err(e) => {
+                // Remove the "Thinking..." message
+                if let Some(last) = self.ai_output.last() {
+                    if last == "Thinking..." {
+                        self.ai_output.pop();
+                    }
+                }
+                
+                self.ai_output.push(format!("Error: {}", e));
+                self.ai_output.push("Make sure Ollama is running (http://localhost:11434)".to_string());
+                self.ai_output.push("You can install Ollama from https://ollama.ai".to_string());
+            }
+        }
+        
+        self.ollama_thinking = false;
+    }
+
+    // Copy a command to the terminal input
+    fn copy_command_to_terminal(&mut self, command: &str) {
+        // Set the terminal input to the command
+        self.input = command.to_string();
+        self.cursor_position = self.input.len();
+        
+        // Switch focus to the terminal panel
+        self.active_panel = Panel::Terminal;
+        
+        // Add a message to the AI output with a visual indicator
+        self.ai_output.push(format!("✅ Command copied to terminal: {}", command));
+        
+        // Set scroll to 0 to always show the most recent output at the bottom
+        self.assistant_scroll = 0;
+    }
 }
 
 // Function to restore terminal state in case of panic
@@ -824,7 +1120,7 @@ fn run_app<B: tui::backend::Backend>(
                 app.ai_output
                     .iter()
                     .enumerate()
-                    .flat_map(|(i, line)| {
+                    .flat_map(|(_i, line)| {
                         let mut lines = Vec::new();
                         
                         // Now add the line itself
@@ -840,6 +1136,26 @@ fn run_app<B: tui::backend::Backend>(
                                     "─".repeat(assistant_chunks[0].width as usize - 2),
                                     Style::default().fg(Color::DarkGray),
                                 )
+                            ]));
+                        } else if line == "Thinking..." {
+                            // Style the "Thinking..." message
+                            lines.push(Line::from(vec![
+                                Span::styled(line.clone(), Style::default().fg(Color::Yellow))
+                            ]));
+                        } else if line == "Extracted Commands:" {
+                            // Style the extracted commands header
+                            lines.push(Line::from(vec![
+                                Span::styled(line.clone(), Style::default().fg(Color::Green).bg(Color::Black))
+                            ]));
+                        } else if line.starts_with("[") && line.contains("]") {
+                            // This is an extracted command, style it as clickable
+                            lines.push(Line::from(vec![
+                                Span::styled(line.clone(), Style::default().fg(Color::Black).bg(Color::Green))
+                            ]));
+                        } else if line == "Click on the 📋 icon to copy a command to the terminal." {
+                            // Style the instruction
+                            lines.push(Line::from(vec![
+                                Span::styled(line.clone(), Style::default().fg(Color::Yellow))
                             ]));
                         } else {
                             lines.push(Line::from(line.clone()));
@@ -859,6 +1175,13 @@ fn run_app<B: tui::backend::Backend>(
             // Calculate the visible height of the assistant area (minus borders)
             let ai_visible_height = assistant_chunks[0].height.saturating_sub(2);
             
+            // Create the AI assistant title
+            let ai_title = if app.ollama_thinking {
+                format!("AI Assistant [{}] (Thinking...)", app.ollama_model)
+            } else {
+                format!("AI Assistant [{}]", app.ollama_model)
+            };
+            
             // If auto-scrolling is enabled (assistant_scroll is 0), show the last line
             if app.assistant_scroll == 0 {
                 // Calculate the scroll position to show the last line
@@ -874,7 +1197,7 @@ fn run_app<B: tui::backend::Backend>(
                         Block::default()
                             .borders(Borders::ALL)
                             .border_type(BorderType::Rounded)
-                            .title("AI Assistant"),
+                            .title(ai_title),
                     )
                     .wrap(Wrap { trim: true })
                     .scroll((ai_scroll_position, 0));
@@ -887,7 +1210,7 @@ fn run_app<B: tui::backend::Backend>(
                         Block::default()
                             .borders(Borders::ALL)
                             .border_type(BorderType::Rounded)
-                            .title("AI Assistant"),
+                            .title(ai_title),
                     )
                     .wrap(Wrap { trim: true })
                     .scroll((app.assistant_scroll as u16, 0));
@@ -1059,21 +1382,11 @@ fn run_app<B: tui::backend::Backend>(
                             match app.active_panel {
                                 Panel::Terminal => app.execute_command(),
                                 Panel::Assistant => {
-                                    // For now, just echo the input to the output
-                                    if !app.ai_input.is_empty() {
-                                        app.ai_output.push(format!("> {}", app.ai_input));
-                                        app.ai_output
-                                            .push("AI response would be sent here.".to_string());
-                                        
-                                        // Add a separator after the message
-                                        app.ai_output.push("─".repeat(40));
-                                        
-                                        app.ai_input.clear();
-                                        app.ai_cursor_position = 0;
-                                        
-                                        // Set scroll to 0 to always show the most recent output at the bottom
-                                        app.assistant_scroll = 0;
-                                    }
+                                    // Send the input to the AI assistant
+                                    app.send_to_ai_assistant();
+                                    
+                                    // Set scroll to 0 to always show the most recent output at the bottom
+                                    app.assistant_scroll = 0;
                                 }
                             }
                         }
@@ -1103,6 +1416,42 @@ fn run_app<B: tui::backend::Backend>(
                                 Panel::Assistant => {
                                     if app.assistant_scroll > 0 {
                                         app.assistant_scroll -= 1;
+                                    }
+                                }
+                            }
+                        }
+                        KeyCode::Char('l') => {
+                            if key.modifiers == KeyModifiers::ALT {
+                                // Recall the last AI command
+                                if let Some(last_cmd) = &app.last_ai_command {
+                                    app.input = last_cmd.clone();
+                                    app.cursor_position = app.input.len();
+                                    app.active_panel = Panel::Terminal;
+                                    
+                                    // Add a message about the recalled command
+                                    app.ai_output.push(format!("✅ Last command recalled: {}", last_cmd));
+                                    app.assistant_scroll = 0;
+                                }
+                            } else {
+                                // Handle regular 'l' character input
+                                match app.active_panel {
+                                    Panel::Terminal => {
+                                        app.input.insert(app.cursor_position, 'l');
+                                        app.cursor_position += 1;
+                                        
+                                        // Clear autocomplete suggestions when typing
+                                        app.autocomplete_suggestions.clear();
+                                        app.autocomplete_index = None;
+                                        
+                                        // Set scroll to 0 to always show the most recent output
+                                        app.terminal_scroll = 0;
+                                    }
+                                    Panel::Assistant => {
+                                        app.ai_input.insert(app.ai_cursor_position, 'l');
+                                        app.ai_cursor_position += 1;
+                                        
+                                        // Set scroll to 0 to always show the most recent output
+                                        app.assistant_scroll = 0;
                                     }
                                 }
                             }
@@ -1200,6 +1549,54 @@ fn run_app<B: tui::backend::Backend>(
                                             < assistant_area.x + assistant_area.width
                                     {
                                         app.active_panel = Panel::Assistant;
+                                        
+                                        // Check if a command was clicked
+                                        if let Some(assistant_chunks) = app.assistant_area.map(|area| {
+                                            Layout::default()
+                                                .direction(Direction::Vertical)
+                                                .constraints([Constraint::Min(1), Constraint::Length(3)].as_ref())
+                                                .split(area)
+                                        }) {
+                                            let ai_output_area = assistant_chunks[0];
+                                            
+                                            // Check if click is within the AI output area
+                                            if mouse_event.column >= ai_output_area.x
+                                                && mouse_event.column < ai_output_area.x + ai_output_area.width
+                                                && mouse_event.row >= ai_output_area.y
+                                                && mouse_event.row < ai_output_area.y + ai_output_area.height
+                                            {
+                                                // Calculate which line was clicked
+                                                let _visible_height = ai_output_area.height.saturating_sub(2);
+                                                let scroll_offset = app.assistant_scroll as u16;
+                                                let clicked_line = mouse_event.row.saturating_sub(ai_output_area.y + 1).saturating_add(scroll_offset);
+                                                
+                                                // Check if the clicked line contains a command
+                                                // Collect commands that match the clicked line
+                                                let mut commands_to_copy = Vec::new();
+                                                for &(line_idx, ref cmd) in &app.extracted_commands {
+                                                    if line_idx as u16 == clicked_line {
+                                                        // Get the line content to check if click is on the copy icon
+                                                        if let Some(line_content) = app.ai_output.get(line_idx) {
+                                                            // Check if the click is on the copy icon (📋) at the end of the line
+                                                            // The icon is at the end of the line, so we check if the click is within
+                                                            // the last few characters of the line
+                                                            let line_start_x = ai_output_area.x + 1; // +1 for border
+                                                            let icon_position = line_start_x + line_content.len() as u16 - 2; // -2 to position at the icon
+                                                            
+                                                            if mouse_event.column >= icon_position && 
+                                                               mouse_event.column <= icon_position + 2 { // Icon width ~2 chars
+                                                                commands_to_copy.push(cmd.clone());
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                                
+                                                // Now copy the command if we found one
+                                                if let Some(cmd) = commands_to_copy.first() {
+                                                    app.copy_command_to_terminal(cmd);
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -1263,4 +1660,100 @@ fn run_app<B: tui::backend::Backend>(
             }
         }
     }
+}
+
+// Function to extract commands from AI response
+fn extract_commands(response: &str) -> Vec<String> {
+    let mut commands = Vec::new();
+    let mut in_code_block = false;
+    let mut current_command = String::new();
+    
+    for line in response.lines() {
+        let trimmed = line.trim();
+        
+        // Check for code block markers
+        if trimmed.starts_with("```") {
+            if !in_code_block {
+                // Start of code block
+                in_code_block = true;
+                // Skip the opening line if it contains a language specifier
+                // e.g., ```bash, ```sh, etc.
+                continue;
+            } else {
+                // End of code block
+                if !current_command.trim().is_empty() {
+                    commands.push(current_command.trim().to_string());
+                }
+                current_command = String::new();
+                in_code_block = false;
+            }
+        } else if in_code_block {
+            // Inside code block, collect command
+            current_command.push_str(line);
+            current_command.push('\n');
+        }
+    }
+    
+    // In case there's an unclosed code block
+    if in_code_block && !current_command.trim().is_empty() {
+        commands.push(current_command.trim().to_string());
+    }
+    
+    commands
+}
+
+// Function to detect OS information
+fn detect_os_info() -> String {
+    let mut os_info = String::new();
+    
+    // Get OS name and version
+    if let Ok(os_release) = Command::new("uname").arg("-a").output() {
+        if os_release.status.success() {
+            let output = String::from_utf8_lossy(&os_release.stdout).trim().to_string();
+            os_info = output;
+        }
+    }
+    
+    // If uname failed (e.g., on Windows), try alternative methods
+    if os_info.is_empty() {
+        if cfg!(target_os = "windows") {
+            os_info = "Windows".to_string();
+            // Try to get Windows version
+            if let Ok(ver) = Command::new("cmd").args(["/C", "ver"]).output() {
+                if ver.status.success() {
+                    let output = String::from_utf8_lossy(&ver.stdout).trim().to_string();
+                    os_info = output;
+                }
+            }
+        } else if cfg!(target_os = "macos") {
+            os_info = "macOS".to_string();
+            // Try to get macOS version
+            if let Ok(ver) = Command::new("sw_vers").output() {
+                if ver.status.success() {
+                    let output = String::from_utf8_lossy(&ver.stdout).trim().to_string();
+                    os_info = output;
+                }
+            }
+        } else if cfg!(target_os = "linux") {
+            os_info = "Linux".to_string();
+            // Try to get Linux distribution
+            if let Ok(ver) = Command::new("cat").arg("/etc/os-release").output() {
+                if ver.status.success() {
+                    let output = String::from_utf8_lossy(&ver.stdout).trim().to_string();
+                    if let Some(name_line) = output.lines().find(|l| l.starts_with("PRETTY_NAME=")) {
+                        if let Some(name) = name_line.strip_prefix("PRETTY_NAME=") {
+                            os_info = name.trim_matches('"').to_string();
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    // If all else fails, use Rust's built-in OS detection
+    if os_info.is_empty() {
+        os_info = format!("OS: {}", std::env::consts::OS);
+    }
+    
+    os_info
 }
