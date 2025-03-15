@@ -1,0 +1,164 @@
+name: Build Release Packages
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-macos:
+    name: Build macOS Packages
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        arch: [x86_64, arm64]
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+          target: ${{ matrix.arch == 'arm64' && 'aarch64-apple-darwin' || 'x86_64-apple-darwin' }}
+      
+      - name: Build for ${{ matrix.arch }}
+        run: |
+          cd ai-terminal
+          cargo build --release --target ${{ matrix.arch == 'arm64' && 'aarch64-apple-darwin' || 'x86_64-apple-darwin' }}
+      
+      - name: Create App Bundle
+        run: |
+          cd ai-terminal
+          mkdir -p AI-Terminal-${{ matrix.arch }}.app/Contents/{MacOS,Resources}
+          cp target/${{ matrix.arch == 'arm64' && 'aarch64-apple-darwin' || 'x86_64-apple-darwin' }}/release/ai-terminal AI-Terminal-${{ matrix.arch }}.app/Contents/MacOS/
+          cp run.sh AI-Terminal-${{ matrix.arch }}.app/Contents/MacOS/
+          cp Info.plist AI-Terminal-${{ matrix.arch }}.app/Contents/
+          chmod +x AI-Terminal-${{ matrix.arch }}.app/Contents/MacOS/run.sh
+      
+      - name: Create DMG
+        run: |
+          cd ai-terminal
+          mkdir -p dist
+          hdiutil create -volname "AI Terminal (${{ matrix.arch }})" -srcfolder AI-Terminal-${{ matrix.arch }}.app -ov -format UDZO dist/AI-Terminal-${{ matrix.arch }}.dmg
+      
+      - name: Upload DMG
+        uses: actions/upload-artifact@v3
+        with:
+          name: AI-Terminal-macOS-${{ matrix.arch }}
+          path: ai-terminal/dist/AI-Terminal-${{ matrix.arch }}.dmg
+
+  build-linux:
+    name: Build Linux Package
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+      
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libssl-dev pkg-config
+      
+      - name: Build
+        run: |
+          cd ai-terminal
+          cargo build --release
+      
+      - name: Create Debian Package
+        run: |
+          cd ai-terminal
+          mkdir -p dist/ai-terminal_linux/usr/local/bin
+          mkdir -p dist/ai-terminal_linux/DEBIAN
+          cp target/release/ai-terminal dist/ai-terminal_linux/usr/local/bin/
+          chmod +x dist/ai-terminal_linux/usr/local/bin/ai-terminal
+          
+          # Create control file
+          VERSION=$(grep '^version' Cargo.toml | cut -d '"' -f2)
+          cat > dist/ai-terminal_linux/DEBIAN/control << EOF
+          Package: ai-terminal
+          Version: $VERSION
+          Section: utils
+          Priority: optional
+          Architecture: amd64
+          Maintainer: AI Terminal Team
+          Description: Your AI mate into your favourite terminal
+          EOF
+          
+          # Build the package
+          dpkg-deb --build dist/ai-terminal_linux dist/ai-terminal.deb
+      
+      - name: Upload Debian Package
+        uses: actions/upload-artifact@v3
+        with:
+          name: AI-Terminal-Linux
+          path: ai-terminal/dist/ai-terminal.deb
+
+  build-windows:
+    name: Build Windows Package
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+      
+      - name: Build
+        run: |
+          cd ai-terminal
+          cargo build --release
+      
+      - name: Create Windows Installer
+        run: |
+          cd ai-terminal
+          mkdir -p dist
+          # Copy executable to dist folder
+          cp target/release/ai-terminal.exe dist/
+          
+          # Create a simple batch file to run the application
+          echo "@echo off" > dist/run-ai-terminal.bat
+          echo "start ai-terminal.exe" >> dist/run-ai-terminal.bat
+          
+          # Create a zip file
+          powershell Compress-Archive -Path dist/ai-terminal.exe, dist/run-ai-terminal.bat -DestinationPath dist/AI-Terminal-Windows.zip
+      
+      - name: Upload Windows Package
+        uses: actions/upload-artifact@v3
+        with:
+          name: AI-Terminal-Windows
+          path: ai-terminal/dist/AI-Terminal-Windows.zip
+
+  create-release:
+    name: Create GitHub Release
+    needs: [build-macos, build-linux, build-windows]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: artifacts
+      
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            artifacts/AI-Terminal-macOS-x86_64/AI-Terminal-x86_64.dmg
+            artifacts/AI-Terminal-macOS-arm64/AI-Terminal-arm64.dmg
+            artifacts/AI-Terminal-Linux/ai-terminal.deb
+            artifacts/AI-Terminal-Windows/AI-Terminal-Windows.zip
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
