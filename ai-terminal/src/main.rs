@@ -17,7 +17,7 @@ use tui::{
     backend::CrosstermBackend,
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Style},
-    text::{Line, Text},
+    text::{Line, Text, Span},
     widgets::{Block, BorderType, Borders, Paragraph, Wrap},
     Terminal,
 };
@@ -40,6 +40,9 @@ struct App {
     terminal_area: Option<Rect>,
     assistant_area: Option<Rect>,
     divider_x: Option<u16>,
+    // Scroll state
+    terminal_scroll: usize,
+    assistant_scroll: usize,
 }
 
 enum Panel {
@@ -57,9 +60,10 @@ impl App {
                 "Welcome to AI Terminal! Type commands below.".to_string(),
                 format!("Current directory: {}", current_dir.display()),
                 "Use Alt+Left/Right to resize panels.".to_string(),
-                "Press Tab to switch between panels.".to_string(),
-                "You can also click on a panel to focus it.".to_string(),
+                "Click on a panel to focus it.".to_string(),
                 "Drag the divider between panels to resize them.".to_string(),
+                "Use PageUp/PageDown or mouse wheel to scroll through output.".to_string(),
+                "Use Alt+Up/Down to scroll through output.".to_string(),
             ],
             cursor_position: 0,
             current_dir,
@@ -68,9 +72,10 @@ impl App {
             ai_output: vec![
                 "AI Assistant ready. Type your message below.".to_string(),
                 "Use Alt+Left/Right to resize panels.".to_string(),
-                "Press Tab to switch between panels.".to_string(),
-                "You can also click on a panel to focus it.".to_string(),
+                "Click on a panel to focus it.".to_string(),
                 "Drag the divider between panels to resize them.".to_string(),
+                "Use PageUp/PageDown or mouse wheel to scroll through output.".to_string(),
+                "Use Alt+Up/Down to scroll through output.".to_string(),
             ],
             ai_cursor_position: 0,
             active_panel: Panel::Terminal,
@@ -82,6 +87,9 @@ impl App {
             terminal_area: None,
             assistant_area: None,
             divider_x: None,
+            // Initialize scroll state
+            terminal_scroll: 0,
+            assistant_scroll: 0,
         }
     }
 
@@ -98,15 +106,26 @@ impl App {
         if command.starts_with("cd ") {
             let path = command.trim_start_matches("cd ").trim();
             self.change_directory(path);
-            self.input.clear();
-            self.cursor_position = 0;
-            return;
+        } else {
+            // Execute the command
+            let output = self.run_command(command);
+            self.output.extend(output);
         }
 
+        self.input.clear();
+        self.cursor_position = 0;
+        
+        // Auto-scroll to the bottom when new content is added
+        self.terminal_scroll = 0;
+    }
+
+    fn run_command(&self, command: &str) -> Vec<String> {
+        let mut result = Vec::new();
+        
         // Split the command into program and arguments
         let parts: Vec<&str> = command.split_whitespace().collect();
         if parts.is_empty() {
-            return;
+            return result;
         }
 
         let program = parts[0];
@@ -127,32 +146,28 @@ impl App {
                 // Add stdout to output
                 if !stdout.is_empty() {
                     for line in stdout.lines() {
-                        self.output.push(line.to_string());
+                        result.push(line.to_string());
                     }
                 }
 
                 // Add stderr to output
                 if !stderr.is_empty() {
                     for line in stderr.lines() {
-                        self.output.push(format!("Error: {}", line));
+                        result.push(format!("Error: {}", line));
                     }
                 }
 
                 // Add exit status
                 if !output.status.success() {
-                    self.output
-                        .push(format!("Command exited with status: {}", output.status));
+                    result.push(format!("Command exited with status: {}", output.status));
                 }
             }
             Err(e) => {
-                self.output
-                    .push(format!("Failed to execute command: {}", e));
+                result.push(format!("Failed to execute command: {}", e));
             }
         }
 
-        // Clear input
-        self.input.clear();
-        self.cursor_position = 0;
+        result
     }
 
     fn change_directory(&mut self, path: &str) {
@@ -293,7 +308,24 @@ fn run_app<B: tui::backend::Backend>(
             let output_text = Text::from(
                 app.output
                     .iter()
-                    .map(|line| Line::from(line.clone()))
+                    .enumerate()
+                    .map(|(i, line)| {
+                        if line.starts_with("> ") {
+                            // Command line - add a separator before it
+                            if i > 0 {
+                                Line::from(vec![
+                                    Span::styled(
+                                        "─".repeat(terminal_chunks[0].width as usize - 2),
+                                        Style::default().fg(Color::DarkGray),
+                                    )
+                                ])
+                            } else {
+                                Line::from(line.clone())
+                            }
+                        } else {
+                            Line::from(line.clone())
+                        }
+                    })
                     .collect::<Vec<Line>>(),
             );
 
@@ -304,7 +336,8 @@ fn run_app<B: tui::backend::Backend>(
                         .border_type(BorderType::Rounded)
                         .title("Terminal Output"),
                 )
-                .wrap(Wrap { trim: true });
+                .wrap(Wrap { trim: true })
+                .scroll((app.terminal_scroll as u16, 0));
 
             f.render_widget(output_paragraph, terminal_chunks[0]);
 
@@ -333,7 +366,24 @@ fn run_app<B: tui::backend::Backend>(
             let ai_output_text = Text::from(
                 app.ai_output
                     .iter()
-                    .map(|line| Line::from(line.clone()))
+                    .enumerate()
+                    .map(|(i, line)| {
+                        if line.starts_with("> ") {
+                            // User message - add a separator before it
+                            if i > 0 {
+                                Line::from(vec![
+                                    Span::styled(
+                                        "─".repeat(assistant_chunks[0].width as usize - 2),
+                                        Style::default().fg(Color::DarkGray),
+                                    )
+                                ])
+                            } else {
+                                Line::from(line.clone())
+                            }
+                        } else {
+                            Line::from(line.clone())
+                        }
+                    })
                     .collect::<Vec<Line>>(),
             );
 
@@ -344,7 +394,8 @@ fn run_app<B: tui::backend::Backend>(
                         .border_type(BorderType::Rounded)
                         .title("AI Assistant"),
                 )
-                .wrap(Wrap { trim: true });
+                .wrap(Wrap { trim: true })
+                .scroll((app.assistant_scroll as u16, 0));
 
             f.render_widget(ai_output_paragraph, assistant_chunks[0]);
 
@@ -387,13 +438,6 @@ fn run_app<B: tui::backend::Backend>(
             if let Event::Key(key) = event::read()? {
                 if key.kind == KeyEventKind::Press {
                     match key.code {
-                        KeyCode::Tab => {
-                            // Switch between panels
-                            app.active_panel = match app.active_panel {
-                                Panel::Terminal => Panel::Assistant,
-                                Panel::Assistant => Panel::Terminal,
-                            };
-                        }
                         // Resize panels with Alt+Left and Alt+Right
                         KeyCode::Left => {
                             if key.modifiers == KeyModifiers::ALT {
@@ -437,6 +481,40 @@ fn run_app<B: tui::backend::Backend>(
                                 }
                             }
                         }
+                        KeyCode::Up => {
+                            if key.modifiers == KeyModifiers::ALT {
+                                // Scroll up based on active panel
+                                match app.active_panel {
+                                    Panel::Terminal => {
+                                        if app.terminal_scroll < app.output.len().saturating_sub(1) {
+                                            app.terminal_scroll += 1;
+                                        }
+                                    }
+                                    Panel::Assistant => {
+                                        if app.assistant_scroll < app.ai_output.len().saturating_sub(1) {
+                                            app.assistant_scroll += 1;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        KeyCode::Down => {
+                            if key.modifiers == KeyModifiers::ALT {
+                                // Scroll down based on active panel
+                                match app.active_panel {
+                                    Panel::Terminal => {
+                                        if app.terminal_scroll > 0 {
+                                            app.terminal_scroll -= 1;
+                                        }
+                                    }
+                                    Panel::Assistant => {
+                                        if app.assistant_scroll > 0 {
+                                            app.assistant_scroll -= 1;
+                                        }
+                                    }
+                                }
+                            }
+                        }
                         KeyCode::Enter => {
                             match app.active_panel {
                                 Panel::Terminal => app.execute_command(),
@@ -448,6 +526,39 @@ fn run_app<B: tui::backend::Backend>(
                                             .push("AI response would be sent here.".to_string());
                                         app.ai_input.clear();
                                         app.ai_cursor_position = 0;
+                                        
+                                        // Auto-scroll to the bottom when new content is added
+                                        app.assistant_scroll = 0;
+                                    }
+                                }
+                            }
+                        }
+                        KeyCode::PageUp => {
+                            // Scroll up based on active panel
+                            match app.active_panel {
+                                Panel::Terminal => {
+                                    if app.terminal_scroll < app.output.len().saturating_sub(1) {
+                                        app.terminal_scroll += 1;
+                                    }
+                                }
+                                Panel::Assistant => {
+                                    if app.assistant_scroll < app.ai_output.len().saturating_sub(1) {
+                                        app.assistant_scroll += 1;
+                                    }
+                                }
+                            }
+                        }
+                        KeyCode::PageDown => {
+                            // Scroll down based on active panel
+                            match app.active_panel {
+                                Panel::Terminal => {
+                                    if app.terminal_scroll > 0 {
+                                        app.terminal_scroll -= 1;
+                                    }
+                                }
+                                Panel::Assistant => {
+                                    if app.assistant_scroll > 0 {
+                                        app.assistant_scroll -= 1;
                                     }
                                 }
                             }
@@ -543,6 +654,38 @@ fn run_app<B: tui::backend::Backend>(
                     }
                     MouseEventKind::Up(MouseButton::Left) => {
                         app.is_dragging = false;
+                    }
+                    MouseEventKind::ScrollDown => {
+                        // Determine which panel to scroll based on mouse position
+                        if let (Some(terminal_area), Some(assistant_area)) = (app.terminal_area, app.assistant_area) {
+                            if mouse_event.column >= terminal_area.x && mouse_event.column < terminal_area.x + terminal_area.width {
+                                // Mouse is over terminal panel
+                                if app.terminal_scroll > 0 {
+                                    app.terminal_scroll -= 1;
+                                }
+                            } else if mouse_event.column >= assistant_area.x && mouse_event.column < assistant_area.x + assistant_area.width {
+                                // Mouse is over assistant panel
+                                if app.assistant_scroll > 0 {
+                                    app.assistant_scroll -= 1;
+                                }
+                            }
+                        }
+                    }
+                    MouseEventKind::ScrollUp => {
+                        // Determine which panel to scroll based on mouse position
+                        if let (Some(terminal_area), Some(assistant_area)) = (app.terminal_area, app.assistant_area) {
+                            if mouse_event.column >= terminal_area.x && mouse_event.column < terminal_area.x + terminal_area.width {
+                                // Mouse is over terminal panel
+                                if app.terminal_scroll < app.output.len().saturating_sub(1) {
+                                    app.terminal_scroll += 1;
+                                }
+                            } else if mouse_event.column >= assistant_area.x && mouse_event.column < assistant_area.x + assistant_area.width {
+                                // Mouse is over assistant panel
+                                if app.assistant_scroll < app.ai_output.len().saturating_sub(1) {
+                                    app.assistant_scroll += 1;
+                                }
+                            }
+                        }
                     }
                     _ => {}
                 }
