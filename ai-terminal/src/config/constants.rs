@@ -16,12 +16,12 @@ pub const INPUT_TITLE: &str = "Message to AI";
 pub const SUGGESTIONS_TITLE: &str = "Suggestions";
 
 // Common Unix commands for autocompletion
-pub const COMMON_COMMANDS: [&str; 34] = [
+pub const COMMON_COMMANDS: [&str; 35] = [
     "ls", "cd", "pwd", "mkdir", "rmdir", "touch", "rm", "cp", "mv",
-    "cat", "less", "grep", "find", "echo", "ps", "kill", "chmod",
+    "cat", "grep", "find", "echo", "ps", "kill", "chmod",
     "chown", "df", "du", "tar", "gzip", "gunzip", "zip", "unzip",
     "ssh", "scp", "curl", "wget", "ping", "ifconfig", "netstat",
-    "top", "htop",
+    "top", "htop", "ls -a", "ls -l"
 ];
 
 // Path-related commands that might need autocompletion

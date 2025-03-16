@@ -7,7 +7,7 @@ use ratatui::{
     Frame,
 };
 
-use crate::config::{SEPARATOR_LINE, TERMINAL_TITLE, ASSISTANT_TITLE, INPUT_TITLE, SUGGESTIONS_TITLE, THINKING_MESSAGE, MAX_VISIBLE_SUGGESTIONS};
+use crate::config::{SEPARATOR_LINE, TERMINAL_TITLE, ASSISTANT_TITLE, INPUT_TITLE, SUGGESTIONS_TITLE, MAX_VISIBLE_SUGGESTIONS};
 use crate::model::{App, CommandStatus, Panel};
 
 pub fn draw_ui<B: Backend>(f: &mut Frame, app: &mut App) {
@@ -197,11 +197,6 @@ fn draw_assistant_panel<B: Backend>(f: &mut Frame, app: &mut App, area: Rect) {
                             SEPARATOR_LINE.repeat(assistant_chunks[0].width as usize - 2),
                             Style::default().fg(Color::DarkGray),
                         )
-                    ]));
-                } else if line == THINKING_MESSAGE {
-                    // Style the "Thinking..." message
-                    lines.push(Line::from(vec![
-                        Span::styled(line.clone(), Style::default().fg(Color::Yellow))
                     ]));
                 } else if line == "Extracted Commands:" {
                     // Style the extracted commands header

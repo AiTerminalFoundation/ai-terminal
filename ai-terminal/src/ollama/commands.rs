@@ -1,8 +1,8 @@
 use crate::model::App;
 use crate::config::{
-    THINKING_MESSAGE, HELP_MESSAGES, HELP_COMMANDS, HELP_FEATURES, 
-    COMMAND_COPIED_MESSAGE, COMMAND_EXECUTED_MESSAGE, EXTRACTED_COMMANDS_HEADER,
-    COMMAND_BUTTONS_HELP, ERROR_FETCHING_MODELS, OLLAMA_NOT_RUNNING,
+    HELP_MESSAGES, HELP_COMMANDS, HELP_FEATURES,
+    EXTRACTED_COMMANDS_HEADER,
+    ERROR_FETCHING_MODELS, OLLAMA_NOT_RUNNING,
     OLLAMA_INSTALL_INSTRUCTIONS, NO_MODELS_FOUND, OLLAMA_PULL_INSTRUCTIONS
 };
 use crate::terminal::utils::extract_commands;
@@ -92,8 +92,7 @@ impl App {
 
         // Send message to Ollama
         self.ollama_thinking = true;
-        self.ai_output.push(THINKING_MESSAGE.to_string());
-        
+
         // Prepare the message with context if available
         let message_with_context = {
             // Include all terminal output
@@ -102,7 +101,7 @@ impl App {
             // Include all chat history
             let chat_history = self.ai_output
                 .iter()
-                .filter(|line| !line.is_empty() && !line.contains(THINKING_MESSAGE))
+                .filter(|line| !line.is_empty())
                 .map(|s| s.as_str())
                 .collect::<Vec<&str>>()
                 .join("\n");
@@ -120,12 +119,6 @@ impl App {
         // For simplicity, we're using blocking requests here
         match ask_ollama(&message_with_context, &self.ollama_model) {
             Ok(response) => {
-                // Remove the "Thinking..." message
-                if let Some(last) = self.ai_output.last() {
-                    if last == THINKING_MESSAGE {
-                        self.ai_output.pop();
-                    }
-                }
                 
                 // Add the response
                 let _start_line_index = self.ai_output.len();
@@ -151,24 +144,12 @@ impl App {
                         
                         // Automatically place the first command in the terminal input and execute it
                         self.copy_command_to_terminal(first_cmd);
-                        
-                        // Add a message about the auto filled command
-                        self.ai_output.push("".to_string());
-                        self.ai_output.push(format!("✅ First command automatically placed in terminal input and executed: {}", first_cmd));
                     }
                     
                     self.ai_output.push("".to_string());
-                    self.ai_output.push(COMMAND_BUTTONS_HELP.to_string());
                 }
             },
             Err(e) => {
-                // Remove the "Thinking..." message
-                if let Some(last) = self.ai_output.last() {
-                    if last == THINKING_MESSAGE {
-                        self.ai_output.pop();
-                    }
-                }
-                
                 self.ai_output.push(format!("Error: {}", e));
                 self.ai_output.push(OLLAMA_NOT_RUNNING.to_string());
                 self.ai_output.push(OLLAMA_INSTALL_INSTRUCTIONS.to_string());
@@ -187,9 +168,6 @@ impl App {
         // Switch focus to the terminal panel
         self.active_panel = crate::model::Panel::Terminal;
         
-        // Add a message to the AI output with a visual indicator
-        self.ai_output.push(format!("{}{}", COMMAND_COPIED_MESSAGE, command));
-        
         // Set scroll to 0 to always show the most recent output at the bottom
         self.assistant_scroll = 0;
         
@@ -207,9 +185,6 @@ impl App {
         
         // Switch focus to the terminal panel
         self.active_panel = crate::model::Panel::Terminal;
-        
-        // Add a message to the AI output with a visual indicator
-        self.ai_output.push(format!("{}{}", COMMAND_EXECUTED_MESSAGE, command));
         
         // Set scroll to 0 to always show the most recent output at the bottom
         self.assistant_scroll = 0;
