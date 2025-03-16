@@ -108,6 +108,9 @@ impl AppUI {
         terminal_input.set_frame(FrameType::BorderBox);
         terminal_input.set_color(Color::Black);
         terminal_input.set_text_color(Color::White);
+        terminal_input.set_label_color(Color::Green); // Make directory label green
+        terminal_input.set_label_font(Font::Courier);
+        terminal_input.set_label_size(12);
 
         terminal_input_group.end();
         
@@ -211,6 +214,9 @@ impl AppUI {
             terminal_style_buffer,
         };
         
+        // Set the initial terminal input label to show current directory
+        app_ui.update_terminal_input_label();
+        
         // Highlight the active panel initially
         app_ui.highlight_active_panel();
         
@@ -225,14 +231,45 @@ impl AppUI {
         buffer.set_text("");
         self.terminal_style_buffer.set_text("");
         
+        // Calculate the separator width based on current panel size
+        let separator_width = self.calculate_separator_width();
+        
         // Iterate through output lines and command status together
         let mut status_index = 0;
+        let mut prev_line_was_command = false;
+        
         for line in &self.app.output {
+            // Check if this line is a command (starts with "> ")
+            let is_command = line.starts_with("> ");
+            
+            // Add separator line before a new command (except for the first command)
+            if is_command && prev_line_was_command == false && status_index > 0 {
+                // Add a separator line with a blank line before it
+                buffer.append("\n");
+                let style_text = "A"; // Style for blank line
+                self.terminal_style_buffer.append(&style_text);
+                
+                // Create a visible separator line that spans the full width
+                let separator = "─".repeat(separator_width);
+                buffer.append(&separator);
+                buffer.append("\n");
+                
+                // Style for separator line (white color)
+                let style_text = "A".repeat(separator.len() + 1);
+                self.terminal_style_buffer.append(&style_text);
+                
+                // Add another blank line after the separator
+                buffer.append("\n");
+                let style_text = "A"; // Style for blank line
+                self.terminal_style_buffer.append(&style_text);
+            }
+            
+            // Add the actual line
             buffer.append(line);
             buffer.append("\n");
             
-            // Check if this line is a command (starts with "> ")
-            if line.starts_with("> ") && status_index < self.app.command_status.len() {
+            // Apply styling
+            if is_command && status_index < self.app.command_status.len() {
                 // Set color based on command status
                 let style_char = match self.app.command_status[status_index] {
                     crate::model::CommandStatus::Success => 'B', // Index 1 (Green)
@@ -245,10 +282,12 @@ impl AppUI {
                 self.terminal_style_buffer.append(&style_text);
                 
                 status_index += 1;
+                prev_line_was_command = true;
             } else {
                 // Regular output line, use default style (white)
                 let style_text = "A".repeat(line.len() + 1); // 'A' for default style
                 self.terminal_style_buffer.append(&style_text);
+                prev_line_was_command = false;
             }
         }
         
@@ -296,6 +335,22 @@ impl AppUI {
                 }
             }
         }
+        
+        // Update the terminal output to adjust separator lines
+        self.update_terminal_output();
+    }
+    
+    // Calculate the appropriate separator line width
+    fn calculate_separator_width(&self) -> usize {
+        // Get the width of the terminal panel
+        let panel_width = self.terminal_output.width();
+        
+        // Calculate how many separator characters we need
+        // Each character is approximately 8 pixels wide in most monospace fonts
+        // We subtract a small margin to ensure it doesn't overflow
+        let char_count = (panel_width / 8).max(10) - 2;
+        
+        char_count as usize
     }
     
     // Execute a terminal command
@@ -308,23 +363,88 @@ impl AppUI {
         // Add command to output with prompt
         self.app.output.push(format!("> {}", command));
         
-        // Execute the command
-        let (output, success) = term_commands::execute_command(&command, &self.app.current_dir);
-        
-        // Add command output to terminal output
-        for line in output.iter() {
-            self.app.output.push(line.clone());
-        }
-        
-        // Update command status
-        self.app.command_status.push(if success {
-            crate::model::CommandStatus::Success
+        // Handle cd command specially
+        if command.starts_with("cd ") {
+            let path = command.trim_start_matches("cd ").trim();
+            
+            // Implement directory change logic directly
+            let new_dir = if path.starts_with('/') {
+                // Absolute path
+                std::path::PathBuf::from(path)
+            } else if path == "~" || path.starts_with("~/") {
+                // Home directory
+                if let Some(home) = dirs_next::home_dir() {
+                    if path == "~" {
+                        home
+                    } else {
+                        home.join(path.trim_start_matches("~/"))
+                    }
+                } else {
+                    self.app.output.push("Error: Could not determine home directory".to_string());
+                    
+                    // Update command status
+                    self.app.command_status.push(crate::model::CommandStatus::Failure);
+                    
+                    // Clear input and update display
+                    self.terminal_input.set_value("");
+                    self.update_terminal_output();
+                    return;
+                }
+            } else if path == ".." {
+                // Parent directory
+                if let Some(parent) = self.app.current_dir.parent() {
+                    std::path::PathBuf::from(parent)
+                } else {
+                    self.app.output.push("Error: Already at root directory".to_string());
+                    
+                    // Update command status
+                    self.app.command_status.push(crate::model::CommandStatus::Failure);
+                    
+                    // Clear input and update display
+                    self.terminal_input.set_value("");
+                    self.update_terminal_output();
+                    return;
+                }
+            } else {
+                // Relative path
+                self.app.current_dir.join(path)
+            };
+            
+            // Try to change to the new directory
+            match std::env::set_current_dir(&new_dir) {
+                Ok(_) => {
+                    self.app.current_dir = new_dir;
+                    self.app.output.push(format!("Changed directory to: {}", self.app.current_dir.display()));
+                    
+                    // Update command status
+                    self.app.command_status.push(crate::model::CommandStatus::Success);
+                }
+                Err(e) => {
+                    self.app.output.push(format!("Error: {}", e));
+                    
+                    // Update command status
+                    self.app.command_status.push(crate::model::CommandStatus::Failure);
+                }
+            }
         } else {
-            crate::model::CommandStatus::Failure
-        });
-        
-        // Store command and output for context
-        self.app.last_terminal_context = Some((command.clone(), output));
+            // Execute other commands normally
+            let (output, success) = term_commands::execute_command(&command, &self.app.current_dir);
+            
+            // Add command output to terminal output
+            for line in output.iter() {
+                self.app.output.push(line.clone());
+            }
+            
+            // Update command status
+            self.app.command_status.push(if success {
+                crate::model::CommandStatus::Success
+            } else {
+                crate::model::CommandStatus::Failure
+            });
+            
+            // Store command and output for context
+            self.app.last_terminal_context = Some((command.clone(), output));
+        }
         
         // Add command to history
         self.app.command_history.push(command);
@@ -339,7 +459,14 @@ impl AppUI {
         self.update_terminal_output();
         
         // Update terminal input label with current directory
-        self.terminal_input.set_label(self.app.current_dir.to_string_lossy().as_ref());
+        self.update_terminal_input_label();
+    }
+    
+    // Update terminal input label with current directory
+    pub fn update_terminal_input_label(&mut self) {
+        // Set the label to the current directory
+        let dir_str = self.app.current_dir.to_string_lossy();
+        self.terminal_input.set_label(&format!("{}> ", dir_str));
     }
     
     // Process AI input
@@ -464,6 +591,9 @@ impl AppUI {
                         
                         // Update resize handle height
                         ui.resize_handle.set_size(2, win_h);
+                        
+                        // Update the terminal output to adjust separator lines for the new size
+                        ui.update_terminal_output();
                     }
                     true
                 }
