@@ -315,6 +315,42 @@ pub fn get_suggestions(input: &str, current_dir: &PathBuf) -> Vec<String> {
 
     // Handle cd command specially
     if input.starts_with("cd ") {
+        let parts: Vec<&str> = input.split_whitespace().collect();
+        if parts.len() >= 2 {
+            let path_part = parts[1];
+            
+            // If the path is just a partial directory name without slashes,
+            // we need to find matching directories in the current directory
+            if !path_part.contains('/') {
+                let mut suggestions = Vec::new();
+                
+                if let Ok(entries) = fs::read_dir(current_dir) {
+                    for entry in entries.filter_map(Result::ok) {
+                        if let Ok(file_type) = entry.file_type() {
+                            if file_type.is_dir() {
+                                let name = entry.file_name().to_string_lossy().to_string();
+                                if name.starts_with(path_part) {
+                                    suggestions.push(format!("cd {}/", name));
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // Add special directories if they match
+                if ".".starts_with(path_part) {
+                    suggestions.push("cd ./".to_string());
+                }
+                if "..".starts_with(path_part) {
+                    suggestions.push("cd ../".to_string());
+                }
+                
+                // Sort suggestions
+                suggestions.sort();
+                return suggestions;
+            }
+        }
+        
         return get_path_suggestions(input, current_dir);
     }
 

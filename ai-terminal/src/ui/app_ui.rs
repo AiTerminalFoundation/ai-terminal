@@ -634,9 +634,6 @@ impl AppUI {
             if index < self.current_suggestions.len() {
                 let suggestion = &self.current_suggestions[index];
                 
-                // Preserve the original input to match against
-                let original_input = self.terminal_input.value();
-                
                 // Set the input to the suggestion
                 self.terminal_input.set_value(suggestion);
                 
