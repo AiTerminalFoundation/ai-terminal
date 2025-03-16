@@ -191,3 +191,75 @@ impl App {
         }
     }
 }
+
+// Execute a command and return the output
+pub fn execute_command(command: &str, current_dir: &PathBuf) -> (Vec<String>, bool) {
+    // Handle built-in commands
+    if command.starts_with("cd ") {
+        return handle_cd_command(command, current_dir);
+    }
+
+    // Execute external command
+    let output = Command::new("sh")
+        .arg("-c")
+        .arg(command)
+        .current_dir(current_dir)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output();
+
+    match output {
+        Ok(output) => {
+            let success = output.status.success();
+            
+            // Convert stdout to string
+            let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+            let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+            
+            // Split output into lines
+            let mut result = Vec::new();
+            
+            // Add stdout lines
+            if !stdout.is_empty() {
+                result.extend(stdout.lines().map(|s| s.to_string()));
+            }
+            
+            // Add stderr lines
+            if !stderr.is_empty() {
+                result.extend(stderr.lines().map(|s| s.to_string()));
+            }
+            
+            (result, success)
+        }
+        Err(e) => {
+            (vec![format!("Error executing command: {}", e)], false)
+        }
+    }
+}
+
+// Handle the cd command
+fn handle_cd_command(command: &str, current_dir: &PathBuf) -> (Vec<String>, bool) {
+    let parts: Vec<&str> = command.split_whitespace().collect();
+    if parts.len() < 2 {
+        return (vec!["cd: missing argument".to_string()], false);
+    }
+
+    let path = parts[1];
+    let new_dir = if path.starts_with('/') {
+        PathBuf::from(path)
+    } else {
+        let mut dir = current_dir.clone();
+        dir.push(path);
+        dir
+    };
+
+    if new_dir.exists() && new_dir.is_dir() {
+        std::env::set_current_dir(&new_dir).unwrap_or_else(|_| {
+            // If we can't set the current directory, return an error
+            return;
+        });
+        (vec![format!("Changed directory to {}", new_dir.display())], true)
+    } else {
+        (vec![format!("cd: {}: No such directory", path)], false)
+    }
+}

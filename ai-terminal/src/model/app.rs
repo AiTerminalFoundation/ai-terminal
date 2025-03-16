@@ -16,7 +16,7 @@ impl crate::model::App {
         let _ = env::set_current_dir(&current_dir);
 
         // Detect OS information
-        let os_info = crate::terminal::utils::detect_os();
+        let os_info = detect_os();
 
         // Initial output messages
         let mut initial_output = vec![
@@ -57,12 +57,7 @@ impl crate::model::App {
             active_panel: Panel::Terminal,
             // Default to 50% split
             panel_ratio: DEFAULT_PANEL_RATIO,
-            // Mouse drag state
-            is_dragging: false,
-            // Store layout information for mouse interaction
-            terminal_area: None,
-            assistant_area: None,
-            divider_x: None,
+            is_resizing: false,
             // Initialize scroll state
             terminal_scroll: 0,
             assistant_scroll: 0,
@@ -89,4 +84,13 @@ impl crate::model::App {
             auto_execute_commands: false,
         }
     }
+}
+
+// Helper function to detect OS information
+fn detect_os() -> String {
+    let os = std::env::consts::OS;
+    let arch = std::env::consts::ARCH;
+    let family = std::env::consts::FAMILY;
+    
+    format!("{} ({}, {})", os, arch, family)
 }

@@ -1,2 +1,2 @@
-pub mod draw;
+pub mod app_ui;
 pub mod events;

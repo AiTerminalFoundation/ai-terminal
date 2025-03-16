@@ -1,18 +1,20 @@
-// Terminal welcome messages
-pub const WELCOME_MESSAGE: &str = "Welcome to AI Terminal! Type commands below.";
-pub const TERMINAL_INSTRUCTIONS: [&str; 4] = [
-    "Use Alt+Left/Right or drag the divider between panels to resize them.",
-    "Use PageUp/PageDown, Alt+Up/Down, or mouse wheel to scroll through output.",
-    "Use Up/Down arrow keys to navigate through command history.",
-    "Use Tab key for command and path autocompletion.",
+// Welcome messages
+pub const WELCOME_MESSAGE: &str = "Welcome to AI Terminal!";
+
+// Terminal instructions
+pub const TERMINAL_INSTRUCTIONS: [&str; 3] = [
+    "Type commands to execute them in the terminal.",
+    "Press Tab to switch between terminal and AI assistant panels.",
+    "Press Ctrl+C to exit the application.",
 ];
 
-// AI Assistant welcome messages
-pub const AI_WELCOME_MESSAGE: &str = "AI Assistant powered by Ollama is ready.";
-pub const AI_INSTRUCTIONS: [&str; 3] = [
-    "Make sure Ollama is running locally (http://localhost:11434).",
-    "Default model: llama3.2:latest (you can change this with /model <model_name>).",
-    "Type /help for more information about available commands.",
+// AI welcome message
+pub const AI_WELCOME_MESSAGE: &str = "Hello! I'm your AI assistant. How can I help you today?";
+
+// AI instructions
+pub const AI_INSTRUCTIONS: [&str; 2] = [
+    "Type your questions or requests in the input box below.",
+    "I can help you with terminal commands and provide explanations.",
 ];
 
 // AI System prompt

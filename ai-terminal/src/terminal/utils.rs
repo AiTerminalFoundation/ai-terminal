@@ -1,44 +1,33 @@
+// Remove the unused import
+
 // Function to detect OS information
 pub fn detect_os() -> String {
     std::env::consts::OS.to_string()
 }
 
-// Function to extract commands from AI response
+// Extract commands from a response string
 pub fn extract_commands(response: &str) -> Vec<String> {
     let mut commands = Vec::new();
-    let mut in_code_block = false;
-    let mut current_command = String::new();
-
+    
+    // Look for commands in backticks
     for line in response.lines() {
-        let trimmed = line.trim();
-
-        // Check for code block markers
-        if trimmed.starts_with("```") {
-            if !in_code_block {
-                // Start of code block
-                in_code_block = true;
-                // Skip the opening line if it contains a language specifier
-                // e.g., ```bash, ```sh, etc.
-                continue;
-            } else {
-                // End of code block
-                if !current_command.trim().is_empty() {
-                    commands.push(current_command.trim().to_string());
-                }
-                current_command = String::new();
-                in_code_block = false;
-            }
-        } else if in_code_block {
-            // Inside code block, collect command
-            current_command.push_str(line);
-            current_command.push('\n');
+        if let Some(cmd) = extract_command_from_backticks(line) {
+            commands.push(cmd.to_string());
         }
     }
-
-    // In case there's an unclosed code block
-    if in_code_block && !current_command.trim().is_empty() {
-        commands.push(current_command.trim().to_string());
-    }
-
+    
     commands
+}
+
+// Extract a command from backticks in a line
+fn extract_command_from_backticks(line: &str) -> Option<&str> {
+    if let Some(start) = line.find('`') {
+        if let Some(end) = line[start + 1..].find('`') {
+            let cmd = &line[start + 1..start + 1 + end];
+            if !cmd.is_empty() {
+                return Some(cmd);
+            }
+        }
+    }
+    None
 }

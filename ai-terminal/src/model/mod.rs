@@ -28,12 +28,13 @@ pub struct OllamaModelList {
 }
 
 // Application state models
-#[derive(PartialEq)]
+#[derive(PartialEq, Clone, Copy)]
 pub enum Panel {
     Terminal,
     Assistant,
 }
 
+#[derive(Clone)]
 pub enum CommandStatus {
     Success,
     Failure,
@@ -41,6 +42,7 @@ pub enum CommandStatus {
 }
 
 // Main application state
+#[derive(Clone)]
 pub struct App {
     // Terminal panel state
     pub input: String,
@@ -55,15 +57,8 @@ pub struct App {
 
     // Panel management
     pub active_panel: Panel,
-    pub panel_ratio: u16,
-
-    // Mouse drag state
-    pub is_dragging: bool,
-
-    // Layout information for mouse interaction
-    pub terminal_area: Option<ratatui::layout::Rect>,
-    pub assistant_area: Option<ratatui::layout::Rect>,
-    pub divider_x: Option<u16>,
+    pub panel_ratio: u32,
+    pub is_resizing: bool,
 
     // Scroll state
     pub terminal_scroll: usize,

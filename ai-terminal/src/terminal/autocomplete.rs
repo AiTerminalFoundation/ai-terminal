@@ -1,6 +1,7 @@
 use crate::config::{COMMON_COMMANDS, PATH_COMMANDS};
 use crate::model::App;
 use std::fs;
+use std::path::PathBuf;
 
 impl App {
     // Get autocomplete suggestions based on current input
@@ -230,4 +231,76 @@ impl App {
         // Apply the current suggestion
         self.apply_autocomplete();
     }
+}
+
+// Generate autocomplete suggestions for a command
+pub fn generate_suggestions(input: &str, current_dir: &PathBuf) -> Vec<String> {
+    if input.is_empty() {
+        return Vec::new();
+    }
+
+    let parts: Vec<&str> = input.split_whitespace().collect();
+    let command = parts[0];
+    
+    // If we're typing a command (first word)
+    if parts.len() == 1 {
+        return COMMON_COMMANDS
+            .iter()
+            .filter(|&cmd| cmd.starts_with(command))
+            .map(|&cmd| cmd.to_string())
+            .collect();
+    }
+    
+    // If we're typing a path for a command that accepts paths
+    if PATH_COMMANDS.contains(&command) && parts.len() > 1 {
+        let path_part = parts.last().unwrap();
+        return complete_path(path_part, current_dir);
+    }
+    
+    Vec::new()
+}
+
+// Complete a path based on the current directory
+fn complete_path(path_part: &str, current_dir: &PathBuf) -> Vec<String> {
+    let mut suggestions = Vec::new();
+    
+    // Determine the directory to search in
+    let (search_dir, prefix) = if path_part.contains('/') {
+        let path = PathBuf::from(path_part);
+        let default_path = PathBuf::from(".");
+        let parent = path.parent().unwrap_or(&default_path);
+        let prefix = path.file_name().map(|f| f.to_string_lossy().to_string()).unwrap_or_default();
+        
+        let search_path = if path_part.starts_with('/') {
+            parent.to_path_buf()
+        } else {
+            let mut dir = current_dir.clone();
+            dir.push(parent);
+            dir
+        };
+        
+        (search_path, prefix)
+    } else {
+        (current_dir.clone(), path_part.to_string())
+    };
+    
+    // Read the directory entries
+    if let Ok(entries) = fs::read_dir(&search_dir) {
+        for entry in entries.flatten() {
+            let name = entry.file_name().to_string_lossy().to_string();
+            if name.starts_with(&prefix) {
+                // Add a trailing slash for directories
+                let is_dir = entry.file_type().map(|ft| ft.is_dir()).unwrap_or(false);
+                let suggestion = if is_dir {
+                    format!("{}/", name)
+                } else {
+                    name
+                };
+                
+                suggestions.push(suggestion);
+            }
+        }
+    }
+    
+    suggestions
 }
