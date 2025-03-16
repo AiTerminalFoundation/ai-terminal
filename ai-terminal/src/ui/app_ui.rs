@@ -25,6 +25,16 @@ pub struct AppUI {
     pub ai_output: TextDisplay,
     pub ai_input: Input,
     pub is_fullscreen: bool,
+    pub resize_handle: fltk::frame::Frame,
+    pub active_panel: ActivePanel,
+    pub terminal_style_buffer: TextBuffer,
+}
+
+// Enum to track which panel is active
+#[derive(Clone, Copy, PartialEq)]
+pub enum ActivePanel {
+    Terminal,
+    AI,
 }
 
 impl AppUI {
@@ -38,70 +48,126 @@ impl AppUI {
         // Create main layout
         let mut main_flex = Flex::new(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, None);
         main_flex.set_type(fltk::group::FlexType::Row);
-        main_flex.set_spacing(6); // Add a larger spacing between panels for the resize handle
+        main_flex.set_spacing(2); // Smaller spacing between panels
         
         // Terminal panel (left side)
         let mut terminal_flex = Flex::new(0, 0, 0, 0, None);
         terminal_flex.set_type(fltk::group::FlexType::Column);
+        terminal_flex.set_spacing(2); // Add spacing between elements
         
         // Terminal output
         let mut terminal_output = TextDisplay::new(0, 0, 0, 0, None);
         let terminal_buffer = TextBuffer::default();
         terminal_output.set_buffer(terminal_buffer);
         terminal_output.set_text_font(Font::Courier);
-        terminal_output.set_frame(FrameType::FlatBox);
+        terminal_output.set_frame(FrameType::BorderBox);
         terminal_output.set_color(Color::Black);
         terminal_output.set_text_color(Color::White);
+        terminal_output.wrap_mode(fltk::text::WrapMode::AtBounds, 0);
+        terminal_output.set_cursor_style(fltk::text::Cursor::Simple);
+        terminal_output.show_cursor(true);
+        
+        // Create and set up style buffer for terminal output
+        let terminal_style_buffer = TextBuffer::default();
+        terminal_output.set_highlight_data(
+            terminal_style_buffer.clone(),
+            vec![
+                fltk::text::StyleTableEntry {
+                    color: Color::White,
+                    font: Font::Courier,
+                    size: 0,
+                },
+                fltk::text::StyleTableEntry {
+                    color: Color::Green,
+                    font: Font::Courier,
+                    size: 0,
+                },
+                fltk::text::StyleTableEntry {
+                    color: Color::Red,
+                    font: Font::Courier,
+                    size: 0,
+                },
+            ],
+        );
+        
+        // Customize scrollbars for terminal output
+        terminal_output.set_scrollbar_size(10); // Thinner scrollbar
+        terminal_output.set_scrollbar_align(fltk::enums::Align::Right);
+        
+        // White separator
+        let mut separator = Flex::new(0, 0, 0, 2, None);
+        separator.set_frame(FrameType::FlatBox);
+        separator.set_color(Color::White);
+        separator.end();
         
         // Terminal input area
         let mut terminal_input_group = Flex::new(0, 0, 0, 35, None);
         terminal_input_group.set_type(fltk::group::FlexType::Row);
         
         let mut terminal_input = Input::new(0, 0, 0, 0, None);
-        terminal_input.set_frame(FrameType::FlatBox);
-        terminal_input.set_color(Color::GrayRamp);
+        terminal_input.set_frame(FrameType::BorderBox);
+        terminal_input.set_color(Color::Black);
         terminal_input.set_text_color(Color::White);
-        terminal_input.set_label_color(Color::Yellow);
-        terminal_input.set_label_font(Font::HelveticaBold);
-        terminal_input.set_label(app.current_dir.to_string_lossy().as_ref());
-        
+
         terminal_input_group.end();
         
         terminal_flex.end();
-        terminal_flex.fixed(&terminal_input_group, 35);
+        terminal_flex.fixed(&separator, 2);
+        terminal_flex.fixed(&terminal_input_group, 40);
+        
+        // Create a thin resize handle between panels
+        let mut resize_handle = fltk::frame::Frame::new(0, 0, 2, WINDOW_HEIGHT, None);
+        resize_handle.set_frame(FrameType::FlatBox);
+        resize_handle.set_color(Color::White);
         
         // AI Assistant panel (right side)
         let mut assistant_flex = Flex::new(0, 0, 0, 0, None);
         assistant_flex.set_type(fltk::group::FlexType::Column);
+        assistant_flex.set_spacing(2); // Add spacing between elements
         
         // AI output
         let mut ai_output = TextDisplay::new(0, 0, 0, 0, None);
         let ai_buffer = TextBuffer::default();
         ai_output.set_buffer(ai_buffer);
         ai_output.set_text_font(Font::Courier);
-        ai_output.set_frame(FrameType::FlatBox);
+        ai_output.set_frame(FrameType::BorderBox);
         ai_output.set_color(Color::Black);
         ai_output.set_text_color(Color::White);
+        ai_output.wrap_mode(fltk::text::WrapMode::AtBounds, 0);
+        ai_output.set_cursor_style(fltk::text::Cursor::Simple);
+        ai_output.show_cursor(true);
+        
+        // Customize scrollbars for AI output
+        ai_output.set_scrollbar_size(10); // Thinner scrollbar
+        ai_output.set_scrollbar_align(fltk::enums::Align::Right);
+        
+        // White separator
+        let mut ai_separator = Flex::new(0, 0, 0, 2, None);
+        ai_separator.set_frame(FrameType::FlatBox);
+        ai_separator.set_color(Color::White);
+        ai_separator.end();
         
         // AI input area
-        let mut ai_input_group = Flex::new(0, 0, 0, 35, None);
+        let mut ai_input_group = Flex::new(0, 0, 0, 40, None);
         ai_input_group.set_type(fltk::group::FlexType::Row);
         
-        let mut ai_input = Input::new(0, 0, 0, 35, None);
-        ai_input.set_frame(FrameType::BorderFrame);
-        ai_input.set_color(Color::Gray0);
+        let mut ai_input = Input::new(0, 0, 0, 0, None);
+        ai_input.set_frame(FrameType::BorderBox);
+        ai_input.set_color(Color::Black);
         ai_input.set_text_color(Color::White);
 
         ai_input_group.end();
 
         assistant_flex.end();
-        assistant_flex.fixed(&ai_input_group, 20);
+        assistant_flex.fixed(&ai_separator, 2);
+        assistant_flex.fixed(&ai_input_group, 40);
         
         main_flex.end();
         
         // Set panel sizes (50/50 split by default)
         let terminal_width = (WINDOW_WIDTH as f64 * (app.panel_ratio as f64 / 100.0)) as i32;
         main_flex.fixed(&terminal_flex, terminal_width);
+        main_flex.fixed(&resize_handle, 2);
         
         // Make the main flex resizable
         main_flex.set_margin(0);
@@ -131,7 +197,8 @@ impl AppUI {
         }
         ai_output.buffer().unwrap().set_text(&ai_text);
         
-        AppUI {
+        // Create the AppUI instance
+        let mut app_ui = AppUI {
             app,
             window,
             terminal_output,
@@ -139,18 +206,54 @@ impl AppUI {
             ai_output,
             ai_input,
             is_fullscreen: false,
-        }
+            resize_handle,
+            active_panel: ActivePanel::Terminal, // Default to terminal panel
+            terminal_style_buffer,
+        };
+        
+        // Highlight the active panel initially
+        app_ui.highlight_active_panel();
+        
+        app_ui
     }
     
     // Update the terminal output display
     pub fn update_terminal_output(&mut self) {
-        let mut text = String::new();
+        let mut buffer = self.terminal_output.buffer().unwrap();
+        
+        // Clear both buffers
+        buffer.set_text("");
+        self.terminal_style_buffer.set_text("");
+        
+        // Iterate through output lines and command status together
+        let mut status_index = 0;
         for line in &self.app.output {
-            text.push_str(line);
-            text.push('\n');
+            buffer.append(line);
+            buffer.append("\n");
+            
+            // Check if this line is a command (starts with "> ")
+            if line.starts_with("> ") && status_index < self.app.command_status.len() {
+                // Set color based on command status
+                let style_char = match self.app.command_status[status_index] {
+                    crate::model::CommandStatus::Success => 'B', // Index 1 (Green)
+                    crate::model::CommandStatus::Failure => 'C', // Index 2 (Red)
+                    crate::model::CommandStatus::Running => 'A', // Index 0 (White) for running commands
+                };
+                
+                // Apply style to the command line
+                let style_text = style_char.to_string().repeat(line.len()) + "A"; // 'A' for newline
+                self.terminal_style_buffer.append(&style_text);
+                
+                status_index += 1;
+            } else {
+                // Regular output line, use default style (white)
+                let style_text = "A".repeat(line.len() + 1); // 'A' for default style
+                self.terminal_style_buffer.append(&style_text);
+            }
         }
-        self.terminal_output.buffer().unwrap().set_text(&text);
-        self.terminal_output.scroll(self.terminal_output.count_lines(0, self.terminal_output.buffer().unwrap().length(), true), 0);
+        
+        // Scroll to the bottom
+        self.terminal_output.scroll(self.terminal_output.count_lines(0, buffer.length(), true), 0);
     }
     
     // Update the AI output display
@@ -178,8 +281,8 @@ impl AppUI {
         // Get the main flex container - the first child of the window
         if let Some(flex) = self.window.child(0) {
             if let Some(flex_group) = flex.as_group() {
-                // Make sure we have at least 2 children (terminal and assistant panels)
-                if flex_group.children() >= 2 {
+                // Make sure we have at least 3 children (terminal, resize handle, and assistant panels)
+                if flex_group.children() >= 3 {
                     // Get the terminal panel (first child)
                     if let Some(terminal_panel) = flex_group.child(0) {
                         // Update the layout - using unsafe because into_widget requires it
@@ -259,6 +362,24 @@ impl AppUI {
         self.update_ai_output();
     }
     
+    // Highlight the active panel
+    pub fn highlight_active_panel(&mut self) {
+        match self.active_panel {
+            ActivePanel::Terminal => {
+                // Highlight terminal input
+                self.terminal_input.set_color(Color::from_rgb(20, 20, 30)); // Slightly lighter black for active
+                self.ai_input.set_color(Color::Black);
+            },
+            ActivePanel::AI => {
+                // Highlight AI input
+                self.terminal_input.set_color(Color::Black);
+                self.ai_input.set_color(Color::from_rgb(20, 20, 30)); // Slightly lighter black for active
+            }
+        }
+        self.terminal_input.redraw();
+        self.ai_input.redraw();
+    }
+    
     // Setup event handlers
     pub fn setup_events(&mut self) {
         // Create a shared reference to self
@@ -270,6 +391,9 @@ impl AppUI {
             ai_output: self.ai_output.clone(),
             ai_input: self.ai_input.clone(),
             is_fullscreen: self.is_fullscreen,
+            resize_handle: self.resize_handle.clone(),
+            active_panel: self.active_panel,
+            terminal_style_buffer: self.terminal_style_buffer.clone(),
         }));
         
         // Terminal input events
@@ -278,6 +402,13 @@ impl AppUI {
         
         terminal_input.handle(move |_, event| {
             match event {
+                Event::Push => {
+                    if let Ok(mut ui) = app_ui_ref.try_borrow_mut() {
+                        ui.active_panel = ActivePanel::Terminal;
+                        ui.highlight_active_panel();
+                    }
+                    false
+                },
                 Event::KeyDown => {
                     if fltk_app::event_key() == Key::Enter {
                         if let Ok(mut ui) = app_ui_ref.try_borrow_mut() {
@@ -285,12 +416,11 @@ impl AppUI {
                         }
                         return true;
                     }
+                    false
                 }
-                _ => {}
+                _ => false,
             }
-            false
         });
-
 
         // AI input events
         let app_ui_ref = Rc::clone(&app_ui);
@@ -298,6 +428,13 @@ impl AppUI {
         
         ai_input.handle(move |_, event| {
             match event {
+                Event::Push => {
+                    if let Ok(mut ui) = app_ui_ref.try_borrow_mut() {
+                        ui.active_panel = ActivePanel::AI;
+                        ui.highlight_active_panel();
+                    }
+                    false
+                },
                 Event::KeyDown => {
                     if fltk_app::event_key() == Key::Enter {
                         if let Ok(mut ui) = app_ui_ref.try_borrow_mut() {
@@ -305,10 +442,10 @@ impl AppUI {
                         }
                         return true;
                     }
+                    false
                 }
-                _ => {}
+                _ => false,
             }
-            false
         });
         
         // Window event handling for fullscreen
@@ -324,6 +461,9 @@ impl AppUI {
                         
                         // Check if window dimensions match screen dimensions
                         ui.is_fullscreen = win_w >= w as i32 - 5 && win_h >= h as i32 - 5;
+                        
+                        // Update resize handle height
+                        ui.resize_handle.set_size(2, win_h);
                     }
                     true
                 }
@@ -337,10 +477,12 @@ impl AppUI {
                 Event::KeyDown => {
                     // Add F11 shortcut for fullscreen toggle
                     if fltk_app::event_key() == Key::F11 {
+                        let mut toggle_fullscreen = false;
                         if let Ok(mut ui) = app_ui_ref.try_borrow_mut() {
                             ui.is_fullscreen = !ui.is_fullscreen;
-                            win.fullscreen(ui.is_fullscreen);
+                            toggle_fullscreen = ui.is_fullscreen;
                         }
+                        win.fullscreen(toggle_fullscreen);
                         return true;
                     }
                     false
@@ -353,8 +495,8 @@ impl AppUI {
                     if let Ok(mut ui) = app_ui_ref.try_borrow_mut() {
                         let terminal_width = (win.width() as f64 * (ui.app.panel_ratio as f64 / 100.0)) as i32;
                         
-                        // If click is near the divider (within 30 pixels)
-                        if x >= terminal_width - 30 && x <= terminal_width + 30 {
+                        // If click is near the divider (within 10 pixels)
+                        if x >= terminal_width - 5 && x <= terminal_width + 7 {
                             // Set a flag or state to indicate we're resizing
                             ui.app.is_resizing = true;
                             return true;
