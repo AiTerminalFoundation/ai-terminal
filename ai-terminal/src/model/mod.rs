@@ -14,16 +14,12 @@ pub struct OllamaRequest {
 
 #[derive(Deserialize)]
 pub struct OllamaResponse {
-    pub model: String,
     pub response: String,
-    pub done: bool,
 }
 
 #[derive(Deserialize)]
 pub struct OllamaModel {
     pub name: String,
-    pub modified_at: String,
-    pub size: u64,
 }
 
 #[derive(Deserialize)]
