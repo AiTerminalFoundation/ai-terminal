@@ -739,19 +739,23 @@ impl App {
         self.ai_output.push("Thinking...".to_string());
         
         // Prepare the message with context if available
-        let message_with_context = if let Some((last_cmd, last_output)) = &self.last_terminal_context {
-            let output_text = last_output.join("\n");
+        let message_with_context = {
+            // Include all terminal output
+            let all_terminal_output = self.output.join("\n");
+            
+            // Include all chat history
+            let chat_history = self.ai_output
+                .iter()
+                .filter(|line| !line.is_empty() && !line.contains("Thinking..."))
+                .map(|s| s.as_str())
+                .collect::<Vec<&str>>()
+                .join("\n");
+            
             format!(
-                "System Info: {}\nLast terminal command: {}\nOutput:\n{}\n\nUser query: {}", 
+                "System Info: {}\n\nTerminal History:\n{}\n\nChat History:\n{}\n\nUser query: {}", 
                 self.os_info,
-                last_cmd, 
-                output_text,
-                input
-            )
-        } else {
-            format!(
-                "System Info: {}\n\nUser query: {}", 
-                self.os_info,
+                all_terminal_output,
+                chat_history,
                 input
             )
         };
@@ -874,7 +878,9 @@ fn main() -> Result<(), io::Error> {
         EnterAlternateScreen,
         EnableMouseCapture,
         // Enable focus reporting
-        event::EnableFocusChange
+        event::EnableFocusChange,
+        // Set cursor to a thin line
+        crossterm::cursor::SetCursorStyle::SteadyBar
     )?;
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
@@ -903,7 +909,9 @@ fn main() -> Result<(), io::Error> {
         LeaveAlternateScreen,
         DisableMouseCapture,
         // Disable focus reporting
-        event::DisableFocusChange
+        event::DisableFocusChange,
+        // Reset cursor style to default
+        crossterm::cursor::SetCursorStyle::DefaultUserShape
     )?;
     terminal.show_cursor()?;
 
