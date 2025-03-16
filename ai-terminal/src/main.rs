@@ -7,15 +7,12 @@ use crossterm::{
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use ratatui::{
-    backend::CrosstermBackend,
-    Terminal,
-};
+use ratatui::{backend::CrosstermBackend, Terminal};
 
 mod config;
 mod model;
-mod terminal;
 mod ollama;
+mod terminal;
 mod ui;
 
 use model::App;

@@ -1,11 +1,10 @@
-use crate::model::App;
 use crate::config::{
-    HELP_MESSAGES, HELP_COMMANDS, HELP_FEATURES,
-    ERROR_FETCHING_MODELS, OLLAMA_NOT_RUNNING,
-    OLLAMA_INSTALL_INSTRUCTIONS, NO_MODELS_FOUND, OLLAMA_PULL_INSTRUCTIONS
+    ERROR_FETCHING_MODELS, HELP_COMMANDS, HELP_FEATURES, HELP_MESSAGES, NO_MODELS_FOUND,
+    OLLAMA_INSTALL_INSTRUCTIONS, OLLAMA_NOT_RUNNING, OLLAMA_PULL_INSTRUCTIONS,
 };
-use crate::terminal::utils::extract_commands;
+use crate::model::App;
 use crate::ollama::api::{ask_ollama, list_ollama_models};
+use crate::terminal::utils::extract_commands;
 
 impl App {
     pub fn send_to_ai_assistant(&mut self) {
@@ -17,7 +16,7 @@ impl App {
         self.ai_output.push(format!("> {}", input));
         self.ai_input.clear();
         self.ai_cursor_position = 0;
-        
+
         // Clear previous extracted commands
         self.extracted_commands.clear();
 
@@ -25,7 +24,7 @@ impl App {
         if input.starts_with("/") {
             let parts: Vec<&str> = input.splitn(2, ' ').collect();
             let command = parts[0];
-            
+
             match command {
                 "/help" => {
                     self.ai_output.push(HELP_MESSAGES[0].to_string());
@@ -37,23 +36,26 @@ impl App {
                     for feature in HELP_FEATURES.iter() {
                         self.ai_output.push(feature.to_string());
                     }
-                },
+                }
                 "/model" => {
                     if parts.len() > 1 {
                         let model = parts[1].trim();
                         self.ollama_model = model.to_string();
                         self.ai_output.push(format!("Model changed to: {}", model));
                     } else {
-                        self.ai_output.push(format!("Current model: {}", self.ollama_model));
-                        self.ai_output.push("Usage: /model <model_name>".to_string());
+                        self.ai_output
+                            .push(format!("Current model: {}", self.ollama_model));
+                        self.ai_output
+                            .push("Usage: /model <model_name>".to_string());
                     }
-                },
+                }
                 "/clear" => {
                     self.ai_output = vec!["Chat history cleared.".to_string()];
                     self.extracted_commands.clear();
-                },
+                }
                 "/models" => {
-                    self.ai_output.push("Fetching available models...".to_string());
+                    self.ai_output
+                        .push("Fetching available models...".to_string());
                     match list_ollama_models() {
                         Ok(models) => {
                             if models.is_empty() {
@@ -65,23 +67,26 @@ impl App {
                                     self.ai_output.push(format!("  - {}", model));
                                 }
                             }
-                        },
+                        }
                         Err(e) => {
-                            self.ai_output.push(format!("{}{}", ERROR_FETCHING_MODELS, e));
+                            self.ai_output
+                                .push(format!("{}{}", ERROR_FETCHING_MODELS, e));
                             self.ai_output.push(OLLAMA_NOT_RUNNING.to_string());
                             self.ai_output.push(OLLAMA_INSTALL_INSTRUCTIONS.to_string());
                         }
                     }
-                },
+                }
                 "/autoexec" => {
                     // Toggle auto-execution of commands
                     self.auto_execute_commands = !self.auto_execute_commands;
                     if self.auto_execute_commands {
-                        self.ai_output.push("Auto-execution of commands is now enabled.".to_string());
+                        self.ai_output
+                            .push("Auto-execution of commands is now enabled.".to_string());
                     } else {
-                        self.ai_output.push("Auto-execution of commands is now disabled.".to_string());
+                        self.ai_output
+                            .push("Auto-execution of commands is now disabled.".to_string());
                     }
-                },
+                }
                 _ => {
                     self.ai_output.push(format!("Unknown command: {}", command));
                 }
@@ -96,33 +101,30 @@ impl App {
         let message_with_context = {
             // Include all terminal output
             let all_terminal_output = self.output.join("\n");
-            
+
             // Include all chat history
-            let chat_history = self.ai_output
+            let chat_history = self
+                .ai_output
                 .iter()
                 .filter(|line| !line.is_empty())
                 .map(|s| s.as_str())
                 .collect::<Vec<&str>>()
                 .join("\n");
-            
+
             format!(
-                "System Info: {}\n\nTerminal History:\n{}\n\nChat History:\n{}\n\nUser query: {}", 
-                self.os_info,
-                all_terminal_output,
-                chat_history,
-                input
+                "System Info: {}\n\nTerminal History:\n{}\n\nChat History:\n{}\n\nUser query: {}",
+                self.os_info, all_terminal_output, chat_history, input
             )
         };
-        
+
         // In a real implementation, this would be done asynchronously
         // For simplicity, we're using blocking requests here
         match ask_ollama(&message_with_context, &self.ollama_model) {
             Ok(response) => {
-                
                 // Add the response
                 let _start_line_index = self.ai_output.len();
                 self.ai_output.push(response.clone());
-                
+
                 // Extract commands from the response
                 let commands = extract_commands(&response);
                 if !commands.is_empty() {
@@ -132,21 +134,21 @@ impl App {
                     // Store the first command for quick access (instead of the last)
                     if let Some(first_cmd) = commands.first() {
                         self.last_ai_command = Some(first_cmd.clone());
-                        
+
                         // Automatically place the first command in the terminal input and execute it
                         self.copy_command_to_terminal(first_cmd);
                     }
 
                     self.ai_output.push("".to_string());
                 }
-            },
+            }
             Err(e) => {
                 self.ai_output.push(format!("Error: {}", e));
                 self.ai_output.push(OLLAMA_NOT_RUNNING.to_string());
                 self.ai_output.push(OLLAMA_INSTALL_INSTRUCTIONS.to_string());
             }
         }
-        
+
         self.ollama_thinking = false;
     }
 
@@ -155,13 +157,13 @@ impl App {
         // Set the terminal input to the command
         self.input = command.to_string();
         self.cursor_position = self.input.len();
-        
+
         // Switch focus to the terminal panel
         self.active_panel = crate::model::Panel::Terminal;
-        
+
         // Set scroll to 0 to always show the most recent output at the bottom
         self.assistant_scroll = 0;
-        
+
         // Automatically execute the command if requested or if auto-execute is enabled
         if self.auto_execute_commands {
             self.execute_command();
@@ -173,14 +175,14 @@ impl App {
         // Set the terminal input to the command
         self.input = command.to_string();
         self.cursor_position = self.input.len();
-        
+
         // Switch focus to the terminal panel
         self.active_panel = crate::model::Panel::Terminal;
-        
+
         // Set scroll to 0 to always show the most recent output at the bottom
         self.assistant_scroll = 0;
-        
+
         // Execute the command
         self.execute_command();
     }
-} 
+}

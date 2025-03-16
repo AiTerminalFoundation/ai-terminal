@@ -1,14 +1,17 @@
 use std::env;
 use std::path::PathBuf;
 
-use crate::config::{DEFAULT_OLLAMA_MODEL, DEFAULT_PANEL_RATIO, WELCOME_MESSAGE, TERMINAL_INSTRUCTIONS, AI_WELCOME_MESSAGE, AI_INSTRUCTIONS};
+use crate::config::{
+    AI_INSTRUCTIONS, AI_WELCOME_MESSAGE, DEFAULT_OLLAMA_MODEL, DEFAULT_PANEL_RATIO,
+    TERMINAL_INSTRUCTIONS, WELCOME_MESSAGE,
+};
 use crate::model::{CommandStatus, Panel};
 
 impl crate::model::App {
     pub fn new() -> Self {
         // Always start at the root directory
         let current_dir = PathBuf::from("/");
-        
+
         // Set the current working directory to the root
         let _ = env::set_current_dir(&current_dir);
 
@@ -20,7 +23,7 @@ impl crate::model::App {
             WELCOME_MESSAGE.to_string(),
             format!("Operating System: {}", os_info),
         ];
-        
+
         // Add terminal instructions
         for instruction in TERMINAL_INSTRUCTIONS.iter() {
             initial_output.push(instruction.to_string());
@@ -28,7 +31,7 @@ impl crate::model::App {
 
         // Initial AI output messages
         let mut initial_ai_output = vec![AI_WELCOME_MESSAGE.to_string()];
-        
+
         // Add AI instructions
         for instruction in AI_INSTRUCTIONS.iter() {
             initial_ai_output.push(instruction.to_string());
@@ -86,4 +89,4 @@ impl crate::model::App {
             auto_execute_commands: false,
         }
     }
-} 
+}

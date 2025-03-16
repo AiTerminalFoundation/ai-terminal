@@ -1,8 +1,8 @@
+use crate::config::SEPARATOR_LINE;
+use crate::model::{App, CommandStatus};
 use std::env;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
-use crate::config::SEPARATOR_LINE;
-use crate::model::{App, CommandStatus};
 
 impl App {
     pub fn execute_command(&mut self) {
@@ -13,19 +13,21 @@ impl App {
         }
 
         // Add command to history (only if it's not empty and not the same as the last command)
-        if !command.is_empty() && (self.command_history.is_empty() || self.command_history.last().unwrap() != command) {
+        if !command.is_empty()
+            && (self.command_history.is_empty() || self.command_history.last().unwrap() != command)
+        {
             // Add to history
             self.command_history.push(command.to_string());
-            
+
             // Limit history to 30 commands
             if self.command_history.len() > crate::config::MAX_COMMAND_HISTORY {
                 self.command_history.remove(0);
             }
         }
-        
+
         // Add command to output
         self.output.push(format!("> {}", command));
-        
+
         // Add a placeholder for command status
         self.command_status.push(CommandStatus::Running);
         let command_index = self.command_status.len() - 1;
@@ -37,16 +39,26 @@ impl App {
         if command.starts_with("cd ") {
             let path = command.trim_start_matches("cd ").trim();
             let success = self.change_directory(path);
-            
+
             // Update command status
             if success {
                 self.command_status[command_index] = CommandStatus::Success;
-                command_output.push(format!("Changed directory to: {}", self.current_dir.display()));
+                command_output.push(format!(
+                    "Changed directory to: {}",
+                    self.current_dir.display()
+                ));
             } else {
                 self.command_status[command_index] = CommandStatus::Failure;
                 command_output.push("Error changing directory".to_string());
             }
-            
+
+            // Add a separator after the command output
+            self.output.push(SEPARATOR_LINE.repeat(40));
+        } else if command.eq_ignore_ascii_case("clear") || command.eq_ignore_ascii_case("cls") {
+            // handling command to clear terminal output
+            self.output.clear();
+            self.command_status[command_index] = CommandStatus::Success;
+            self.output.push(format!("> {}", command));
             // Add a separator after the command output
             self.output.push(SEPARATOR_LINE.repeat(40));
         } else {
@@ -54,14 +66,14 @@ impl App {
             let (output, success) = self.run_command(command);
             self.output.extend(output.clone());
             command_output = output;
-            
+
             // Update command status
             if success {
                 self.command_status[command_index] = CommandStatus::Success;
             } else {
                 self.command_status[command_index] = CommandStatus::Failure;
             }
-            
+
             // Add a separator after the command output
             self.output.push(SEPARATOR_LINE.repeat(40));
         }
@@ -71,7 +83,7 @@ impl App {
 
         self.input.clear();
         self.cursor_position = 0;
-        
+
         // Set scroll to 0 to always show the most recent output at the bottom
         // In the Paragraph widget, scroll is applied from the bottom when using negative values
         self.terminal_scroll = 0;
@@ -80,7 +92,7 @@ impl App {
     pub fn run_command(&self, command: &str) -> (Vec<String>, bool) {
         let mut result = Vec::new();
         let mut success = true;
-        
+
         // Split the command into program and arguments
         let parts: Vec<&str> = command.split_whitespace().collect();
         if parts.is_empty() {
@@ -178,4 +190,4 @@ impl App {
             }
         }
     }
-} 
+}

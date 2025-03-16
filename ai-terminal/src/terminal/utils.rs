@@ -8,10 +8,10 @@ pub fn extract_commands(response: &str) -> Vec<String> {
     let mut commands = Vec::new();
     let mut in_code_block = false;
     let mut current_command = String::new();
-    
+
     for line in response.lines() {
         let trimmed = line.trim();
-        
+
         // Check for code block markers
         if trimmed.starts_with("```") {
             if !in_code_block {
@@ -34,11 +34,11 @@ pub fn extract_commands(response: &str) -> Vec<String> {
             current_command.push('\n');
         }
     }
-    
+
     // In case there's an unclosed code block
     if in_code_block && !current_command.trim().is_empty() {
         commands.push(current_command.trim().to_string());
     }
-    
+
     commands
-} 
+}

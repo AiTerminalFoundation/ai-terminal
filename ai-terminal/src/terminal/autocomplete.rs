@@ -1,6 +1,6 @@
-use std::fs;
-use crate::model::App;
 use crate::config::{COMMON_COMMANDS, PATH_COMMANDS};
+use crate::model::App;
+use std::fs;
 
 impl App {
     // Get autocomplete suggestions based on current input
@@ -15,7 +15,7 @@ impl App {
 
         // Split input into parts
         let parts: Vec<&str> = input.split_whitespace().collect();
-        
+
         // Check if we're trying to autocomplete a path (for cd, ls, etc.)
         if parts.len() >= 2 && PATH_COMMANDS.contains(&parts[0]) {
             let command = parts[0];
@@ -25,26 +25,30 @@ impl App {
             } else {
                 ""
             };
-            
+
             // For cd command, only suggest directories
             if command == "cd" {
-                suggestions = self.get_path_suggestions(path_part).into_iter()
+                suggestions = self
+                    .get_path_suggestions(path_part)
+                    .into_iter()
                     .filter(|s| s.ends_with('/'))
                     .collect();
             } else {
                 // For other commands, suggest both files and directories
                 suggestions = self.get_path_suggestions(path_part);
             }
-            
+
             // Format suggestions to include the command and any intermediate arguments
             if parts.len() > 2 {
-                let prefix = parts[..parts.len()-1].join(" ") + " ";
-                suggestions = suggestions.into_iter()
+                let prefix = parts[..parts.len() - 1].join(" ") + " ";
+                suggestions = suggestions
+                    .into_iter()
                     .map(|s| format!("{}{}", prefix, s))
                     .collect();
             } else if parts.len() == 2 {
                 let prefix = format!("{} ", command);
-                suggestions = suggestions.into_iter()
+                suggestions = suggestions
+                    .into_iter()
                     .map(|s| format!("{}{}", prefix, s))
                     .collect();
             }
@@ -73,7 +77,7 @@ impl App {
     // Get path suggestions for cd command
     pub fn get_path_suggestions(&self, path_part: &str) -> Vec<String> {
         let mut suggestions = Vec::new();
-        
+
         // Determine the directory to search in and the prefix to match
         let (search_dir, prefix) = if path_part.is_empty() {
             // If no path specified, suggest directories in current directory
@@ -95,14 +99,25 @@ impl App {
                 } else {
                     subdir.split_at(last_slash)
                 };
-                
+
                 let search_path = if dir_part.is_empty() {
                     home.clone()
                 } else {
                     home.join(dir_part)
                 };
-                
-                (search_path, format!("~/{}{}", dir_part, if !dir_part.is_empty() && !dir_part.ends_with('/') { "/" } else { "" }))
+
+                (
+                    search_path,
+                    format!(
+                        "~/{}{}",
+                        dir_part,
+                        if !dir_part.is_empty() && !dir_part.ends_with('/') {
+                            "/"
+                        } else {
+                            ""
+                        }
+                    ),
+                )
             } else {
                 return suggestions;
             }
@@ -110,7 +125,7 @@ impl App {
             // Absolute path
             let last_slash = path_part.rfind('/').unwrap_or(0);
             let (dir_part, _file_prefix) = path_part.split_at(last_slash + 1);
-            
+
             (std::path::PathBuf::from(dir_part), dir_part.to_string())
         } else {
             // Relative path
@@ -120,23 +135,23 @@ impl App {
             } else {
                 path_part.split_at(last_slash + 1)
             };
-            
+
             let search_path = if dir_part.is_empty() {
                 self.current_dir.clone()
             } else {
                 self.current_dir.join(dir_part)
             };
-            
+
             (search_path, dir_part.to_string())
         };
-        
+
         // Get the part after the last slash to match against
         let match_prefix = if let Some(last_slash) = path_part.rfind('/') {
             &path_part[last_slash + 1..]
         } else {
             path_part
         };
-        
+
         // Read the directory and find matching entries
         if let Ok(entries) = fs::read_dir(&search_dir) {
             for entry in entries.flatten() {
@@ -157,7 +172,7 @@ impl App {
                 }
             }
         }
-        
+
         // Add special directories if they match
         if ".".starts_with(match_prefix) {
             suggestions.push(format!("{}./", prefix));
@@ -165,7 +180,7 @@ impl App {
         if "..".starts_with(match_prefix) {
             suggestions.push(format!("{}../", prefix));
         }
-        
+
         suggestions
     }
 
@@ -174,13 +189,13 @@ impl App {
         if let Some(index) = self.autocomplete_index {
             if index < self.autocomplete_suggestions.len() {
                 let suggestion = &self.autocomplete_suggestions[index];
-                
+
                 // Replace the input with the suggestion
                 self.input = suggestion.clone();
-                
+
                 // Move cursor to end of input
                 self.cursor_position = self.input.len();
-                
+
                 // Clear suggestions after applying
                 self.autocomplete_suggestions.clear();
                 self.autocomplete_index = None;
@@ -204,17 +219,15 @@ impl App {
             if forward {
                 self.autocomplete_index = Some((index + 1) % self.autocomplete_suggestions.len());
             } else {
-                self.autocomplete_index = Some(
-                    if index == 0 {
-                        self.autocomplete_suggestions.len() - 1
-                    } else {
-                        index - 1
-                    }
-                );
+                self.autocomplete_index = Some(if index == 0 {
+                    self.autocomplete_suggestions.len() - 1
+                } else {
+                    index - 1
+                });
             }
         }
-        
+
         // Apply the current suggestion
         self.apply_autocomplete();
     }
-} 
+}
