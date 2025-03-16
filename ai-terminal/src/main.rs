@@ -191,8 +191,6 @@ impl App {
             "Make sure Ollama is running locally (http://localhost:11434).".to_string(),
             "Available models depend on what you've pulled with Ollama.".to_string(),
             "Default model: llama3.2:latest (you can change this with /model <model_name>).".to_string(),
-            "The first command from AI responses will be automatically placed in your terminal input and executed.".to_string(),
-            "Use Alt+L to recall and execute the last AI command at any time.".to_string(),
             "Type /help for more information about available commands.".to_string(),
         ];
 
@@ -244,8 +242,8 @@ impl App {
             last_terminal_context: None,
             // System information
             os_info,
-            // Auto-execute commands (enabled by default)
-            auto_execute_commands: true,
+            // Auto-execute commands (disabled by default)
+            auto_execute_commands: false,
         }
     }
 
@@ -678,9 +676,6 @@ impl App {
                     self.ai_output.push("".to_string());
                     self.ai_output.push("Features:".to_string());
                     self.ai_output.push("  - The first command from AI responses will be automatically placed in your terminal input and executed".to_string());
-                    self.ai_output.push("  - Use Alt+L to recall and execute the last AI command at any time".to_string());
-                    self.ai_output.push("  - Click on the 📋 icon to copy a specific command to the terminal".to_string());
-                    self.ai_output.push("  - The last terminal command and its output are included as context for the AI".to_string());
                     self.ai_output.push("  - System information is provided to the AI for better command compatibility".to_string());
                 },
                 "/model" => {
@@ -794,9 +789,9 @@ impl App {
                         self.last_ai_command = Some(first_cmd.clone());
                         
                         // Automatically place the first command in the terminal input and execute it
-                        self.copy_command_to_terminal(first_cmd, true);
+                        self.copy_command_to_terminal(first_cmd);
                         
-                        // Add a message about the auto-filled command
+                        // Add a message about the auto filled command
                         self.ai_output.push("".to_string());
                         self.ai_output.push(format!("✅ First command automatically placed in terminal input and executed: {}", first_cmd));
                     }
@@ -823,7 +818,7 @@ impl App {
     }
 
     // Copy a command to the terminal input
-    fn copy_command_to_terminal(&mut self, command: &str, force_execute: bool) {
+    fn copy_command_to_terminal(&mut self, command: &str) {
         // Set the terminal input to the command
         self.input = command.to_string();
         self.cursor_position = self.input.len();
@@ -838,7 +833,7 @@ impl App {
         self.assistant_scroll = 0;
         
         // Automatically execute the command if requested or if auto-execute is enabled
-        if force_execute || self.auto_execute_commands {
+        if self.auto_execute_commands {
             self.execute_command();
         }
     }
@@ -1420,36 +1415,6 @@ fn run_app<B: tui::backend::Backend>(
                                 }
                             }
                         }
-                        KeyCode::Char('l') => {
-                            if key.modifiers == KeyModifiers::ALT {
-                                // Recall the last AI command
-                                if let Some(last_cmd) = app.last_ai_command.clone() {
-                                    app.copy_command_to_terminal(&last_cmd, true);
-                                }
-                            } else {
-                                // Handle regular 'l' character input
-                                match app.active_panel {
-                                    Panel::Terminal => {
-                                        app.input.insert(app.cursor_position, 'l');
-                                        app.cursor_position += 1;
-                                        
-                                        // Clear autocomplete suggestions when typing
-                                        app.autocomplete_suggestions.clear();
-                                        app.autocomplete_index = None;
-                                        
-                                        // Set scroll to 0 to always show the most recent output
-                                        app.terminal_scroll = 0;
-                                    }
-                                    Panel::Assistant => {
-                                        app.ai_input.insert(app.ai_cursor_position, 'l');
-                                        app.ai_cursor_position += 1;
-                                        
-                                        // Set scroll to 0 to always show the most recent output
-                                        app.assistant_scroll = 0;
-                                    }
-                                }
-                            }
-                        }
                         KeyCode::Tab => {
                             // Handle tab for autocomplete
                             match app.active_panel {
@@ -1587,7 +1552,7 @@ fn run_app<B: tui::backend::Backend>(
                                                 
                                                 // Now copy the command if we found one
                                                 if let Some(cmd) = commands_to_copy.first() {
-                                                    app.copy_command_to_terminal(cmd, true);
+                                                    app.copy_command_to_terminal(cmd);
                                                 }
                                             }
                                         }
@@ -1746,7 +1711,7 @@ fn detect_os_info() -> String {
     
     // If all else fails, use Rust's built-in OS detection
     if os_info.is_empty() {
-        os_info = format!("OS: {}", std::env::consts::OS);
+        os_info = format!("OS: {}", env::consts::OS);
     }
     
     os_info
