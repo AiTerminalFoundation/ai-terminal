@@ -18,11 +18,13 @@ pub const INPUT_TITLE: &str = "Message to AI";
 pub const SUGGESTIONS_TITLE: &str = "Suggestions";
 
 // Common Unix commands for autocompletion
-pub const COMMON_COMMANDS: [&str; 35] = [
-    "ls", "cd", "pwd", "mkdir", "rmdir", "touch", "rm", "cp", "mv", "cat", "grep", "find", "echo",
-    "ps", "kill", "chmod", "chown", "df", "du", "tar", "gzip", "gunzip", "zip", "unzip", "ssh",
-    "scp", "curl", "wget", "ping", "ifconfig", "netstat", "top", "htop", "ls -a", "ls -l",
+pub const COMMON_COMMANDS: &[&str] = &[
+    "ls", "cd", "pwd", "cat", "grep", "find", "git", "vim", "nano",
+    "mkdir", "rm", "cp", "mv", "touch", "echo", "clear", "history",
+    "ps", "top", "ssh", "scp", "curl", "wget", "tar", "zip", "unzip",
 ];
 
 // Path-related commands that might need autocompletion
-pub const PATH_COMMANDS: [&str; 8] = ["cd", "ls", "cat", "rm", "cp", "mv", "mkdir", "touch"];
+pub const PATH_COMMANDS: &[&str] = &[
+    "cd", "ls", "cat", "vim", "nano", "rm", "cp", "mv", "touch", "mkdir",
+];

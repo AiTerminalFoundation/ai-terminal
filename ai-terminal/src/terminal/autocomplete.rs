@@ -1,7 +1,8 @@
 use crate::config::{COMMON_COMMANDS, PATH_COMMANDS};
 use crate::model::App;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+use std::process::Command;
 
 impl App {
     // Get autocomplete suggestions based on current input
@@ -303,4 +304,208 @@ fn complete_path(path_part: &str, current_dir: &PathBuf) -> Vec<String> {
     }
     
     suggestions
+}
+
+// Get autocomplete suggestions for a command
+pub fn get_suggestions(input: &str, current_dir: &PathBuf) -> Vec<String> {
+    // If input is empty, return empty suggestions
+    if input.is_empty() {
+        return Vec::new();
+    }
+
+    // Handle cd command specially
+    if input.starts_with("cd ") {
+        return get_path_suggestions(input, current_dir);
+    }
+
+    // Handle other common commands
+    if input.contains(' ') {
+        // If there's a space, we're completing an argument
+        let parts: Vec<&str> = input.split_whitespace().collect();
+        let command = parts[0];
+        
+        match command {
+            "ls" | "cat" | "vim" | "nano" | "rm" | "cp" | "mv" | "touch" | "mkdir" => {
+                // These commands take file/directory arguments
+                return get_path_suggestions(input, current_dir);
+            }
+            "git" => {
+                // Git command completion
+                if parts.len() == 2 {
+                    let git_commands = vec![
+                        "add", "commit", "push", "pull", "checkout", "branch", "status",
+                        "log", "diff", "merge", "rebase", "reset", "fetch", "clone",
+                    ];
+                    return filter_suggestions(git_commands, parts[1]);
+                }
+            }
+            _ => {}
+        }
+    } else {
+        // We're completing the command itself
+        let common_commands = vec![
+            "ls", "cd", "pwd", "cat", "grep", "find", "git", "vim", "nano",
+            "mkdir", "rm", "cp", "mv", "touch", "echo", "clear", "history",
+            "ps", "top", "ssh", "scp", "curl", "wget", "tar", "zip", "unzip",
+        ];
+        
+        return filter_suggestions(common_commands, input);
+    }
+
+    Vec::new()
+}
+
+// Get path suggestions for commands like cd, ls, etc.
+fn get_path_suggestions(input: &str, current_dir: &PathBuf) -> Vec<String> {
+    let parts: Vec<&str> = input.split_whitespace().collect();
+    if parts.len() < 2 {
+        return Vec::new();
+    }
+    
+    // Get the command and partial path
+    let command = parts[0];
+    let mut partial_path = parts[1..].join(" ");
+    
+    // Handle tilde expansion
+    if partial_path.starts_with("~/") {
+        if let Some(home) = dirs_next::home_dir() {
+            let home_str = home.to_string_lossy();
+            partial_path = partial_path.replace("~/", &format!("{}/", home_str));
+        }
+    } else if partial_path == "~" {
+        if let Some(home) = dirs_next::home_dir() {
+            partial_path = home.to_string_lossy().to_string();
+        }
+    }
+    
+    // Determine the directory to search in and the prefix to match
+    let (search_dir, prefix) = if partial_path.contains('/') {
+        let rindex = partial_path.rfind('/').unwrap();
+        let (dir_part, file_part) = partial_path.split_at(rindex + 1);
+        
+        let search_path = if dir_part.starts_with('/') {
+            // Absolute path
+            PathBuf::from(dir_part)
+        } else {
+            // Relative path
+            current_dir.join(dir_part)
+        };
+        
+        (search_path, file_part.to_string())
+    } else {
+        // No directory specified, search in current directory
+        (current_dir.clone(), partial_path.clone())  // Clone here to avoid the move
+    };
+    
+    // Get matching entries
+    let mut suggestions = Vec::new();
+    
+    if let Ok(entries) = fs::read_dir(&search_dir) {
+        for entry in entries.filter_map(Result::ok) {
+            let name = entry.file_name();
+            let name_str = name.to_string_lossy();
+            
+            if name_str.starts_with(&prefix) {
+                let path = entry.path();
+                let is_dir = path.is_dir();
+                
+                // Format the suggestion
+                let mut suggestion = format!("{} ", command);
+                
+                // Build the path part of the suggestion
+                let path_suggestion = if partial_path.contains('/') {
+                    let dir_part = &partial_path[..partial_path.rfind('/').unwrap() + 1];
+                    format!("{}{}", dir_part, name_str)
+                } else {
+                    name_str.to_string()
+                };
+                
+                // Add trailing slash for directories
+                if is_dir {
+                    suggestion.push_str(&format!("{}/", path_suggestion));
+                } else {
+                    suggestion.push_str(&path_suggestion);
+                }
+                
+                suggestions.push(suggestion);
+            }
+        }
+    }
+    
+    // If we're looking for directories that start with a specific prefix,
+    // add special directories if they match
+    if prefix.is_empty() || ".".starts_with(&prefix) {
+        let mut suggestion = format!("{} ", command);
+        if partial_path.contains('/') {
+            let dir_part = &partial_path[..partial_path.rfind('/').unwrap() + 1];
+            suggestion.push_str(&format!("{}./", dir_part));
+        } else {
+            suggestion.push_str("./");
+        }
+        suggestions.push(suggestion);
+    }
+    
+    if prefix.is_empty() || "..".starts_with(&prefix) {
+        let mut suggestion = format!("{} ", command);
+        if partial_path.contains('/') {
+            let dir_part = &partial_path[..partial_path.rfind('/').unwrap() + 1];
+            suggestion.push_str(&format!("{}../", dir_part));
+        } else {
+            suggestion.push_str("../");
+        }
+        suggestions.push(suggestion);
+    }
+    
+    // Sort suggestions alphabetically
+    suggestions.sort();
+    
+    suggestions
+}
+
+// Filter suggestions based on prefix
+fn filter_suggestions(options: Vec<&str>, prefix: &str) -> Vec<String> {
+    options
+        .into_iter()
+        .filter(|opt| opt.starts_with(prefix))
+        .map(|opt| opt.to_string())
+        .collect()
+}
+
+// Get executable commands in PATH
+pub fn get_executable_commands() -> Vec<String> {
+    let mut commands = Vec::new();
+    
+    // Try to get PATH environment variable
+    if let Ok(path) = std::env::var("PATH") {
+        // Split PATH by colon
+        for path_dir in path.split(':') {
+            if let Ok(entries) = fs::read_dir(path_dir) {
+                for entry in entries.filter_map(Result::ok) {
+                    if let Ok(metadata) = entry.metadata() {
+                        // Check if the entry is a file and is executable
+                        if metadata.is_file() && is_executable(&entry.path()) {
+                            if let Some(name) = entry.file_name().to_str() {
+                                commands.push(name.to_string());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    commands
+}
+
+// Check if a file is executable
+fn is_executable(path: &Path) -> bool {
+    if let Ok(output) = Command::new("test")
+        .arg("-x")
+        .arg(path)
+        .output()
+    {
+        output.status.success()
+    } else {
+        false
+    }
 }

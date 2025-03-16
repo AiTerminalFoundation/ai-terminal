@@ -17,6 +17,7 @@ use crate::config::{
 use crate::model::App;
 use crate::ollama::commands;
 use crate::terminal::commands as term_commands;
+use crate::terminal::autocomplete;
 
 pub struct AppUI {
     pub app: App,
@@ -31,6 +32,9 @@ pub struct AppUI {
     pub terminal_style_buffer: TextBuffer,
     pub dir_label: fltk::frame::Frame,
     pub git_indicator: fltk::frame::Frame,
+    pub autocomplete_popup: Option<fltk::menu::Choice>,
+    pub current_suggestions: Vec<String>,
+    pub current_suggestion_index: Option<usize>,
 }
 
 // Enum to track which panel is active
@@ -242,6 +246,9 @@ impl AppUI {
             terminal_style_buffer,
             dir_label,
             git_indicator,
+            autocomplete_popup: None,
+            current_suggestions: Vec::new(),
+            current_suggestion_index: None,
         };
         
         // Set the initial terminal input label to show current directory
@@ -486,12 +493,12 @@ impl AppUI {
             self.app.command_history.remove(0);
         }
         
-        // Clear input
+        // Clear input and suggestions
         self.terminal_input.set_value("");
+        self.clear_autocomplete();
         
         // Update display
         self.update_terminal_output();
-
     }
     
     // Update terminal input label with current directory
@@ -504,7 +511,12 @@ impl AppUI {
         let is_git_repo = self.is_git_repository();
         
         if is_git_repo {
-            self.git_indicator.set_label(" (git)");
+            // Get the current branch name
+            if let Some(branch) = self.get_git_branch() {
+                self.git_indicator.set_label(&format!(" git:({}) ", branch));
+            } else {
+                self.git_indicator.set_label(" git:() ");
+            }
             self.git_indicator.show();
         } else {
             self.git_indicator.hide();
@@ -512,6 +524,23 @@ impl AppUI {
         
         self.dir_label.redraw();
         self.git_indicator.redraw();
+    }
+    
+    // Get the current git branch name
+    fn get_git_branch(&self) -> Option<String> {
+        // Get the current branch name
+        let output = Command::new("git")
+            .args(&["rev-parse", "--abbrev-ref", "HEAD"])
+            .current_dir(&self.app.current_dir)
+            .output();
+            
+        match output {
+            Ok(output) if output.status.success() => {
+                let branch = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                Some(branch)
+            },
+            _ => None
+        }
     }
     
     // Check if current directory is in a git repository
@@ -522,8 +551,6 @@ impl AppUI {
             .current_dir(&self.app.current_dir)
             .status();
 
-        println!("output: {:?}", output);
-            
         match output {
             Ok(status) => status.success(),
             Err(_) => false
@@ -568,6 +595,91 @@ impl AppUI {
         self.ai_input.redraw();
     }
     
+    // Get autocomplete suggestions for the current input
+    pub fn get_autocomplete_suggestions(&mut self) -> Vec<String> {
+        let input = self.terminal_input.value();
+        
+        // Get suggestions from the autocomplete module
+        let suggestions = autocomplete::get_suggestions(&input, &self.app.current_dir);
+        
+        // Sort and return unique suggestions
+        let mut unique_suggestions = suggestions;
+        unique_suggestions.sort();
+        unique_suggestions.dedup();
+        
+        unique_suggestions
+    }
+    
+    // Show autocomplete suggestions
+    pub fn show_autocomplete(&mut self) {
+        // Get suggestions for current input
+        self.current_suggestions = self.get_autocomplete_suggestions();
+        
+        // If there are no suggestions, clear any existing popup
+        if self.current_suggestions.is_empty() {
+            self.clear_autocomplete();
+            return;
+        }
+        
+        // Set initial suggestion index
+        self.current_suggestion_index = Some(0);
+        
+        // Update the input with the first suggestion
+        self.apply_current_suggestion();
+    }
+    
+    // Apply the current suggestion to the input field
+    pub fn apply_current_suggestion(&mut self) {
+        if let Some(index) = self.current_suggestion_index {
+            if index < self.current_suggestions.len() {
+                let suggestion = &self.current_suggestions[index];
+                
+                // Preserve the original input to match against
+                let original_input = self.terminal_input.value();
+                
+                // Set the input to the suggestion
+                self.terminal_input.set_value(suggestion);
+                
+                // Position cursor at the end of the input
+                let _ = self.terminal_input.set_position(suggestion.len() as i32);
+            }
+        }
+    }
+    
+    // Cycle through autocomplete suggestions
+    pub fn cycle_autocomplete(&mut self, forward: bool) {
+        // If there are no suggestions yet, generate them
+        if self.current_suggestions.is_empty() {
+            self.current_suggestions = self.get_autocomplete_suggestions();
+            if self.current_suggestions.is_empty() {
+                return;
+            }
+            self.current_suggestion_index = Some(0);
+        } else if let Some(index) = self.current_suggestion_index {
+            // Update the index based on direction
+            if forward {
+                self.current_suggestion_index = Some((index + 1) % self.current_suggestions.len());
+            } else {
+                self.current_suggestion_index = Some(
+                    if index == 0 {
+                        self.current_suggestions.len() - 1
+                    } else {
+                        index - 1
+                    }
+                );
+            }
+        }
+        
+        // Apply the current suggestion
+        self.apply_current_suggestion();
+    }
+    
+    // Clear autocomplete state
+    pub fn clear_autocomplete(&mut self) {
+        self.current_suggestions.clear();
+        self.current_suggestion_index = None;
+    }
+    
     // Setup event handlers
     pub fn setup_events(&mut self) {
         // Create a shared reference to self
@@ -584,6 +696,9 @@ impl AppUI {
             terminal_style_buffer: self.terminal_style_buffer.clone(),
             dir_label: self.dir_label.clone(),
             git_indicator: self.git_indicator.clone(),
+            autocomplete_popup: None,
+            current_suggestions: Vec::new(),
+            current_suggestion_index: None,
         }));
         
         // Terminal input events
@@ -600,14 +715,68 @@ impl AppUI {
                     false
                 },
                 Event::KeyDown => {
-                    if fltk_app::event_key() == Key::Enter {
-                        if let Ok(mut ui) = app_ui_ref.try_borrow_mut() {
-                            ui.execute_command();
+                    let key = fltk_app::event_key();
+                    
+                    match key {
+                        Key::Enter => {
+                            if let Ok(mut ui) = app_ui_ref.try_borrow_mut() {
+                                ui.execute_command();
+                            }
+                            return true;
+                        },
+                        Key::Tab => {
+                            // Handle Tab key for autocomplete
+                            if let Ok(mut ui) = app_ui_ref.try_borrow_mut() {
+                                // If no suggestions yet, show them
+                                if ui.current_suggestions.is_empty() {
+                                    ui.show_autocomplete();
+                                } else {
+                                    // Cycle to next suggestion
+                                    ui.cycle_autocomplete(true);
+                                }
+                            }
+                            return true;
+                        },
+                        Key::BackSpace | Key::Delete => {
+                            // Clear autocomplete on backspace/delete
+                            if let Ok(mut ui) = app_ui_ref.try_borrow_mut() {
+                                ui.clear_autocomplete();
+                            }
+                            false
+                        },
+                        Key::Up => {
+                            // Cycle to previous suggestion with Shift+Up
+                            if fltk_app::event_state() == fltk::enums::EventState::Shift {
+                                if let Ok(mut ui) = app_ui_ref.try_borrow_mut() {
+                                    ui.cycle_autocomplete(false);
+                                }
+                                return true;
+                            }
+                            false
+                        },
+                        Key::Down => {
+                            // Cycle to next suggestion with Shift+Down
+                            if fltk_app::event_state() == fltk::enums::EventState::Shift {
+                                if let Ok(mut ui) = app_ui_ref.try_borrow_mut() {
+                                    ui.cycle_autocomplete(true);
+                                }
+                                return true;
+                            }
+                            false
+                        },
+                        _ => {
+                            // Clear autocomplete on any other key
+                            if let Ok(mut ui) = app_ui_ref.try_borrow_mut() {
+                                ui.clear_autocomplete();
+                            }
+                            false
                         }
-                        return true;
                     }
+                },
+                Event::KeyUp => {
+                    // Remove automatic suggestion display on typing
                     false
-                }
+                },
                 _ => false,
             }
         });
