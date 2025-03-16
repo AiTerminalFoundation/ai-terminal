@@ -97,29 +97,40 @@ impl App {
         // Send message to Ollama
         self.ollama_thinking = true;
 
-        // Prepare the message with context if available
+        // Prepare the message with context
         let message_with_context = {
-            // Include all terminal output
-            let all_terminal_output = self.output.join("\n");
-
-            // Include all chat history
-            let chat_history = self
-                .ai_output
-                .iter()
+            // Include OS information
+            let os_info = &self.os_info;
+            
+            // Include terminal output (limited to last 20 lines to avoid context overflow)
+            let terminal_output = self.output.iter()
+                .rev()
+                .take(20)
+                .rev()
+                .map(|s| s.as_str())
+                .collect::<Vec<&str>>()
+                .join("\n");
+            
+            // Include recent chat history (limited to last 10 exchanges)
+            let chat_history = self.ai_output.iter()
+                .rev()
+                .take(10)
+                .rev()
                 .filter(|line| !line.is_empty())
                 .map(|s| s.as_str())
                 .collect::<Vec<&str>>()
                 .join("\n");
-
+            
+            // Format the context
             format!(
-                "System Info: {}\n\nTerminal History:\n{}\n\nChat History:\n{}\n\nUser query: {}",
-                self.os_info, all_terminal_output, chat_history, input
+                "System Info: {}\n\nRecent Terminal Output:\n{}\n\nRecent Chat History:\n{}\n\nUser query: {}",
+                os_info, terminal_output, chat_history, input
             )
         };
 
         // In a real implementation, this would be done asynchronously
         // For simplicity, we're using blocking requests here
-        match api::send_prompt(&self.ollama_model, &message_with_context, None) {
+        match api::send_prompt(&self.ollama_model, &message_with_context, Some(crate::config::SYSTEM_PROMPT)) {
             Ok(response) => {
                 // Add the response
                 let _start_line_index = self.ai_output.len();
@@ -136,40 +147,6 @@ impl App {
         }
 
         self.ollama_thinking = false;
-    }
-
-    // Copy a command to the terminal input
-    pub fn copy_command_to_terminal(&mut self, command: &str) {
-        // Set the terminal input to the command
-        self.input = command.to_string();
-        self.cursor_position = self.input.len();
-
-        // Switch focus to the terminal panel
-        self.active_panel = crate::model::Panel::Terminal;
-
-        // Set scroll to 0 to always show the most recent output at the bottom
-        self.assistant_scroll = 0;
-
-        // Automatically execute the command if requested or if auto-execute is enabled
-        if self.auto_execute_commands {
-            self.execute_command();
-        }
-    }
-
-    // Copy a command to the terminal input and execute it
-    pub fn copy_and_execute_command(&mut self, command: &str) {
-        // Set the terminal input to the command
-        self.input = command.to_string();
-        self.cursor_position = self.input.len();
-
-        // Switch focus to the terminal panel
-        self.active_panel = crate::model::Panel::Terminal;
-
-        // Set scroll to 0 to always show the most recent output at the bottom
-        self.assistant_scroll = 0;
-
-        // Execute the command
-        self.execute_command();
     }
 }
 
@@ -191,27 +168,52 @@ pub fn process_ai_input(app: &mut App) {
     // Set the thinking flag
     app.ollama_thinking = true;
     
-    // Create context from the last terminal command if available
-    let context = if let Some((cmd, output)) = &app.last_terminal_context {
+    // Prepare the message with context
+    let message_with_context = {
+        // Include OS information
+        let os_info = &app.os_info;
+        
+        // Include terminal output (limited to last 20 lines to avoid context overflow)
+        let terminal_output = app.output.iter()
+            .rev()
+            .take(20)
+            .rev()
+            .map(|s| s.as_str())
+            .collect::<Vec<&str>>()
+            .join("\n");
+        
+        // Include recent chat history (limited to last 10 exchanges)
+        let chat_history = app.ai_output.iter()
+            .rev()
+            .take(10)
+            .rev()
+            .filter(|line| !line.is_empty())
+            .map(|s| s.as_str())
+            .collect::<Vec<&str>>()
+            .join("\n");
+        
+        // Format the context
         format!(
-            "Last terminal command: {}\nOutput:\n{}\n\nUser question: {}",
-            cmd,
-            output.join("\n"),
-            input
+            "System Info: {}\n\nRecent Terminal Output:\n{}\n\nRecent Chat History:\n{}\n\nUser query: {}\n\nCurrent directory: {}",
+            os_info, terminal_output, chat_history, input, app.current_dir.display().to_string()
         )
-    } else {
-        input
     };
     
-    // Send the prompt to Ollama
-    match api::send_prompt(&app.ollama_model, &context, None) {
+    // Custom system prompt that instructs the LLM to format commands properly
+    let system_prompt = format!(
+        "{}\n\nIMPORTANT: Your response should ONLY contain the terminal command to execute, nothing else. NO BACKTICKS, NO FORMATTING, NO EXPLANATIONS. Just return the raw command exactly as it should be typed in the terminal. For example, if asked how to list files, respond with ONLY: ls -l",
+        crate::config::SYSTEM_PROMPT
+    );
+    
+    // Send the prompt to Ollama with the system prompt
+    match api::send_prompt(&app.ollama_model, &message_with_context, Some(&system_prompt)) {
         Ok(response) => {
             // Add the response to the AI output
             for line in response.lines() {
                 app.ai_output.push(line.to_string());
             }
             
-            // Extract commands from the response
+            // Extract commands from the response - in this case, the entire response is the command
             process_extracted_commands(app, &response);
         }
         Err(e) => {
@@ -232,10 +234,12 @@ fn process_ai_command(app: &mut App, command: &str) {
         "/help" => {
             app.ai_output.push("Available commands:".to_string());
             app.ai_output.push("/help - Show this help message".to_string());
-            app.ai_output.push("/model <name> - Change the Ollama model".to_string());
+            app.ai_output.push("/model <n> - Change the Ollama model".to_string());
             app.ai_output.push("/models - List available Ollama models".to_string());
             app.ai_output.push("/clear - Clear the AI output".to_string());
             app.ai_output.push("/auto <on|off> - Toggle auto-execution of commands".to_string());
+            app.ai_output.push("/run <command> - Execute a command in the terminal".to_string());
+            app.ai_output.push("/test - Test AI command extraction with a simple query".to_string());
         }
         "/model" => {
             if parts.len() < 2 {
@@ -285,6 +289,51 @@ fn process_ai_command(app: &mut App, command: &str) {
                 }
             }
         }
+        "/run" => {
+            if parts.len() < 2 {
+                app.ai_output.push("Usage: /run <command>".to_string());
+            } else {
+                // Extract the command (everything after "/run ")
+                let command = command.trim_start_matches("/run").trim();
+                
+                // Add a message to the AI output
+                app.ai_output.push(format!("Command: `{}`", command));
+                
+                // Copy the command to the terminal input
+                app.input = command.to_string();
+                app.cursor_position = app.input.len();
+                
+                // Switch focus to the terminal panel
+                app.active_panel = crate::model::Panel::Terminal;
+                
+                // Execute the command if auto-execution is enabled
+                if app.auto_execute_commands {
+                    app.ai_output.push("🔄 Auto-executing command...".to_string());
+                    app.execute_command();
+                } else {
+                    app.ai_output.push("⚠️ Auto-execution is disabled. Press Enter in the terminal to execute.".to_string());
+                }
+            }
+        }
+        "/test" => {
+            // Add a test message to check if the AI can extract and execute commands
+            app.ai_output.push("Testing AI command extraction...".to_string());
+            
+            // Create a test prompt based on the OS
+            let test_prompt = if app.os_info.contains("darwin") {
+                "Show me the current directory and list its contents"
+            } else if app.os_info.contains("linux") {
+                "Show me the current directory and list its contents"
+            } else if app.os_info.contains("windows") {
+                "Show me the current directory and list its contents"
+            } else {
+                "Show me the current directory"
+            };
+            
+            // Set the AI input and process it
+            app.ai_input = test_prompt.to_string();
+            process_ai_input(app);
+        }
         _ => {
             app.ai_output.push(format!("Unknown command: {}", cmd));
             app.ai_output.push("Type /help for available commands.".to_string());
@@ -296,17 +345,17 @@ fn process_ai_command(app: &mut App, command: &str) {
 fn process_extracted_commands(app: &mut App, response: &str) {
     app.extracted_commands.clear();
     
-    // Use the utility function to extract commands
-    let commands = utils::extract_commands(response);
+    // Use the entire response as the command, trimming whitespace
+    let command = response
+        .trim()
+        .replace("```", "")
+        .trim()
+        .to_string();
     
-    // Store the extracted commands with their line indices
-    for (i, cmd) in commands.iter().enumerate() {
-        app.extracted_commands.push((i, cmd.clone()));
-    }
-    
-    // If there's exactly one command, store it as the last AI command
-    if app.extracted_commands.len() == 1 {
-        app.last_ai_command = Some(app.extracted_commands[0].1.clone());
+    // Only add if the command is not empty
+    if !command.is_empty() {
+        app.extracted_commands.push((0, command.clone()));
+        app.last_ai_command = Some(command);
     } else {
         app.last_ai_command = None;
     }

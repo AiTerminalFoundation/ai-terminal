@@ -575,6 +575,52 @@ impl AppUI {
         
         // Update display
         self.update_ai_output();
+        
+        // Check if there are any extracted commands and handle them
+        self.handle_extracted_commands();
+    }
+    
+    // Handle commands extracted from AI response
+    pub fn handle_extracted_commands(&mut self) {
+        // If there are no extracted commands, do nothing
+        if self.app.extracted_commands.is_empty() {
+            return;
+        }
+        
+        // Add a message to the AI output about the extracted commands
+        self.app.ai_output.push("".to_string());
+        self.app.ai_output.push("Suggested commands:".to_string());
+
+        for (i, cmd) in &self.app.extracted_commands {
+            self.app.ai_output.push(format!("  {}: `{}`", i + 1, cmd));
+        }
+        
+        // Always take the first command
+        let command = self.app.extracted_commands[0].1.clone();
+        
+        // Add a message about the command
+        self.app.ai_output.push("".to_string());
+        self.app.ai_output.push(format!("Using command: `{}`", command));
+        
+        // Set the terminal input to the command
+        self.terminal_input.set_value(&command);
+        
+        // Switch focus to the terminal panel
+        self.active_panel = ActivePanel::Terminal;
+        self.highlight_active_panel();
+        
+        // Update the display
+        self.update_ai_output();
+        
+        // Execute the command if auto-execution is enabled
+        if self.app.auto_execute_commands {
+            self.app.ai_output.push("🔄 Auto-executing command...".to_string());
+            self.update_ai_output();
+            self.execute_command();
+        } else {
+            self.app.ai_output.push("⚠️ Auto-execution is disabled. Press Enter in the terminal to execute.".to_string());
+            self.update_ai_output();
+        }
     }
     
     // Highlight the active panel
@@ -582,13 +628,17 @@ impl AppUI {
         match self.active_panel {
             ActivePanel::Terminal => {
                 // Highlight terminal input
-                self.terminal_input.set_color(Color::from_rgb(20, 20, 30)); // Slightly lighter black for active
+                self.terminal_input.set_color(Color::from_rgb(20, 20, 30));
+                self.terminal_output.set_color(Color::from_rgb(20, 20, 30)); // Slightly lighter black for active
                 self.ai_input.set_color(Color::Black);
+                self.ai_output.set_color(Color::Black);
             },
             ActivePanel::AI => {
                 // Highlight AI input
                 self.terminal_input.set_color(Color::Black);
+                self.terminal_output.set_color(Color::Black);
                 self.ai_input.set_color(Color::from_rgb(20, 20, 30)); // Slightly lighter black for active
+                self.ai_output.set_color(Color::from_rgb(20, 20, 30));
             }
         }
         self.terminal_input.redraw();

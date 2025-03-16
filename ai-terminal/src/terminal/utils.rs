@@ -7,27 +7,17 @@ pub fn detect_os() -> String {
 
 // Extract commands from a response string
 pub fn extract_commands(response: &str) -> Vec<String> {
-    let mut commands = Vec::new();
+    // Strip any backticks from the response
+    let cleaned_response = response
+        .trim()
+        .replace("```", "")
+        .trim()
+        .to_string();
     
-    // Look for commands in backticks
-    for line in response.lines() {
-        if let Some(cmd) = extract_command_from_backticks(line) {
-            commands.push(cmd.to_string());
-        }
+    // Return the cleaned response as a command
+    if !cleaned_response.is_empty() {
+        vec![cleaned_response]
+    } else {
+        Vec::new()
     }
-    
-    commands
-}
-
-// Extract a command from backticks in a line
-fn extract_command_from_backticks(line: &str) -> Option<&str> {
-    if let Some(start) = line.find('`') {
-        if let Some(end) = line[start + 1..].find('`') {
-            let cmd = &line[start + 1..start + 1 + end];
-            if !cmd.is_empty() {
-                return Some(cmd);
-            }
-        }
-    }
-    None
 }

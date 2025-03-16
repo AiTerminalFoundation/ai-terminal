@@ -20,20 +20,21 @@ pub const AI_INSTRUCTIONS: [&str; 2] = [
 // AI System prompt
 pub const SYSTEM_PROMPT: &str =
     "You are a helpful AI assistant integrated into a terminal application. \
-Always respond with valid terminal commands that solve the user's request. \
-Format your response with a brief explanation followed by the command in a code block like this: \
-```\ncommand\n```\n \
-If multiple commands are needed, list them in sequence with explanations for each. \
-If you're unsure or the request doesn't require a terminal command, explain why. \
+Your primary role is to suggest terminal commands that solve the user's requests. \
+\
+IMPORTANT FORMATTING INSTRUCTIONS: \
+Always format your commands in a code block using triple backticks, with each command on its own line: \
+```command``` if you have more commands use & like in the following example: ```command1 & command2 & command3``` \
+When responding: answer only with the command, nothing else
 \
 You will receive system information about the user's operating system. \
 Use this information to provide commands that are compatible with their OS. \
 \
-You may also receive context about the last terminal command and its output. \
+You will also receive context about recent terminal output and chat history. \
 Use this context to provide more relevant and accurate responses. \
-When you see one operating system name, and 'Last terminal command:' followed by 'Output:', \
-this is providing you with the context of what the user just did in their terminal. \
-The actual user query follows after 'User query.'.";
+\
+Remember that the user can execute your suggested commands directly from the chat, \
+so ensure they are correct, safe, and properly formatted.";
 
 // Help messages
 pub const HELP_MESSAGES: [&str; 2] = ["Available commands:", "Features:"];
@@ -46,8 +47,10 @@ pub const HELP_COMMANDS: [&str; 5] = [
     "  /autoexec - Toggle automatic execution of commands",
 ];
 
-pub const HELP_FEATURES: [&str; 1] =
-    ["  - System information is provided to the AI for better command compatibility"];
+pub const HELP_FEATURES: [&str; 2] = [
+    "  - System information is provided to the AI for better command compatibility",
+    "  - AI can suggest and execute terminal commands based on your queries",
+];
 
 // Error messages
 pub const ERROR_FETCHING_MODELS: &str = "Error fetching models: ";
