@@ -4,7 +4,7 @@ pub const OLLAMA_LIST_MODELS_URL: &str = "http://localhost:11434/api/tags";
 
 // Default values
 pub const DEFAULT_OLLAMA_MODEL: &str = "llama3.2:latest";
-pub const DEFAULT_PANEL_RATIO: u32 = 50;
+pub const DEFAULT_PANEL_RATIO: u32 = 65;
 pub const MAX_COMMAND_HISTORY: usize = 30;
 pub const MAX_VISIBLE_SUGGESTIONS: usize = 5;
 pub const SEPARATOR_LINE: &str = "─";

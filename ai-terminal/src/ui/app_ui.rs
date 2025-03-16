@@ -9,6 +9,7 @@ use fltk::{
 };
 use std::rc::Rc;
 use std::cell::RefCell;
+use std::process::Command;
 
 use crate::config::{
     WINDOW_HEIGHT, WINDOW_WIDTH,
@@ -28,6 +29,8 @@ pub struct AppUI {
     pub resize_handle: fltk::frame::Frame,
     pub active_panel: ActivePanel,
     pub terminal_style_buffer: TextBuffer,
+    pub dir_label: fltk::frame::Frame,
+    pub git_indicator: fltk::frame::Frame,
 }
 
 // Enum to track which panel is active
@@ -101,22 +104,47 @@ impl AppUI {
         separator.end();
         
         // Terminal input area
-        let mut terminal_input_group = Flex::new(0, 0, 0, 35, None);
-        terminal_input_group.set_type(fltk::group::FlexType::Row);
+        let mut terminal_input_group = Flex::new(0, 0, 0, 50, None);
+        terminal_input_group.set_type(fltk::group::FlexType::Column);
         
+        // Create a row flex for directory label and git indicator
+        let mut dir_row = Flex::new(0, 0, 0, 20, None);
+        dir_row.set_type(fltk::group::FlexType::Row);
+        
+        // Add a separate directory label
+        let mut dir_label = fltk::frame::Frame::new(0, 0, 0, 20, None);
+        dir_label.set_label_color(Color::Yellow);
+        dir_label.set_label_font(Font::Courier);
+        dir_label.set_label_size(14);
+        dir_label.set_align(fltk::enums::Align::Left | fltk::enums::Align::Inside);
+        dir_label.set_frame(FrameType::FlatBox);
+        dir_label.set_color(Color::Black);
+        
+        // Add git indicator label
+        let mut git_indicator = fltk::frame::Frame::new(0, 0, 50, 20, None);
+        git_indicator.set_label_color(Color::Green);
+        git_indicator.set_label_font(Font::Courier);
+        git_indicator.set_label_size(14);
+        git_indicator.set_align(fltk::enums::Align::Left | fltk::enums::Align::Inside);
+        git_indicator.set_frame(FrameType::FlatBox);
+        git_indicator.set_color(Color::Black);
+        
+        dir_row.end();
+        // Don't fix the width of git_indicator to allow it to be right after the directory
+        // Instead, make it auto-size based on content
+        
+        // Input field
         let mut terminal_input = Input::new(0, 0, 0, 0, None);
         terminal_input.set_frame(FrameType::BorderBox);
         terminal_input.set_color(Color::Black);
         terminal_input.set_text_color(Color::White);
-        terminal_input.set_label_color(Color::Green); // Make directory label green
-        terminal_input.set_label_font(Font::Courier);
-        terminal_input.set_label_size(12);
-
+        
         terminal_input_group.end();
+        terminal_input_group.fixed(&dir_row, 20); // Fix the label row height
         
         terminal_flex.end();
         terminal_flex.fixed(&separator, 2);
-        terminal_flex.fixed(&terminal_input_group, 40);
+        terminal_flex.fixed(&terminal_input_group, 50);
         
         // Create a thin resize handle between panels
         let mut resize_handle = fltk::frame::Frame::new(0, 0, 2, WINDOW_HEIGHT, None);
@@ -151,7 +179,7 @@ impl AppUI {
         ai_separator.end();
         
         // AI input area
-        let mut ai_input_group = Flex::new(0, 0, 0, 40, None);
+        let mut ai_input_group = Flex::new(0, 0, 0, 50, None);
         ai_input_group.set_type(fltk::group::FlexType::Row);
         
         let mut ai_input = Input::new(0, 0, 0, 0, None);
@@ -163,12 +191,12 @@ impl AppUI {
 
         assistant_flex.end();
         assistant_flex.fixed(&ai_separator, 2);
-        assistant_flex.fixed(&ai_input_group, 40);
+        assistant_flex.fixed(&ai_input_group, 50);
         
         main_flex.end();
         
-        // Set panel sizes (50/50 split by default)
-        let terminal_width = (WINDOW_WIDTH as f64 * (app.panel_ratio as f64 / 100.0)) as i32;
+        // Set panel sizes (65/35 split by default)
+        let terminal_width = (WINDOW_WIDTH as f64 * (65.0 / 100.0)) as i32;
         main_flex.fixed(&terminal_flex, terminal_width);
         main_flex.fixed(&resize_handle, 2);
         
@@ -212,6 +240,8 @@ impl AppUI {
             resize_handle,
             active_panel: ActivePanel::Terminal, // Default to terminal panel
             terminal_style_buffer,
+            dir_label,
+            git_indicator,
         };
         
         // Set the initial terminal input label to show current directory
@@ -426,6 +456,10 @@ impl AppUI {
                     self.app.command_status.push(crate::model::CommandStatus::Failure);
                 }
             }
+
+            // Update terminal input label with current directory
+            self.update_terminal_input_label();
+
         } else {
             // Execute other commands normally
             let (output, success) = term_commands::execute_command(&command, &self.app.current_dir);
@@ -457,16 +491,43 @@ impl AppUI {
         
         // Update display
         self.update_terminal_output();
-        
-        // Update terminal input label with current directory
-        self.update_terminal_input_label();
+
     }
     
     // Update terminal input label with current directory
     pub fn update_terminal_input_label(&mut self) {
         // Set the label to the current directory
         let dir_str = self.app.current_dir.to_string_lossy();
-        self.terminal_input.set_label(&format!("{}> ", dir_str));
+        self.dir_label.set_label(&format!("{}", dir_str));
+        
+        // Check if we're in a git repository
+        let is_git_repo = self.is_git_repository();
+        
+        if is_git_repo {
+            self.git_indicator.set_label(" (git)");
+            self.git_indicator.show();
+        } else {
+            self.git_indicator.hide();
+        }
+        
+        self.dir_label.redraw();
+        self.git_indicator.redraw();
+    }
+    
+    // Check if current directory is in a git repository
+    fn is_git_repository(&self) -> bool {
+        // Run a command to check if .git directory exists
+        let output = Command::new("test")
+            .args(&["-d", ".git"])
+            .current_dir(&self.app.current_dir)
+            .status();
+
+        println!("output: {:?}", output);
+            
+        match output {
+            Ok(status) => status.success(),
+            Err(_) => false
+        }
     }
     
     // Process AI input
@@ -521,6 +582,8 @@ impl AppUI {
             resize_handle: self.resize_handle.clone(),
             active_panel: self.active_panel,
             terminal_style_buffer: self.terminal_style_buffer.clone(),
+            dir_label: self.dir_label.clone(),
+            git_indicator: self.git_indicator.clone(),
         }));
         
         // Terminal input events
