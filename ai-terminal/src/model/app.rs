@@ -13,12 +13,11 @@ impl crate::model::App {
         let _ = env::set_current_dir(&current_dir);
 
         // Detect OS information
-        let os_info = crate::terminal::utils::detect_os_info();
+        let os_info = crate::terminal::utils::detect_os();
 
         // Initial output messages
         let mut initial_output = vec![
             WELCOME_MESSAGE.to_string(),
-            format!("Current directory: {}", current_dir.display()),
             format!("Operating System: {}", os_info),
         ];
         
@@ -68,7 +67,7 @@ impl crate::model::App {
             command_status,
             // Initialize command history
             command_history: Vec::new(),
-            command_history_index: None,
+            history_position: None,
             // Initialize autocomplete
             autocomplete_suggestions: Vec::new(),
             autocomplete_index: None,

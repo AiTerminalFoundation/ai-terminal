@@ -1,7 +1,6 @@
 use crate::model::App;
 use crate::config::{
     HELP_MESSAGES, HELP_COMMANDS, HELP_FEATURES,
-    EXTRACTED_COMMANDS_HEADER,
     ERROR_FETCHING_MODELS, OLLAMA_NOT_RUNNING,
     OLLAMA_INSTALL_INSTRUCTIONS, NO_MODELS_FOUND, OLLAMA_PULL_INSTRUCTIONS
 };
@@ -129,15 +128,7 @@ impl App {
                 if !commands.is_empty() {
                     // Add a separator
                     self.ai_output.push("".to_string());
-                    self.ai_output.push(EXTRACTED_COMMANDS_HEADER.to_string());
-                    
-                    // Store the extracted commands with their line indices
-                    for (i, cmd) in commands.iter().enumerate() {
-                        let cmd_line_index = self.ai_output.len();
-                        self.ai_output.push(format!("[{}] {} [📋] [▶️]", i + 1, cmd));
-                        self.extracted_commands.push((cmd_line_index, cmd.clone()));
-                    }
-                    
+
                     // Store the first command for quick access (instead of the last)
                     if let Some(first_cmd) = commands.first() {
                         self.last_ai_command = Some(first_cmd.clone());
@@ -145,7 +136,7 @@ impl App {
                         // Automatically place the first command in the terminal input and execute it
                         self.copy_command_to_terminal(first_cmd);
                     }
-                    
+
                     self.ai_output.push("".to_string());
                 }
             },

@@ -74,8 +74,8 @@ pub struct App {
     
     // Command history
     pub command_history: Vec<String>,
-    pub command_history_index: Option<usize>,
-    
+    pub history_position: Option<usize>,
+
     // Autocomplete suggestions
     pub autocomplete_suggestions: Vec<String>,
     pub autocomplete_index: Option<usize>,

@@ -50,42 +50,62 @@ pub fn handle_event(app: &mut App) -> io::Result<Option<bool>> {
                     }
                 }
                 KeyCode::Up => {
-                    if key.modifiers == KeyModifiers::ALT {
-                        // Scroll up based on active panel
-                        match app.active_panel {
-                            Panel::Terminal => {
-                                if app.terminal_scroll < app.output.len().saturating_sub(1) {
-                                    app.terminal_scroll += 1;
+                    match app.active_panel {
+                        Panel::Terminal => {
+                            // Navigate command history (if any)
+                            if !app.command_history.is_empty() {
+                                // Store the current position in history
+                                let history_position = app.history_position.unwrap_or(app.command_history.len());
+                                
+                                if history_position > 0 {
+                                    // Move up in history (older commands)
+                                    let new_position = history_position - 1;
+                                    app.history_position = Some(new_position);
+                                    
+                                    // Replace input with the historical command
+                                    app.input = app.command_history[new_position].clone();
+                                    app.cursor_position = app.input.len();
                                 }
                             }
-                            Panel::Assistant => {
-                                if app.assistant_scroll < app.ai_output.len().saturating_sub(1) {
-                                    app.assistant_scroll += 1;
-                                }
-                            }
+                        }
+                        Panel::Assistant => {
+                            // No history navigation for assistant panel
                         }
                     }
                 }
                 KeyCode::Down => {
-                    if key.modifiers == KeyModifiers::ALT {
-                        // Scroll down based on active panel
-                        match app.active_panel {
-                            Panel::Terminal => {
-                                if app.terminal_scroll > 0 {
-                                    app.terminal_scroll -= 1;
+                    match app.active_panel {
+                        Panel::Terminal => {
+                            // Navigate command history (if any)
+                            if let Some(history_position) = app.history_position {
+                                if history_position < app.command_history.len() - 1 {
+                                    // Move down in history (newer commands)
+                                    let new_position = history_position + 1;
+                                    app.history_position = Some(new_position);
+                                    
+                                    // Replace input with the historical command
+                                    app.input = app.command_history[new_position].clone();
+                                    app.cursor_position = app.input.len();
+                                } else {
+                                    // At the end of history, clear the input
+                                    app.history_position = None;
+                                    app.input.clear();
+                                    app.cursor_position = 0;
                                 }
                             }
-                            Panel::Assistant => {
-                                if app.assistant_scroll > 0 {
-                                    app.assistant_scroll -= 1;
-                                }
-                            }
+                        }
+                        Panel::Assistant => {
+                            // No history navigation for assistant panel
                         }
                     }
                 }
                 KeyCode::Enter => {
                     match app.active_panel {
-                        Panel::Terminal => app.execute_command(),
+                        Panel::Terminal => {
+                            app.execute_command();
+                            // Reset history position when executing a command
+                            app.history_position = None;
+                        },
                         Panel::Assistant => {
                             // Send the input to the AI assistant
                             app.send_to_ai_assistant();

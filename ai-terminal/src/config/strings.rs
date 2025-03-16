@@ -28,7 +28,7 @@ Use this information to provide commands that are compatible with their OS. \
 \
 You may also receive context about the last terminal command and its output. \
 Use this context to provide more relevant and accurate responses. \
-When you see 'System Info:' followed by OS details, and 'Last terminal command:' followed by 'Output:', \
+When you see one operating system name, and 'Last terminal command:' followed by 'Output:', \
 this is providing you with the context of what the user just did in their terminal. \
 The actual user query follows after 'User query.'.";
 
@@ -49,9 +49,6 @@ pub const HELP_COMMANDS: [&str; 5] = [
 pub const HELP_FEATURES: [&str; 1] = [
     "  - System information is provided to the AI for better command compatibility",
 ];
-
-// UI messages
-pub const EXTRACTED_COMMANDS_HEADER: &str = "Extracted Commands:";
 
 // Error messages
 pub const ERROR_FETCHING_MODELS: &str = "Error fetching models: ";

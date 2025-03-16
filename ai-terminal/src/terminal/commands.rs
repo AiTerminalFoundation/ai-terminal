@@ -23,9 +23,6 @@ impl App {
             }
         }
         
-        // Reset history index
-        self.command_history_index = None;
-
         // Add command to output
         self.output.push(format!("> {}", command));
         

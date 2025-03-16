@@ -198,39 +198,6 @@ fn draw_assistant_panel<B: Backend>(f: &mut Frame, app: &mut App, area: Rect) {
                             Style::default().fg(Color::DarkGray),
                         )
                     ]));
-                } else if line == "Extracted Commands:" {
-                    // Style the extracted commands header
-                    lines.push(Line::from(vec![
-                        Span::styled(line.clone(), Style::default().fg(Color::Green).bg(Color::Black))
-                    ]));
-                } else if line.starts_with("[") && line.contains("]") && line.contains("📋") {
-                    // This is an extracted command with buttons, style it with clickable buttons
-                    // Split the line to style the buttons differently
-                    let parts: Vec<&str> = line.splitn(3, "[").collect();
-                    if parts.len() >= 3 {
-                        // Format: "[1] command [📋] [▶️]"
-                        let index_part = format!("[{}]", parts[1].trim_end_matches("] "));
-                        let command_part = parts[1].trim_start_matches("] ");
-                        
-                        lines.push(Line::from(vec![
-                            Span::styled(index_part, Style::default().fg(Color::Green)),
-                            Span::styled(" ", Style::default()),
-                            Span::styled(command_part, Style::default().fg(Color::White)),
-                            Span::styled(" [📋]", Style::default().fg(Color::Blue).bg(Color::Black)), // Copy button
-                            Span::styled(" [▶️]", Style::default().fg(Color::Red).bg(Color::Black))   // Execute button
-                        ]));
-                    } else {
-                        // Fallback if parsing fails
-                        lines.push(Line::from(line.clone()));
-                    }
-                } else if line == "📋 - Copy command to terminal | ▶️ - Copy and execute command" {
-                    // Style the button instructions
-                    lines.push(Line::from(vec![
-                        Span::styled("[📋]", Style::default().fg(Color::Blue)),
-                        Span::styled(" - Copy command to terminal | ", Style::default().fg(Color::Yellow)),
-                        Span::styled("[▶️]", Style::default().fg(Color::Red)),
-                        Span::styled(" - Copy and execute command", Style::default().fg(Color::Yellow))
-                    ]));
                 } else {
                     lines.push(Line::from(line.clone()));
                 }
