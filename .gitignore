@@ -15,3 +15,58 @@ target/
 #  and can be added to the global gitignore or merged into this file.  For a more nuclear
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
+# Virtual environments
+venv/
+env/
+ENV/
+.env/
+
+# Training outputs
+results/
+logs/
+fine_tuned_model/
+merged_opt_1.3b/
+model_cache/
+ollama_model/
+exported_model/
+llama2-7b-finetuned/
+
+# Dataset files
+*.nl
+*.cm
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IDE specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS specific
+.DS_Store
+Thumbs.db
+
+# Large model files
+*.bin
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+
+# Logs
+*.log 
