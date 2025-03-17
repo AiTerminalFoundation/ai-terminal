@@ -7,7 +7,7 @@ import shutil
 import subprocess
 
 def merge_and_export(
-    lora_model_path="./llama2-1.1b-finetuned",
+    lora_model_path="./llama2-2.7b-finetuned2",
     output_dir="./ollama_model",
     model_name="my-finetuned-model"
 ):
@@ -68,7 +68,7 @@ def merge_and_export(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Export fine-tuned model for Ollama")
-    parser.add_argument("--lora_model_path", type=str, default="./llama2-1.1b-finetuned",
+    parser.add_argument("--lora_model_path", type=str, default="./llama2-2.7b-finetuned2",
                         help="Path to the LoRA model")
     parser.add_argument("--output_dir", type=str, default="./ollama_model",
                         help="Output directory for the exported model")

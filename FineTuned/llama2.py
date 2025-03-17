@@ -252,11 +252,13 @@ def main():
     
     model.train()
     
+    # Check for existing checkpoints and resume if found
     checkpoint = None
     if os.path.exists(output_dir):
         checkpoints = [folder for folder in os.listdir(output_dir) if folder.startswith("checkpoint-")]
         if checkpoints:
-            latest_checkpoint = max(checkpoints, key=lambda x: int(x.split("-")[1]))
+            # Sort checkpoints by step number to find the latest one
+            latest_checkpoint = sorted(checkpoints, key=lambda x: int(x.split("-")[1]), reverse=True)[0]
             checkpoint = os.path.join(output_dir, latest_checkpoint)
             print(f"Resuming from checkpoint: {checkpoint}")
     
