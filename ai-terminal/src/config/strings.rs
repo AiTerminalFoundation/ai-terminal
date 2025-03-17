@@ -1,5 +1,4 @@
-// Welcome messages
-pub const WELCOME_MESSAGE: &str = "Welcome to AI Terminal!";
+pub const APP_TITLE: &str = "AI Terminal!";
 
 // Terminal instructions
 pub const TERMINAL_INSTRUCTIONS: [&str; 3] = [
@@ -25,7 +24,7 @@ Your primary role is to suggest terminal commands that solve the user's requests
 IMPORTANT FORMATTING INSTRUCTIONS: \
 Always format your commands in a code block using triple backticks, with each command on its own line: \
 ```command``` if you have more commands use & like in the following example: ```command1 & command2 & command3``` \
-When responding: answer only with the command, nothing else
+When responding: answer with only one command, the one that solves the user's request and not different options.
 \
 You will receive system information about the user's operating system. \
 Use this information to provide commands that are compatible with their OS. \
@@ -44,7 +43,7 @@ pub const HELP_COMMANDS: [&str; 5] = [
     "  /help - Show this help message",
     "  /clear - Clear the chat history",
     "  /models - List available models (requires Ollama to be running)",
-    "  /autoexec - Toggle automatic execution of commands",
+    "  /auto <on|off> - Toggle automatic execution of commands",
 ];
 
 pub const HELP_FEATURES: [&str; 2] = [

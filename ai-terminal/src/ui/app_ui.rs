@@ -18,6 +18,7 @@ use crate::model::App;
 use crate::ollama::commands;
 use crate::terminal::commands as term_commands;
 use crate::terminal::autocomplete;
+use crate::config::strings;
 
 pub struct AppUI {
     pub app: App,
@@ -30,7 +31,7 @@ pub struct AppUI {
     pub resize_handle: fltk::frame::Frame,
     pub active_panel: ActivePanel,
     pub terminal_style_buffer: TextBuffer,
-    pub dir_label: fltk::frame::Frame,
+    pub directory_label: fltk::frame::Frame,
     pub git_indicator: fltk::frame::Frame,
     pub autocomplete_popup: Option<fltk::menu::Choice>,
     pub current_suggestions: Vec<String>,
@@ -50,8 +51,8 @@ impl AppUI {
         let app = App::new();
         
         // Create window
-        let mut window = Window::new(100, 100, WINDOW_WIDTH, WINDOW_HEIGHT, "AI Terminal");
-        
+        let mut window = Window::new(100, 100, WINDOW_WIDTH, WINDOW_HEIGHT, strings::APP_TITLE);
+
         // Create main layout
         let mut main_flex = Flex::new(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, None);
         main_flex.set_type(fltk::group::FlexType::Row);
@@ -112,17 +113,17 @@ impl AppUI {
         terminal_input_group.set_type(fltk::group::FlexType::Column);
         
         // Create a row flex for directory label and git indicator
-        let mut dir_row = Flex::new(0, 0, 0, 20, None);
-        dir_row.set_type(fltk::group::FlexType::Row);
+        let mut directory_row = Flex::new(0, 0, 0, 20, None);
+        directory_row.set_type(fltk::group::FlexType::Row);
         
         // Add a separate directory label
-        let mut dir_label = fltk::frame::Frame::new(0, 0, 0, 20, None);
-        dir_label.set_label_color(Color::Yellow);
-        dir_label.set_label_font(Font::Courier);
-        dir_label.set_label_size(14);
-        dir_label.set_align(fltk::enums::Align::Left | fltk::enums::Align::Inside);
-        dir_label.set_frame(FrameType::FlatBox);
-        dir_label.set_color(Color::Black);
+        let mut directory_label = fltk::frame::Frame::new(0, 0, 0, 20, None);
+        directory_label.set_label_color(Color::Yellow);
+        directory_label.set_label_font(Font::Courier);
+        directory_label.set_label_size(14);
+        directory_label.set_align(fltk::enums::Align::Left | fltk::enums::Align::Inside);
+        directory_label.set_frame(FrameType::FlatBox);
+        directory_label.set_color(Color::Black);
         
         // Add git indicator label
         let mut git_indicator = fltk::frame::Frame::new(0, 0, 50, 20, None);
@@ -132,8 +133,8 @@ impl AppUI {
         git_indicator.set_align(fltk::enums::Align::Left | fltk::enums::Align::Inside);
         git_indicator.set_frame(FrameType::FlatBox);
         git_indicator.set_color(Color::Black);
-        
-        dir_row.end();
+
+        directory_row.end();
         // Don't fix the width of git_indicator to allow it to be right after the directory
         // Instead, make it auto-size based on content
         
@@ -144,14 +145,14 @@ impl AppUI {
         terminal_input.set_text_color(Color::White);
         
         terminal_input_group.end();
-        terminal_input_group.fixed(&dir_row, 20); // Fix the label row height
+        terminal_input_group.fixed(&directory_row, 20); // Fix the label row height
         
         terminal_flex.end();
         terminal_flex.fixed(&separator, 2);
         terminal_flex.fixed(&terminal_input_group, 50);
         
         // Create a thin resize handle between panels
-        let mut resize_handle = fltk::frame::Frame::new(0, 0, 2, WINDOW_HEIGHT, None);
+        let mut resize_handle = fltk::frame::Frame::new(0, 0, 3, WINDOW_HEIGHT, None);
         resize_handle.set_frame(FrameType::FlatBox);
         resize_handle.set_color(Color::White);
         
@@ -244,7 +245,7 @@ impl AppUI {
             resize_handle,
             active_panel: ActivePanel::Terminal, // Default to terminal panel
             terminal_style_buffer,
-            dir_label,
+            directory_label,
             git_indicator,
             autocomplete_popup: None,
             current_suggestions: Vec::new(),
@@ -505,7 +506,7 @@ impl AppUI {
     pub fn update_terminal_input_label(&mut self) {
         // Set the label to the current directory
         let dir_str = self.app.current_dir.to_string_lossy();
-        self.dir_label.set_label(&format!("{}", dir_str));
+        self.directory_label.set_label(&format!("{}", dir_str));
         
         // Check if we're in a git repository
         let is_git_repo = self.is_git_repository();
@@ -522,7 +523,7 @@ impl AppUI {
             self.git_indicator.hide();
         }
         
-        self.dir_label.redraw();
+        self.directory_label.redraw();
         self.git_indicator.redraw();
     }
     
@@ -568,8 +569,10 @@ impl AppUI {
         self.app.ai_input = input;
         
         // Process the input
-        commands::process_ai_input(&mut self.app);
-        
+        let command = commands::process_ai_input(&mut self.app);
+
+        println!("command {}", command);
+
         // Clear input
         self.ai_input.set_value("");
         
@@ -577,28 +580,12 @@ impl AppUI {
         self.update_ai_output();
         
         // Check if there are any extracted commands and handle them
-        self.handle_extracted_commands();
+        self.handle_extracted_commands(command);
     }
     
     // Handle commands extracted from AI response
-    pub fn handle_extracted_commands(&mut self) {
-        // If there are no extracted commands, do nothing
-        if self.app.extracted_commands.is_empty() {
-            return;
-        }
-        
-        // Add a message to the AI output about the extracted commands
-        self.app.ai_output.push("".to_string());
-        self.app.ai_output.push("Suggested commands:".to_string());
-
-        for (i, cmd) in &self.app.extracted_commands {
-            self.app.ai_output.push(format!("  {}: `{}`", i + 1, cmd));
-        }
-        
-        // Always take the first command
-        let command = self.app.extracted_commands[0].1.clone();
-        
-        // Add a message about the command
+    pub fn handle_extracted_commands(&mut self, command: String) {
+        // Add a message to the AI output about the extracted command
         self.app.ai_output.push("".to_string());
         self.app.ai_output.push(format!("Using command: `{}`", command));
         
@@ -628,17 +615,25 @@ impl AppUI {
         match self.active_panel {
             ActivePanel::Terminal => {
                 // Highlight terminal input
-                self.terminal_input.set_color(Color::from_rgb(20, 20, 30));
-                self.terminal_output.set_color(Color::from_rgb(20, 20, 30)); // Slightly lighter black for active
+                self.terminal_input.set_color(Color::from_rgb(20, 20, 30)); // Slightly lighter black for active
+                self.directory_label.set_color(Color::from_rgb(20, 20, 30));
+                self.git_indicator.set_color(Color::from_rgb(20, 20, 30));
+                self.terminal_input.set_cursor_color(Color::White);
+
+                // AI Input not highlighted
                 self.ai_input.set_color(Color::Black);
-                self.ai_output.set_color(Color::Black);
             },
             ActivePanel::AI => {
                 // Highlight AI input
-                self.terminal_input.set_color(Color::Black);
-                self.terminal_output.set_color(Color::Black);
                 self.ai_input.set_color(Color::from_rgb(20, 20, 30)); // Slightly lighter black for active
-                self.ai_output.set_color(Color::from_rgb(20, 20, 30));
+                self.ai_input.set_cursor_color(Color::White);
+
+                // Terminal Input not highlighted
+                self.terminal_input.set_color(Color::Black);
+                self.directory_label.set_color(Color::Black);
+                self.git_indicator.set_color(Color::Black);
+
+
             }
         }
         self.terminal_input.redraw();
@@ -741,7 +736,7 @@ impl AppUI {
             resize_handle: self.resize_handle.clone(),
             active_panel: self.active_panel,
             terminal_style_buffer: self.terminal_style_buffer.clone(),
-            dir_label: self.dir_label.clone(),
+            directory_label: self.directory_label.clone(),
             git_indicator: self.git_indicator.clone(),
             autocomplete_popup: None,
             current_suggestions: Vec::new(),
@@ -812,10 +807,14 @@ impl AppUI {
                             false
                         },
                         _ => {
-                            // Clear autocomplete on any other key
-                            if let Ok(mut ui) = app_ui_ref.try_borrow_mut() {
-                                ui.clear_autocomplete();
+                            // Clear autocomplete on non-navigation keys
+                            if !(key == Key::Home || key == Key::End || 
+                                key == Key::Left || key == Key::Right) {
+                                if let Ok(mut ui) = app_ui_ref.try_borrow_mut() {
+                                    ui.clear_autocomplete();
+                                }
                             }
+                            
                             false
                         }
                     }

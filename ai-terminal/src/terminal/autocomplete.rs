@@ -323,7 +323,8 @@ pub fn get_suggestions(input: &str, current_dir: &PathBuf) -> Vec<String> {
             // we need to find matching directories in the current directory
             if !path_part.contains('/') {
                 let mut suggestions = Vec::new();
-                
+
+                // reading current directory from filesystem
                 if let Ok(entries) = fs::read_dir(current_dir) {
                     for entry in entries.filter_map(Result::ok) {
                         if let Ok(file_type) = entry.file_type() {

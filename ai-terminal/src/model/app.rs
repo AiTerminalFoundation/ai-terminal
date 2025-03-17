@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use crate::config::{
     AI_INSTRUCTIONS, AI_WELCOME_MESSAGE, DEFAULT_OLLAMA_MODEL, DEFAULT_PANEL_RATIO,
-    TERMINAL_INSTRUCTIONS, WELCOME_MESSAGE,
+    TERMINAL_INSTRUCTIONS,
 };
 use crate::model::{CommandStatus, Panel};
 
@@ -20,7 +20,6 @@ impl crate::model::App {
 
         // Initial output messages
         let mut initial_output = vec![
-            WELCOME_MESSAGE.to_string(),
             format!("Operating System: {}", os_info),
         ];
 
