@@ -5,17 +5,16 @@ use crate::ollama::api;
 use crate::terminal::utils;
 
 // Process AI input and update the AI output
-pub fn process_ai_input(app: &mut App) -> String {
-    let input = app.ai_input.clone();
+pub fn process_ai_input(app: &mut App, query: String) -> String {
     app.ai_input.clear();
     app.ai_cursor_position = 0;
     
     // Add the user input to the AI output
-    app.ai_output.push(format!("> {}", input));
+    app.ai_output.push(format!("> {}", query));
     
     // Check if the input is a command
-    if input.starts_with('/') {
-        process_ai_command(app, &input);
+    if query.starts_with('/') {
+        process_ai_command(app, &query);
         "".to_string()
     } else {
 
@@ -46,7 +45,7 @@ pub fn process_ai_input(app: &mut App) -> String {
             // Format the context
             format!(
                 "System Info: {}\n\nRecent Terminal Output:\n{}\n\nRecent Chat History:\n{}\n\nUser query: {}\n\nCurrent directory: {}",
-                os_info, terminal_output, chat_history, input, app.current_dir.display().to_string()
+                os_info, terminal_output, chat_history, query, app.current_dir.display().to_string()
             )
         };
 
@@ -59,17 +58,21 @@ pub fn process_ai_input(app: &mut App) -> String {
         // Send the prompt to Ollama with the system prompt
         match api::send_prompt(&app.ollama_model, &message_with_context, Some(&system_prompt)) {
             Ok(response) => {
-                // Add the response to the AI output
-                for line in response.lines() {
-                    app.ai_output.push(line.to_string());
-                }
+                // Extract commands from the response first
+                let extracted_command = utils::extract_commands(&response);
+                
+                // For display in UI, we want to format the response better
+                // Add the AI response to output, but avoid adding the code block again if it's already there
+                app.ai_output.push(response.clone());
 
-                // Extract commands from the response - in this case, the entire response is the command
-                process_extracted_commands(&response)
+                println!("Extracted command: {} end-1", extracted_command);
+
+                extracted_command
             }
             Err(e) => {
-                app.ai_output.push(format!("Error: {}", e));
-                "".to_string()
+                let error_msg = format!("Error: {}", e);
+                app.ai_output.push(error_msg.clone());
+                error_msg
             }
         }
     }
@@ -113,35 +116,13 @@ fn process_ai_command(app: &mut App, command: &str) {
             app.ai_output.clear();
             app.ai_output.push("AI output cleared.".to_string());
         }
-        "/auto" => {
-            if parts.len() < 2 {
-                app.ai_output.push(format!("Auto-execute commands: {}", if app.auto_execute_commands { "on" } else { "off" }));
-                app.ai_output.push("Usage: /auto <on|off>".to_string());
-            } else {
-                let setting = parts[1];
-                match setting {
-                    "on" => {
-                        app.auto_execute_commands = true;
-                        app.ai_output.push("Auto-execute commands: on".to_string());
-                    }
-                    "off" => {
-                        app.auto_execute_commands = false;
-                        app.ai_output.push("Auto-execute commands: off".to_string());
-                    }
-                    _ => {
-                        app.ai_output.push("Invalid setting. Use 'on' or 'off'.".to_string());
-                    }
-                }
-            }
+        "/autoexec" => {
+            app.auto_execute_commands = !app.auto_execute_commands;
+            app.ai_output.push(format!("Auto-execute commands: {}", if app.auto_execute_commands { "on" } else { "off" }));
         }
         _ => {
             app.ai_output.push(format!("Unknown command: {}", cmd));
             app.ai_output.push("Type /help for available commands.".to_string());
         }
     }
-}
-
-// Process extracted commands from the AI response
-fn process_extracted_commands(response: &str) -> String {
-    utils::extract_commands(response)
 }

@@ -558,48 +558,42 @@ impl AppUI {
         }
     }
     
-    // Process AI input
-    pub fn process_ai_input(&mut self) {
-        let input = self.ai_input.value();
-        if input.is_empty() {
+    // Process AI query from input text and handle the entire flow
+    pub fn process_ai_query(&mut self, query: String) {
+        println!("process ai query: {}", query);
+
+        if query.is_empty() {
             return;
         }
-        
-        // Update app state
-        self.app.ai_input = input;
-        
-        // Process the input
-        let command = commands::process_ai_input(&mut self.app);
 
-        println!("command {}", command);
+        // 2. Process input and get response and command
+        let command = commands::process_ai_input(&mut self.app, query);
 
-        // Clear input
-        self.ai_input.set_value("");
+        // 3. Log results for debugging
+        println!("Extracted command: {} end", command);
         
-        // Update display
+        // 4. Update AI output display
         self.update_ai_output();
         
-        // Check if there are any extracted commands and handle them
-        self.handle_extracted_commands(command);
+        // 5. Handle extracted command if one exists
+        if !command.is_empty() {
+            self.handle_extracted_commands(command.clone());
+        }
     }
-    
+
     // Handle commands extracted from AI response
     pub fn handle_extracted_commands(&mut self, command: String) {
-        // Add a message to the AI output about the extracted command
+        // 1. Add a separator between AI response and execution status
         self.app.ai_output.push("".to_string());
-        self.app.ai_output.push(format!("Using command: `{}`", command));
-        
-        // Set the terminal input to the command
+
+        // 2. Set the command in terminal input (without showing it in output)
         self.terminal_input.set_value(&command);
-        
-        // Switch focus to the terminal panel
+
+        // 3. Switch focus to terminal panel
         self.active_panel = ActivePanel::Terminal;
         self.highlight_active_panel();
-        
-        // Update the display
-        self.update_ai_output();
-        
-        // Execute the command if auto-execution is enabled
+
+        // 5. Execute command if auto-execution is enabled
         if self.app.auto_execute_commands {
             self.app.ai_output.push("🔄 Auto-executing command...".to_string());
             self.update_ai_output();
@@ -843,7 +837,17 @@ impl AppUI {
                 Event::KeyDown => {
                     if fltk_app::event_key() == Key::Enter {
                         if let Ok(mut ui) = app_ui_ref.try_borrow_mut() {
-                            ui.process_ai_input();
+                            // Get input before clearing
+                            let input = ui.ai_input.value();
+                            
+                            // Only process if not empty
+                            if !input.is_empty() {
+                                // Clear input field
+                                ui.ai_input.set_value("");
+                                
+                                // Process query
+                                ui.process_ai_query(input);
+                            }
                         }
                         return true;
                     }
@@ -942,4 +946,21 @@ impl AppUI {
             }
         });
     }
-} 
+    
+    // Run a command directly without AI processing
+    pub fn run_command(&mut self, command: String) {
+        if command.is_empty() {
+            return;
+        }
+        
+        // Set the command in terminal input
+        self.terminal_input.set_value(&command);
+        
+        // Focus terminal panel
+        self.active_panel = ActivePanel::Terminal;
+        self.highlight_active_panel();
+        
+        // Execute the command
+        self.execute_command();
+    }
+}
