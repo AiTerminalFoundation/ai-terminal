@@ -4,7 +4,7 @@ import argparse
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from peft import PeftModel, PeftConfig
 
-def load_model(model_path="./llama2-7b-finetuned"):
+def load_model(model_path="./llama2-7b-quantized"):
     """Load the fine-tuned model and tokenizer."""
     try:
         # Load the configuration

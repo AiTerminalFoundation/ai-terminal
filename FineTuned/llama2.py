@@ -17,9 +17,9 @@ os.makedirs("./model_cache", exist_ok=True)
 
 input_file = "all.nl"
 output_file = "all.cm"
-model_id = "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
-output_dir = "./llama2-1.1b-finetuned"
-force_cpu = False
+model_id = "meta-llama/Llama-2-7b-chat-hf"
+output_dir = "./llama2-1.1b-finetuned2"
+force_cpu = True
 device = "cpu" if force_cpu else ("cuda" if torch.cuda.is_available() else "cpu")
 
 
@@ -63,8 +63,8 @@ def load_data():
 
 def load_model():
     """
-    Loads the model and configures it for training.
-    Falls back to a smaller model if the primary model fails to load.
+    Loads the model and configures it for training with LoRA on both CPU and GPU.
+    Adjusts LoRA parameters based on the device to optimize resource usage.
     Returns the model and tokenizer.
     """
     tokenizer = AutoTokenizer.from_pretrained(model_id, use_fast=True)
@@ -78,12 +78,13 @@ def load_model():
     if device == "cuda" and not force_cpu:
         load_options.update({
             "torch_dtype": torch.float16,
-            "device_map": "auto",
+            "device_map": {"": 0},
         })
     else:
         load_options.update({
             "torch_dtype": torch.float32,
-            "device_map": "cpu",
+            "device_map": {"": "cpu"},
+            "load_in_8bit": True,
         })
     
     try:
@@ -93,46 +94,28 @@ def load_model():
         model = AutoModelForCausalLM.from_pretrained(model_id, **load_options)
         model.train()
         
+        # Define LoRA configuration with adjustments for CPU
+        lora_r = 4 if device == "cpu" else 16
+        lora_alpha = 16 if device == "cpu" else 32
+        target_modules = ["q_proj", "v_proj"] if device == "cpu" else ["q_proj", "k_proj", "v_proj", "o_proj"]
+        lora_dropout = 0.05 if device == "cpu" else 0.1
+        
+        lora_config = LoraConfig(
+            r=lora_r,
+            lora_alpha=lora_alpha,
+            target_modules=target_modules,
+            lora_dropout=lora_dropout,
+            bias="none",
+            task_type="CAUSAL_LM"
+        )
+        
+        model = get_peft_model(model, lora_config)
+        
         if device == "cuda" and not force_cpu:
-            lora_config = LoraConfig(
-                r=16,
-                lora_alpha=32,
-                target_modules=["q_proj", "k_proj", "v_proj", "o_proj"],
-                lora_dropout=0.1,
-                bias="none",
-                task_type="CAUSAL_LM"
-            )
-            
-            model = get_peft_model(model, lora_config)
-            
-            if hasattr(model, "active_adapters") and callable(model.active_adapters):
-                original_active_adapters = model.active_adapters
-                model.active_adapters = [original_active_adapters()]
-            
-            print("Trainable parameters:")
-            model.print_trainable_parameters()
+            print("Trainable parameters on GPU:")
         else:
-            print("Training on CPU without LoRA")
-            
-            for param in model.parameters():
-                param.requires_grad = False
-            
-            for name, param in model.named_parameters():
-                if "lm_head" in name or "layer_norm" in name or "layers.11" in name:
-                    param.requires_grad = True
-            
-            trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-            if trainable_params == 0:
-                for name, param in model.named_parameters():
-                    if "layers.11" in name or "lm_head" in name:
-                        param.requires_grad = True
-            
-            trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-            total_params = sum(p.numel() for p in model.parameters())
-            print(f"Trainable parameters: {trainable_params} ({trainable_params/total_params:.2%} of total)")
-            
-            if trainable_params == 0:
-                raise ValueError("No trainable parameters found. Training cannot proceed.")
+            print("Training on CPU with LoRA, trainable parameters:")
+        model.print_trainable_parameters()
         
         return model, tokenizer
     except Exception as e:
@@ -150,19 +133,26 @@ def load_model():
             low_cpu_mem_usage=True,
         )
         
-        for param in model.parameters():
-            param.requires_grad = False
-            
-        for name, param in model.named_parameters():
-            if "lm_head" in name or "layer_norm" in name:
-                param.requires_grad = True
+        # Apply LoRA to fallback model as well
+        lora_config = LoraConfig(
+            r=4,
+            lora_alpha=16,
+            target_modules=["q_proj", "v_proj"],
+            lora_dropout=0.05,
+            bias="none",
+            task_type="CAUSAL_LM"
+        )
+        model = get_peft_model(model, lora_config)
         
         tokenizer = AutoTokenizer.from_pretrained(fallback_model)
         tokenizer.pad_token = tokenizer.eos_token
         
+        print("Trainable parameters in fallback model:")
+        model.print_trainable_parameters()
+        
         return model, tokenizer
 
-
+        
 def prepare_model_inputs(batch):
     """
     Prepares inputs for the model by setting labels equal to input_ids.
@@ -176,20 +166,25 @@ def main():
     dataset = load_data()
     print(f"Loaded {len(dataset)} examples")
     
-    if len(dataset) > 1000 and device == "cpu":
-        dataset = dataset.select(range(1000))
+    # Reduce dataset size more aggressively on CPU
+    if device == "cpu":
+        max_examples = 500  # Reduced from 1000
+        if len(dataset) > max_examples:
+            dataset = dataset.select(range(max_examples))
+            print(f"Reduced dataset to {max_examples} examples for CPU training")
     
     dataset = dataset.train_test_split(test_size=0.05)
     
     model, tokenizer = load_model()
     
-    # Tokenize the dataset with fixed context length
+    # Tokenize with smaller context window on CPU
     def tokenize_function(examples):
+        max_length = 256 if device == "cpu" else 512  # Smaller context window for CPU
         return tokenizer(
             examples["text"], 
             padding="max_length", 
             truncation=True, 
-            max_length=512  # Fixed context window size
+            max_length=max_length
         )
     
     tokenized_dataset = dataset.map(tokenize_function, batched=True)
@@ -212,23 +207,22 @@ def main():
         pad_to_multiple_of=8
     )
     
-    # Configure training with conservative hyperparameters
-    # Small batch size with gradient accumulation to handle memory constraints
+    # Adjust training hyperparameters for CPU
     training_args = TrainingArguments(
         output_dir=output_dir,
         per_device_train_batch_size=1,
         per_device_eval_batch_size=1,
         evaluation_strategy="steps",
-        eval_steps=50,
+        eval_steps=50 if device == "cuda" else 20,  # Evaluate more frequently on CPU
         logging_steps=10,
-        gradient_accumulation_steps=16,
-        num_train_epochs=3,
+        gradient_accumulation_steps=16 if device == "cuda" else 4,  # Less accumulation on CPU
+        num_train_epochs=3 if device == "cuda" else 1,  # Fewer epochs on CPU
         weight_decay=0.05,
         warmup_ratio=0.1,
         lr_scheduler_type="cosine",
-        learning_rate=5e-5,
-        save_steps=50,
-        save_total_limit=3,
+        learning_rate=5e-5 if device == "cuda" else 1e-4,  # Higher learning rate for fewer epochs
+        save_steps=50 if device == "cuda" else 100,  # Save less frequently on CPU
+        save_total_limit=3 if device == "cuda" else 1,  # Keep fewer checkpoints on CPU
         fp16=False,
         gradient_checkpointing=False,
         optim="adamw_torch",
@@ -239,6 +233,7 @@ def main():
         load_best_model_at_end=True,
         metric_for_best_model="eval_loss",
         greater_is_better=False,
+        no_cuda=device == "cpu",
     )
     
     trainer = Trainer(
@@ -252,13 +247,11 @@ def main():
     
     model.train()
     
-    # Check for existing checkpoints and resume if found
     checkpoint = None
     if os.path.exists(output_dir):
         checkpoints = [folder for folder in os.listdir(output_dir) if folder.startswith("checkpoint-")]
         if checkpoints:
-            # Sort checkpoints by step number to find the latest one
-            latest_checkpoint = sorted(checkpoints, key=lambda x: int(x.split("-")[1]), reverse=True)[0]
+            latest_checkpoint = max(checkpoints, key=lambda x: int(x.split("-")[1]))
             checkpoint = os.path.join(output_dir, latest_checkpoint)
             print(f"Resuming from checkpoint: {checkpoint}")
     
