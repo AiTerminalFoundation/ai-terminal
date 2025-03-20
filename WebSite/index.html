@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TerminalAI - Smart Terminal Assistant</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body>
+    <header>
+        <nav>
+            <div class="logo">Terminal<span>AI</span></div>
+            <ul class="nav-links">
+                <li><a href="#features">Features</a></li>
+                <li><a href="#demo">Demo</a></li>
+                <li><a href="#downloads">Downloads</a></li>
+            </ul>
+            <div class="hamburger">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </nav>
+    </header>
+
+    <section class="hero">
+        <div class="container">
+            <div class="hero-content">
+                <h1>Your Terminal, <span>Supercharged</span> with AI</h1>
+                <p>Navigate the command line with confidence. TerminalAI is your intelligent assistant that helps you
+                    work faster and smarter in the terminal.</p>
+                <div class="cta-buttons">
+                    <a href="#demo" class="btn secondary">See Demo</a>
+                </div>
+            </div>
+            <div class="hero-image">
+                <div class="terminal">
+                    <div class="terminal-header">
+                        <div class="terminal-buttons">
+                            <span class="close"></span>
+                            <span class="minimize"></span>
+                            <span class="maximize"></span>
+                        </div>
+                        <div class="terminal-title">user@terminalai:~</div>
+                    </div>
+                    <div class="terminal-body">
+                        <div class="terminal-left">
+                            <div class="line">
+                                <span class="prompt">$</span>
+                                <span class="command">ls -la</span>
+                            </div>
+                            <div class="terminal-output">
+                                total 32
+                                drwxr-xr-x 5 user staff 160 Apr 10 14:22 .
+                                drwxr-xr-x 3 user staff 96 Apr 10 13:45 ..
+                                -rw-r--r-- 1 user staff 2489 Apr 10 14:21 config.json
+                                drwxr-xr-x 8 user staff 256 Apr 10 14:20 node_modules
+                                -rw-r--r-- 1 user staff 528 Apr 10 14:19 package.json
+                                drwxr-xr-x 4 user staff 128 Apr 10 14:18 src
+                                drwxr-xr-x 3 user staff 96 Apr 10 14:18 tests
+                            </div>
+                            <div class="line">
+                                <span class="prompt">$</span>
+                                <span class="command">cd projects</span>
+                            </div>
+                            <div class="line">
+                                <span class="prompt">$</span>
+                                <span class="command">find . -type f -size +10M | sort -rh | head -n 5</span>
+                            </div>
+                            <div class="terminal-output">
+                                ./videos/demo.mp4
+                                ./images/background.png
+                                ./data/logs.db
+                                ./node_modules/some-package/dist/bundle.js
+                                ./backups/backup-20230401.tar.gz
+                            </div>
+                            <div class="line">
+                                <span class="prompt">$</span>
+                                <span class="command">grep -r "TODO" .</span>
+                            </div>
+                            <div class="terminal-output">
+                                ./src/app.js:45: // TODO: Implement error handling
+                                ./src/utils/helpers.js:23: // TODO: Optimize this function
+                                ./src/components/main.js:102: /* TODO: Add responsive design */
+                                ./tests/api.test.js:78: // TODO: Add more test cases
+                            </div>
+                            <div class="line">
+                                <span class="prompt">$</span>
+                                <span class="command"></span>
+                            </div>
+                        </div>
+                        <div class="terminal-right">
+                            <div class="terminal-right-header">AI Assistant</div>
+                            <div class="ai-response-area">
+                                <div class="user-query">help me find large files</div>
+                                <div class="ai-response">
+                                    I can help with that. Here's a command to find the largest files in the current
+                                    directory:
+                                    <pre><code>find . -type f -size +10M | sort -rh | head -n 5</code></pre>
+                                    This will show the 5 largest files over 10MB.
+                                </div>
+                                <div class="user-query">find TODOs in my code</div>
+                                <div class="ai-response">
+                                    To find all TODOs in your codebase, you can use grep:
+                                    <pre><code>grep -r "TODO" .</code></pre>
+                                    This will recursively search for "TODO" in all files in the current directory.
+                                </div>
+                            </div>
+                            <div class="ai-input-area">
+                                <input type="text" placeholder="Ask the AI assistant..." disabled>
+                                <button disabled><i class="fas fa-paper-plane"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="features" class="features">
+        <div class="container">
+            <h2>Why TerminalAI?</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-brain"></i>
+                    </div>
+                    <h3>Smart Command Suggestions</h3>
+                    <p>Get intelligent command recommendations based on your history and current context.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-book"></i>
+                    </div>
+                    <h3>Built-in Documentation</h3>
+                    <p>Ask questions about commands in natural language and get clear explanations.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-code"></i>
+                    </div>
+                    <h3>Code Generation</h3>
+                    <p>Generate shell scripts, one-liners, and complex commands with simple prompts.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <h3>Command Validation</h3>
+                    <p>Prevent dangerous operations with intelligent command validation before execution.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="github-cta">
+        <div class="container">
+            <div class="github-content">
+                <h2>⭐ Support the Project ⭐</h2>
+                <p>If you find TerminalAI useful, consider giving us a star on GitHub!</p>
+                <div class="github-buttons">
+                    <a href="https://github.com/MicheleVerriello/ai-terminal" target="_blank" class="github-button">
+                        <i class="fab fa-github"></i> Star on GitHub
+                    </a>
+                    <a href="https://github.com/MicheleVerriello/ai-terminal/subscription" target="_blank"
+                        class="github-button secondary">
+                        <i class="fas fa-eye"></i> Watch Repository
+                    </a>
+                </div>
+                <div class="github-stats">
+                    <div class="stat">
+                        <i class="fas fa-star"></i>
+                        <span>6 stars</span>
+                    </div>
+                    <div class="stat">
+                        <i class="fas fa-code-branch"></i>
+                        <span>1 fork</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="demo" class="demo">
+        <div class="container">
+            <h2>See TerminalAI in Action</h2>
+            <div class="demo-terminal">
+                <div class="terminal-header">
+                    <div class="terminal-buttons">
+                        <span class="close"></span>
+                        <span class="minimize"></span>
+                        <span class="maximize"></span>
+                    </div>
+                    <div class="terminal-title">demo@terminalai:~</div>
+                </div>
+                <div class="terminal-body">
+                    <div class="terminal-left">
+                        <div class="line">
+                            <span class="prompt">$</span>
+                            <span class="command">cat large_log.txt | grep "ERROR" | wc -l</span>
+                        </div>
+                        <div class="terminal-output">
+                            42
+                        </div>
+                        <div class="line">
+                            <span class="prompt">$</span>
+                            <span class="command">tar -czf backup.tar.gz ~/Documents</span>
+                        </div>
+                        <div class="terminal-output">
+                            tar: Removing leading '/' from member names
+                        </div>
+                        <div class="line">
+                            <span class="prompt">$</span>
+                            <span class="command">ps aux | grep node</span>
+                        </div>
+                        <div class="terminal-output">
+                            user 12345 0.5 1.2 1458404 102392 ? Ssl 10:23 0:12 node /usr/local/bin/npm start
+                            user 12346 2.3 1.8 1345120 148392 ? Ssl 10:23 0:18 node server.js
+                            user 12389 0.0 0.1 14888 1120 pts/2 S+ 10:45 0:00 grep --color=auto node
+                        </div>
+                        <div class="line">
+                            <span class="prompt">$</span>
+                            <span class="command"></span>
+                        </div>
+                    </div>
+                    <div class="terminal-right">
+                        <div class="terminal-right-header">AI Assistant</div>
+                        <div class="ai-response-area">
+                            <div class="user-query">count errors in my log file</div>
+                            <div class="ai-response">
+                                To count the number of ERROR occurrences in your log file:
+                                <pre><code>cat large_log.txt | grep "ERROR" | wc -l</code></pre>
+                                This pipes the file through grep to find ERROR lines, then counts them with wc.
+                            </div>
+                            <div class="user-query">backup my documents</div>
+                            <div class="ai-response">
+                                Here's how to create a compressed backup of your Documents folder:
+                                <pre><code>tar -czf backup.tar.gz ~/Documents</code></pre>
+                                This creates a gzipped tar archive of your Documents directory.
+                            </div>
+                            <div class="user-query">check running node processes</div>
+                            <div class="ai-response">
+                                To see all running Node.js processes:
+                                <pre><code>ps aux | grep node</code></pre>
+                                This will show you all processes with "node" in the command.
+                            </div>
+                        </div>
+                        <div class="ai-input-area">
+                            <input type="text" placeholder="Ask the AI assistant..." disabled>
+                            <button disabled><i class="fas fa-paper-plane"></i></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="downloads" class="downloads">
+        <div class="container">
+            <h2>Download TerminalAI</h2>
+            <p class="section-description">Available for all major platforms. Choose your operating system below:</p>
+
+            <div class="download-options">
+                <div class="download-card">
+                    <div class="download-icon">
+                        <i class="fab fa-apple"></i>
+                    </div>
+                    <h3>macOS</h3>
+                    <p>Version 0.1.0 beta</p>
+                    <a href="#" class="download-button">
+                        <i class="fas fa-download"></i> Download for Mac
+                    </a>
+                    <div class="download-info">
+                        <span>Intel & Apple Silicon</span>
+                        <span>macOS 10.15+</span>
+                    </div>
+                </div>
+
+                <div class="download-card">
+                    <div class="download-icon">
+                        <i class="fab fa-windows"></i>
+                    </div>
+                    <h3>Windows</h3>
+                    <p>Version 0.1.0 beta</p>
+                    <a href="#" class="download-button">
+                        <i class="fas fa-download"></i> Download for Windows
+                    </a>
+                    <div class="download-info">
+                        <span>64-bit</span>
+                        <span>Windows 10/11</span>
+                    </div>
+                </div>
+
+                <div class="download-card">
+                    <div class="download-icon">
+                        <i class="fab fa-linux"></i>
+                    </div>
+                    <h3>Linux</h3>
+                    <p>Version 0.1.0 beta</p>
+                    <a href="#" class="download-button">
+                        <i class="fas fa-download"></i> Download for Linux
+                    </a>
+                    <div class="download-info">
+                        <span>AppImage, deb, rpm</span>
+                        <span>Ubuntu, Fedora, Debian</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="download-note">
+                <p>All downloads are currently in beta. Please report any issues on our <a
+                        href="https://github.com/MicheleVerriello/ai-terminal/issues" target="_blank">GitHub issues
+                        page</a>.</p>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div class="logo">Terminal<span>AI</span></div>
+                <div class="social-links">
+                    <a href="https://github.com/MicheleVerriello/ai-terminal" target="_blank" aria-label="GitHub"
+                        class="github-footer-link">
+                        <i class="fab fa-github"></i>
+                        <span>Visit us on GitHub</span>
+                    </a>
+                </div>
+            </div>
+            <div class="copyright">
+                &copy; <span id="current-year"></span> TerminalAI. All rights reserved.
+            </div>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
