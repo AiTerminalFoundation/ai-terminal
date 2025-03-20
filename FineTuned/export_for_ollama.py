@@ -17,7 +17,7 @@ def merge_and_export(
     os.makedirs(output_dir, exist_ok=True)
     
     config = PeftConfig.from_pretrained(lora_model_path)
-    base_model_name = config.base_model_name_or_path
+    base_model_name = "meta-llama/Llama-2-7b-chat-hf"
     print(f"Base model: {base_model_name}")
     
     print("Loading base model...")
@@ -25,7 +25,7 @@ def merge_and_export(
         base_model_name,
         torch_dtype=torch.float16,
         low_cpu_mem_usage=True,
-        device_map="auto"
+        device_map="cpu"
     )
     
     print("Loading LoRA adapters...")
@@ -68,9 +68,9 @@ def merge_and_export(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Export fine-tuned model for Ollama")
-    parser.add_argument("--lora_model_path", type=str, default="./llama2-1.1b-finetuned",
+    parser.add_argument("--lora_model_path", type=str, default="./llama2-1.1b-finetuned2",
                         help="Path to the LoRA model")
-    parser.add_argument("--output_dir", type=str, default="./ollama_model",
+    parser.add_argument("--output_dir", type=str, default="./ollama_model2",
                         help="Output directory for the exported model")
     parser.add_argument("--model_name", type=str, default="my-finetuned-model",
                         help="Name for the Ollama model")

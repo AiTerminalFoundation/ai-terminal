@@ -1,8 +1,12 @@
-// Extract commands from a response string
-pub fn extract_commands(response: &str) -> String {
-    // Strip any backticks from the response
-    let start = response.find("```").unwrap_or_default();
-    let end = response[start + 3..].find("```").unwrap_or_default();
+use regex::Regex;
 
-    response[start + 3..start + 3 + end].trim().to_string()
+// Extract commands from a response string
+pub fn extract_commands(text: &str) -> String {
+    let re = Regex::new(r"```(?:bash|sh)?\s*([\s\S]*?)\n?```").unwrap();
+    if let Some(captures) = re.captures(text) {
+        if let Some(command_match) = captures.get(1) {
+            return command_match.as_str().trim().to_string();
+        }
+    } 
+    String::new()
 }

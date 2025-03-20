@@ -19,6 +19,7 @@ use crate::ollama::commands;
 use crate::terminal::commands as term_commands;
 use crate::terminal::autocomplete;
 use crate::config::strings;
+use crate::terminal::commands::handle_key_press;
 
 pub struct AppUI {
     pub app: App,
@@ -592,6 +593,9 @@ impl AppUI {
         // 3. Switch focus to terminal panel
         self.active_panel = ActivePanel::Terminal;
         self.highlight_active_panel();
+        
+        // 4. move the focus to the terminal input
+        self.terminal_input.take_focus().ok();
 
         // 5. Execute command if auto-execution is enabled
         if self.app.auto_execute_commands {
@@ -761,6 +765,14 @@ impl AppUI {
                             return true;
                         },
                         Key::Tab => {
+                            // Check if Ctrl is pressed for panel switching
+                            if fltk_app::event_state() == fltk::enums::EventState::Ctrl {
+                                if let Ok(mut ui) = app_ui_ref.try_borrow_mut() {
+                                    ui.switch_panel();
+                                }
+                                return true;
+                            }
+                            
                             // Handle Tab key for autocomplete
                             if let Ok(mut ui) = app_ui_ref.try_borrow_mut() {
                                 // If no suggestions yet, show them
@@ -773,30 +785,48 @@ impl AppUI {
                             }
                             return true;
                         },
+                        Key::Up => {
+                            // Check if Shift is pressed for suggestion cycling
+                            if fltk_app::event_state() == fltk::enums::EventState::Shift {
+                                if let Ok(mut ui) = app_ui_ref.try_borrow_mut() {
+                                    ui.cycle_autocomplete(false); // Cycle to previous suggestion
+                                }
+                                return true;
+                            } else {
+                                // Handle command history navigation
+                                if let Ok(mut ui) = app_ui_ref.try_borrow_mut() {
+                                    handle_key_press(&mut ui.app, Key::Up);
+                                    // Store the value in a temporary variable
+                                    let history_item = ui.app.ai_input.clone();
+                                    // Update the input field with the history item
+                                    ui.terminal_input.set_value(&history_item);
+                                }
+                                return true;
+                            }
+                        },
+                        Key::Down => {
+                            // Check if Shift is pressed for suggestion cycling
+                            if fltk_app::event_state() == fltk::enums::EventState::Shift {
+                                if let Ok(mut ui) = app_ui_ref.try_borrow_mut() {
+                                    ui.cycle_autocomplete(true); // Cycle to next suggestion
+                                }
+                                return true;
+                            } else {
+                                // Handle command history navigation
+                                if let Ok(mut ui) = app_ui_ref.try_borrow_mut() {
+                                    handle_key_press(&mut ui.app, Key::Down);
+                                    // Store the value in a temporary variable
+                                    let history_item = ui.app.ai_input.clone();
+                                    // Update the input field with the history item
+                                    ui.terminal_input.set_value(&history_item);
+                                }
+                                return true;
+                            }
+                        },
                         Key::BackSpace | Key::Delete => {
                             // Clear autocomplete on backspace/delete
                             if let Ok(mut ui) = app_ui_ref.try_borrow_mut() {
                                 ui.clear_autocomplete();
-                            }
-                            false
-                        },
-                        Key::Up => {
-                            // Cycle to previous suggestion with Shift+Up
-                            if fltk_app::event_state() == fltk::enums::EventState::Shift {
-                                if let Ok(mut ui) = app_ui_ref.try_borrow_mut() {
-                                    ui.cycle_autocomplete(false);
-                                }
-                                return true;
-                            }
-                            false
-                        },
-                        Key::Down => {
-                            // Cycle to next suggestion with Shift+Down
-                            if fltk_app::event_state() == fltk::enums::EventState::Shift {
-                                if let Ok(mut ui) = app_ui_ref.try_borrow_mut() {
-                                    ui.cycle_autocomplete(true);
-                                }
-                                return true;
                             }
                             false
                         },
@@ -835,7 +865,9 @@ impl AppUI {
                     false
                 },
                 Event::KeyDown => {
-                    if fltk_app::event_key() == Key::Enter {
+                    let key = fltk_app::event_key();
+                    
+                    if key == Key::Enter {
                         if let Ok(mut ui) = app_ui_ref.try_borrow_mut() {
                             // Get input before clearing
                             let input = ui.ai_input.value();
@@ -850,9 +882,18 @@ impl AppUI {
                             }
                         }
                         return true;
+                    } else if key == Key::Tab && fltk_app::event_state() == fltk::enums::EventState::Ctrl {
+                        if let Ok(mut ui) = app_ui_ref.try_borrow_mut() {
+                            ui.switch_panel();
+                        }
+                        return true;
                     }
                     false
-                }
+                },
+                Event::KeyUp => {
+                    // Remove automatic suggestion display on typing
+                    false
+                },
                 _ => false,
             }
         });
@@ -895,6 +936,14 @@ impl AppUI {
                             toggle_fullscreen = ui.is_fullscreen;
                         }
                         win.fullscreen(toggle_fullscreen);
+                        return true;
+                    }
+                    // Add Tab shortcut for panel switching
+                    if fltk_app::event_key() == Key::Tab && 
+                       fltk_app::event_state() == fltk::enums::EventState::Ctrl {
+                        if let Ok(mut ui) = app_ui_ref.try_borrow_mut() {
+                            ui.switch_panel();
+                        }
                         return true;
                     }
                     false
@@ -962,5 +1011,25 @@ impl AppUI {
         
         // Execute the command
         self.execute_command();
+    }
+
+    pub fn switch_panel(&mut self) {
+        // Toggle between panels
+        self.active_panel = match self.active_panel {
+            ActivePanel::Terminal => ActivePanel::AI,
+            ActivePanel::AI => ActivePanel::Terminal,
+        };
+        
+        // Highlight the active panel
+        self.highlight_active_panel();
+        
+        match self.active_panel {
+            ActivePanel::Terminal => {
+                self.terminal_input.take_focus().ok();
+            },
+            ActivePanel::AI => {
+                self.ai_input.take_focus().ok();
+            }
+        }
     }
 }
