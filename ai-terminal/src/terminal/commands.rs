@@ -3,6 +3,8 @@ use crate::model::{App, CommandStatus};
 use std::env;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
+use fltk::enums::Key;
+use crate::ollama::commands::{navigate_history_up, navigate_history_down};
 
 impl App {
     pub fn execute_command(&mut self) {
@@ -261,5 +263,20 @@ fn handle_cd_command(command: &str, current_dir: &PathBuf) -> (Vec<String>, bool
         (vec![format!("Changed directory to {}", new_dir.display())], true)
     } else {
         (vec![format!("cd: {}: No such directory", path)], false)
+    }
+}
+
+// Update the handle_key_press function to include a wildcard pattern
+pub fn handle_key_press(app: &mut App, key: Key) {
+    match key {
+        Key::Up => {
+            navigate_history_up(app);
+        },
+        Key::Down => {
+            navigate_history_down(app);
+        },
+        _ => {
+            // Handle other keys or do nothing
+        }
     }
 }

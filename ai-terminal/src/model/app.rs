@@ -64,7 +64,7 @@ impl crate::model::App {
             command_status,
             // Initialize command history
             command_history: Vec::new(),
-            history_position: None,
+            command_history_index: None,
             // Initialize autocomplete
             autocomplete_suggestions: Vec::new(),
             autocomplete_index: None,

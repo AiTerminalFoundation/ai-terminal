@@ -126,3 +126,45 @@ fn process_ai_command(app: &mut App, command: &str) {
         }
     }
 }
+
+// Add these new functions to handle command history navigation
+pub fn navigate_history_up(app: &mut App) {
+    if app.command_history.is_empty() {
+        return;
+    }
+    
+    let new_index = match app.command_history_index {
+        Some(idx) if idx > 0 => Some(idx - 1),
+        None => Some(app.command_history.len() - 1),
+        Some(idx) => Some(idx),
+    };
+    
+    app.command_history_index = new_index;
+    
+    if let Some(idx) = new_index {
+        app.ai_input = app.command_history[idx].clone();
+        app.ai_cursor_position = app.ai_input.len();
+    }
+}
+
+pub fn navigate_history_down(app: &mut App) {
+    if app.command_history.is_empty() {
+        return;
+    }
+    
+    let new_index = match app.command_history_index {
+        Some(idx) if idx < app.command_history.len() - 1 => Some(idx + 1),
+        Some(_) => None,
+        None => None,
+    };
+    
+    app.command_history_index = new_index;
+    
+    if let Some(idx) = new_index {
+        app.ai_input = app.command_history[idx].clone();
+    } else {
+        app.ai_input.clear();
+    }
+    
+    app.ai_cursor_position = app.ai_input.len();
+}
