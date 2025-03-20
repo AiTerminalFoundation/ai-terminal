@@ -762,6 +762,14 @@ impl AppUI {
                             return true;
                         },
                         Key::Tab => {
+                            // Check if Ctrl is pressed for panel switching
+                            if fltk_app::event_state() == fltk::enums::EventState::Ctrl {
+                                if let Ok(mut ui) = app_ui_ref.try_borrow_mut() {
+                                    ui.switch_panel();
+                                }
+                                return true;
+                            }
+                            
                             // Handle Tab key for autocomplete
                             if let Ok(mut ui) = app_ui_ref.try_borrow_mut() {
                                 // If no suggestions yet, show them
@@ -854,7 +862,9 @@ impl AppUI {
                     false
                 },
                 Event::KeyDown => {
-                    if fltk_app::event_key() == Key::Enter {
+                    let key = fltk_app::event_key();
+                    
+                    if key == Key::Enter {
                         if let Ok(mut ui) = app_ui_ref.try_borrow_mut() {
                             // Get input before clearing
                             let input = ui.ai_input.value();
@@ -869,9 +879,18 @@ impl AppUI {
                             }
                         }
                         return true;
+                    } else if key == Key::Tab && fltk_app::event_state() == fltk::enums::EventState::Ctrl {
+                        if let Ok(mut ui) = app_ui_ref.try_borrow_mut() {
+                            ui.switch_panel();
+                        }
+                        return true;
                     }
                     false
-                }
+                },
+                Event::KeyUp => {
+                    // Remove automatic suggestion display on typing
+                    false
+                },
                 _ => false,
             }
         });
