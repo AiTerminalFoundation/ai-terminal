@@ -593,6 +593,9 @@ impl AppUI {
         // 3. Switch focus to terminal panel
         self.active_panel = ActivePanel::Terminal;
         self.highlight_active_panel();
+        
+        // 4. move the focus to the terminal input
+        self.terminal_input.take_focus().ok();
 
         // 5. Execute command if auto-execution is enabled
         if self.app.auto_execute_commands {
