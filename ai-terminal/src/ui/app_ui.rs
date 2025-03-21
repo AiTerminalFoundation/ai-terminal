@@ -10,6 +10,11 @@ use fltk::{
 use std::rc::Rc;
 use std::cell::RefCell;
 use std::process::Command;
+use std::thread;
+use std::time::Duration;
+use std::sync::{Arc, Mutex};
+use std::sync::atomic::Ordering;
+use std::sync::mpsc;
 
 use crate::config::{
     WINDOW_HEIGHT, WINDOW_WIDTH,
@@ -20,6 +25,7 @@ use crate::terminal::commands as term_commands;
 use crate::terminal::autocomplete;
 use crate::config::strings;
 use crate::terminal::commands::handle_key_press;
+use crate::ollama::api;
 
 pub struct AppUI {
     pub app: App,
@@ -567,18 +573,112 @@ impl AppUI {
             return;
         }
 
-        // 2. Process input and get response and command
-        let command = commands::process_ai_input(&mut self.app, query);
+        // Set thinking state only for non-command queries
+        if !query.starts_with('/') {
+            api::IS_THINKING.store(true, Ordering::SeqCst);
+        }
 
-        // 3. Log results for debugging
-        println!("Extracted command: {} end", command);
+        // Add the query to command history
+        self.app.command_history.push(query.clone());
+        if self.app.command_history.len() > crate::config::MAX_COMMAND_HISTORY {
+            self.app.command_history.remove(0);
+        }
+        self.app.command_history_index = None;
+
+        // Add the query to AI output immediately
+        self.app.ai_output.push(format!("> {}", query));
         
-        // 4. Update AI output display
-        self.update_ai_output();
-        
-        // 5. Handle extracted command if one exists
-        if !command.is_empty() {
-            self.handle_extracted_commands(command.clone());
+        // Only show thinking indicator for non-command queries
+        if !query.starts_with('/') {
+            self.app.ai_output.push("🤔 Thinking...".to_string());
+            self.update_ai_output();
+
+            // Start thinking animation in a separate thread
+            let ai_output = Arc::new(Mutex::new(self.ai_output.clone()));
+            let app = Arc::new(Mutex::new(self.app.clone()));
+            let thinking_handle = thread::spawn(move || {
+                let thinking_chars = ["⣾", "⣽", "⣻", "⢿", "⡿", "⣟", "⣯", "⣷"];
+                let mut i = 0;
+                
+                while api::is_thinking() {
+                    if let Ok(mut app) = app.lock() {
+                        if let Some(last) = app.ai_output.last_mut() {
+                            if last.contains("Thinking") {
+                                *last = format!("🤔 Thinking... {}", thinking_chars[i]);
+                                
+                                // Update the display using FLTK's awake mechanism
+                                let text = app.ai_output.join("\n") + "\n";
+                                let output_display = ai_output.clone();
+                                
+                                fltk_app::awake_callback(Box::new(move || {
+                                    if let Ok(mut display) = output_display.lock() {
+                                        if let Some(mut buf) = display.buffer() {
+                                            buf.set_text(&text);
+                                            let line_count = display.count_lines(0, buf.length(), true);
+                                            display.scroll(line_count, 0);
+                                        }
+                                    }
+                                }));
+                            }
+                        }
+                    }
+                    
+                    i = (i + 1) % thinking_chars.len();
+                    thread::sleep(Duration::from_millis(100));
+                }
+            });
+
+            let query_clone = query.clone();
+            let app_clone = Arc::new(Mutex::new(self.app.clone()));
+            let mut ai_output = self.ai_output.clone();
+            let mut terminal_input = self.terminal_input.clone();
+            let (tx, rx) = mpsc::channel();
+
+            // Move the app update logic to the main thread
+            thread::spawn(move || {
+                if let Ok(mut app) = app_clone.lock() {
+                    let command = commands::process_ai_input(&mut app, query_clone);
+                    let text = app.ai_output.join("\n") + "\n";
+                    let app_for_update = app.clone();
+                    let app_clone_for_callback = app_clone.clone();
+                    let tx = tx.clone();
+
+                    fltk_app::awake_callback(Box::new(move || {
+                        // Update the AI output display
+                        if let Some(mut buf) = ai_output.buffer() {
+                            buf.set_text(&text);
+                            let line_count = ai_output.count_lines(0, buf.length(), true);
+                            ai_output.scroll(line_count, 0);
+                        }
+                        
+                        // Update the app state with the new output
+                        if let Ok(mut original_app) = app_clone_for_callback.lock() {
+                            original_app.ai_output = app_for_update.ai_output.clone();
+                        }
+                        
+                        if !command.is_empty() {
+                            terminal_input.set_value(&command);
+                            terminal_input.take_focus().ok();
+                            // Signal to switch to terminal panel
+                            tx.send(()).ok();
+                        }
+                    }));
+                }
+            });
+
+            // Listen for panel switch signal
+            if let Ok(()) = rx.try_recv() {
+                self.active_panel = ActivePanel::Terminal;
+                self.highlight_active_panel();
+            }
+        } else {
+            // Handle commands synchronously
+            let command = commands::process_ai_input(&mut self.app, query);
+            self.update_ai_output();
+            
+            if !command.is_empty() {
+                self.handle_extracted_commands(command);
+            }
         }
     }
 

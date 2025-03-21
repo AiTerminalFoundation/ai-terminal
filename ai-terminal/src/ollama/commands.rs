@@ -3,6 +3,9 @@ use crate::config::{HELP_COMMANDS,
 use crate::model::App;
 use crate::ollama::api;
 use crate::terminal::utils;
+use std::thread;
+use std::time::Duration;
+use std::sync::atomic::Ordering;
 
 // Process AI input and update the AI output
 pub fn process_ai_input(app: &mut App, query: String) -> String {
@@ -15,8 +18,10 @@ pub fn process_ai_input(app: &mut App, query: String) -> String {
     // Check if the input is a command
     if query.starts_with('/') {
         process_ai_command(app, &query);
-        "".to_string()
+        api::IS_THINKING.store(false, Ordering::SeqCst);
+        return "".to_string();
     } else {
+        app.ai_output.push("🤔 Thinking...".to_string());
 
         // Prepare the message with context
         let message_with_context = {
@@ -58,11 +63,17 @@ pub fn process_ai_input(app: &mut App, query: String) -> String {
         // Send the prompt to Ollama with the system prompt
         match api::send_prompt(&app.ollama_model, &message_with_context, Some(&system_prompt)) {
             Ok(response) => {
+                // Remove the "thinking" indicator
+                if let Some(last) = app.ai_output.last() {
+                    if last.contains("🤔 Thinking...") {
+                        app.ai_output.pop();
+                    }
+                }
+                
                 // Extract commands from the response first
                 let extracted_command = utils::extract_commands(&response);
                 
-                // For display in UI, we want to format the response better
-                // Add the AI response to output, but avoid adding the code block again if it's already there
+                // Add the AI response to output
                 app.ai_output.push(response.clone());
 
                 println!("Extracted command: {} end-1", extracted_command);
@@ -70,6 +81,13 @@ pub fn process_ai_input(app: &mut App, query: String) -> String {
                 extracted_command
             }
             Err(e) => {
+                // Remove the "thinking" indicator
+                if let Some(last) = app.ai_output.last() {
+                    if last.contains("🤔 Thinking...") {
+                        app.ai_output.pop();
+                    }
+                }
+                
                 let error_msg = format!("Error: {}", e);
                 app.ai_output.push(error_msg.clone());
                 error_msg
@@ -100,14 +118,29 @@ fn process_ai_command(app: &mut App, command: &str) {
             }
         }
         "/models" => {
+            app.ai_output.push("🔍 Fetching models...".to_string());
+            
             match api::list_models() {
                 Ok(models) => {
+                    // Remove the "thinking" indicator
+                    if let Some(last) = app.ai_output.last() {
+                        if last.contains("🔍 Fetching models...") {
+                            app.ai_output.pop();
+                        }
+                    }
+                    
                     app.ai_output.push("Available models:".to_string());
                     for model in models {
                         app.ai_output.push(format!("- {}", model));
                     }
                 }
                 Err(e) => {
+                    if let Some(last) = app.ai_output.last() {
+                        if last.contains("🔍 Fetching models...") {
+                            app.ai_output.pop();
+                        }
+                    }
+                    
                     app.ai_output.push(format!("Error listing models: {}", e));
                 }
             }
