@@ -27,6 +27,7 @@ use crate::config::strings;
 use crate::terminal::commands::handle_key_press;
 use crate::ollama::api;
 
+#[derive(Clone)]
 pub struct AppUI {
     pub app: App,
     pub window: Window,
@@ -632,9 +633,10 @@ impl AppUI {
             let app_clone = Arc::new(Mutex::new(self.app.clone()));
             let mut ai_output = self.ai_output.clone();
             let mut terminal_input = self.terminal_input.clone();
+            
+            // Create a channel to update main thread state
             let (tx, rx) = mpsc::channel();
 
-            // Move the app update logic to the main thread
             thread::spawn(move || {
                 if let Ok(mut app) = app_clone.lock() {
                     let command = commands::process_ai_input(&mut app, query_clone);
@@ -658,18 +660,21 @@ impl AppUI {
                         
                         if !command.is_empty() {
                             terminal_input.set_value(&command);
-                            terminal_input.take_focus().ok();
-                            // Signal to switch to terminal panel
-                            tx.send(()).ok();
+                            
+                            // Signal main thread to handle the command
+                            tx.send(command.clone()).ok();
                         }
                     }));
                 }
             });
 
-            // Listen for panel switch signal
-            if let Ok(()) = rx.try_recv() {
-                self.active_panel = ActivePanel::Terminal;
-                self.highlight_active_panel();
+            // Handle the command in the main thread
+            match rx.try_recv() {
+                Ok(command) => {
+                    // Handle the command in the main thread
+                    self.handle_extracted_commands(command);
+                },
+                _ => {}
             }
         } else {
             // Handle commands synchronously
@@ -690,7 +695,7 @@ impl AppUI {
         // 2. Set the command in terminal input (without showing it in output)
         self.terminal_input.set_value(&command);
 
-        // 3. Switch focus to terminal panel
+        // 3. Switch focus to terminal panel and highlight it
         self.active_panel = ActivePanel::Terminal;
         self.highlight_active_panel();
         
@@ -1123,6 +1128,7 @@ impl AppUI {
         // Highlight the active panel
         self.highlight_active_panel();
         
+        // Take focus on the active input
         match self.active_panel {
             ActivePanel::Terminal => {
                 self.terminal_input.take_focus().ok();
@@ -1131,5 +1137,11 @@ impl AppUI {
                 self.ai_input.take_focus().ok();
             }
         }
+        
+        // Force redraw
+        self.terminal_input.redraw();
+        self.ai_input.redraw();
+        self.directory_label.redraw();
+        self.git_indicator.redraw();
     }
 }
