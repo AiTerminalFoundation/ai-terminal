@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use crate::config::{
     AI_INSTRUCTIONS, AI_WELCOME_MESSAGE, DEFAULT_OLLAMA_MODEL, DEFAULT_PANEL_RATIO,
-    TERMINAL_INSTRUCTIONS, WINDOW_WIDTH, WINDOW_HEIGHT,
+    TERMINAL_INSTRUCTIONS, WINDOW_WIDTH, WINDOW_HEIGHT, FocusTarget,
 };
 use crate::model::{CommandStatus, Panel};
 
@@ -60,6 +60,9 @@ pub struct App {
 
     // Auto-execute commands (disabled by default)
     pub auto_execute_commands: bool,
+
+    // Focus target
+    pub focus: FocusTarget,
 }
 
 impl crate::model::App {
@@ -138,6 +141,8 @@ impl crate::model::App {
             os_info,
             // Auto-execute commands (disabled by default)
             auto_execute_commands: false,
+            // Focus target
+            focus: FocusTarget::Terminal,
         }
     }
 }

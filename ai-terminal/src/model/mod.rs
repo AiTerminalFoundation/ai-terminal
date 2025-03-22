@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+use crate::config::FocusTarget;
 
 pub mod app;
 
@@ -95,4 +96,7 @@ pub struct App {
 
     // Auto-execute commands (disabled by default)
     pub auto_execute_commands: bool,
+
+    // Focus target
+    pub focus: FocusTarget,
 }
