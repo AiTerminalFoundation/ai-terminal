@@ -192,6 +192,12 @@ impl App {
         match env::set_current_dir(&new_dir) {
             Ok(_) => {
                 self.current_dir = new_dir;
+                
+                // Check if this is a git repository and get branch info
+                let (is_git_repo, branch) = crate::terminal::utils::get_git_info(&self.current_dir);
+                self.is_git_repo = is_git_repo;
+                self.git_branch = branch;
+                
                 self.output.push(format!(
                     "Changed directory to: {}",
                     self.current_dir.display()

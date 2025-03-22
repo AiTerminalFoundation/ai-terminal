@@ -1,4 +1,4 @@
-use iced::widget::{column, container, row, text_input, scrollable};
+use iced::widget::{column, container, row, text_input, scrollable, text};
 use iced::{Application, Command, Element, Length, Theme, Font};
 use iced::keyboard::{self, Event as KeyEvent};
 use iced::event::Event;
@@ -275,7 +275,6 @@ impl Application for TerminalApp {
                         return components::scrollable_container::scroll_to_bottom();
                     }
                 }
-                Command::none()
             }
             Message::SwitchPanel => {
                 self.state.active_panel = match self.state.active_panel {
@@ -476,26 +475,35 @@ impl TerminalApp {
 
         let terminal_output = components::scrollable_container::scrollable_container(output_elements);
 
-        let current_dir = container(
-            styled_text(
-                &format!("{}",
-                    if let Some(home) = dirs_next::home_dir() {
-                        if let Ok(path) = self.state.current_dir.strip_prefix(&home) {
-                            format!("~/{}", path.display())
-                        } else {
-                            self.state.current_dir.display().to_string()
-                        }
-                    } else {
-                        self.state.current_dir.display().to_string()
-                    }
-                ),
-                false,
-                false
-            )
-        )
-        .padding(5)
-        .width(Length::Fill)
-        .style(DraculaTheme::current_dir_style());
+        let dir_path = if let Some(home) = dirs_next::home_dir() {
+            if let Ok(path) = self.state.current_dir.strip_prefix(&home) {
+                format!("~/{}", path.display())
+            } else {
+                self.state.current_dir.display().to_string()
+            }
+        } else {
+            self.state.current_dir.display().to_string()
+        };
+
+        // Create directory path display, possibly with git info
+        let current_dir_content = if self.state.is_git_repo {
+            if let Some(branch) = &self.state.git_branch {
+                row![
+                    styled_text(&dir_path, false, false),
+                    styled_text(" ", false, false),
+                    crate::ui::components::git_branch_text(branch)
+                ]
+            } else {
+                row![styled_text(&dir_path, false, false)]
+            }
+        } else {
+            row![styled_text(&dir_path, false, false)]
+        };
+
+        let current_dir = container(current_dir_content)
+            .padding(5)
+            .width(Length::Fill)
+            .style(DraculaTheme::current_dir_style());
 
         let input = text_input("Enter command...", &self.terminal_input)
             .on_input(Message::TerminalInput)

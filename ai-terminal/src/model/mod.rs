@@ -50,6 +50,8 @@ pub struct App {
     pub output: Vec<String>,
     pub cursor_position: usize,
     pub current_dir: PathBuf,
+    pub is_git_repo: bool,
+    pub git_branch: Option<String>,
 
     // AI assistant panel state
     pub ai_input: String,

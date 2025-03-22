@@ -98,73 +98,73 @@ impl text_input::StyleSheet for FocusedTextInputStyle {
 }
 
 impl DraculaTheme {
-    const BACKGROUND: Color = Color::from_rgb(
+    pub const BACKGROUND: Color = Color::from_rgb(
         0x28 as f32 / 255.0,
         0x2A as f32 / 255.0,
         0x36 as f32 / 255.0,
     );
     
-    const CURRENT_LINE: Color = Color::from_rgb(
+    pub const CURRENT_LINE: Color = Color::from_rgb(
         0x44 as f32 / 255.0,
         0x47 as f32 / 255.0,
         0x5A as f32 / 255.0,
     );
     
-    const SELECTION: Color = Color::from_rgb(
+    pub const SELECTION: Color = Color::from_rgb(
         0x44 as f32 / 255.0,
         0x47 as f32 / 255.0,
         0x5A as f32 / 255.0,
     );
     
-    const FOREGROUND: Color = Color::from_rgb(
+    pub const FOREGROUND: Color = Color::from_rgb(
         0xF8 as f32 / 255.0,
         0xF8 as f32 / 255.0,
         0xF2 as f32 / 255.0,
     );
     
-    const COMMENT: Color = Color::from_rgb(
+    pub const COMMENT: Color = Color::from_rgb(
         0x6272A4 as f32 / 255.0,
         0x62 as f32 / 255.0,
         0xA4 as f32 / 255.0,
     );
     
-    const CYAN: Color = Color::from_rgb(
+    pub const CYAN: Color = Color::from_rgb(
         0x8B as f32 / 255.0,
         0xE9 as f32 / 255.0,
         0xFD as f32 / 255.0,
     );
     
-    const GREEN: Color = Color::from_rgb(
+    pub const GREEN: Color = Color::from_rgb(
         0x50 as f32 / 255.0,
         0xFA as f32 / 255.0,
         0x7B as f32 / 255.0,
     );
     
-    const ORANGE: Color = Color::from_rgb(
+    pub const ORANGE: Color = Color::from_rgb(
         0xFF as f32 / 255.0,
         0xB8 as f32 / 255.0,
         0x6C as f32 / 255.0,
     );
     
-    const PINK: Color = Color::from_rgb(
+    pub const PINK: Color = Color::from_rgb(
         0xFF as f32 / 255.0,
         0x79 as f32 / 255.0,
         0xC6 as f32 / 255.0,
     );
     
-    const PURPLE: Color = Color::from_rgb(
+    pub const PURPLE: Color = Color::from_rgb(
         0xBD as f32 / 255.0,
         0x93 as f32 / 255.0,
         0xF9 as f32 / 255.0,
     );
     
-    const RED: Color = Color::from_rgb(
+    pub const RED: Color = Color::from_rgb(
         0xFF as f32 / 255.0,
         0x55 as f32 / 255.0,
         0x55 as f32 / 255.0,
     );
     
-    const YELLOW: Color = Color::from_rgb(
+    pub const YELLOW: Color = Color::from_rgb(
         0xF1 as f32 / 255.0,
         0xFA as f32 / 255.0,
         0x8C as f32 / 255.0,
