@@ -35,8 +35,13 @@ impl App {
         let mut command_output = Vec::new();
 
         // Handle cd command specially
-        if command.starts_with("cd ") {
-            let path = command.trim_start_matches("cd ").trim();
+        if command.starts_with("cd ") || command.eq_ignore_ascii_case("cd") {
+
+            let mut path = "~";
+            if !command.eq_ignore_ascii_case("cd") {
+                path = command.trim_start_matches("cd ").trim();
+            }
+
             let success = self.change_directory(path);
 
             // Update command status
