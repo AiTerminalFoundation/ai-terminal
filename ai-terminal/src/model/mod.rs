@@ -1,6 +1,9 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use crate::config::FocusTarget;
+use std::sync::mpsc;
+use std::sync::Arc;
+use std::sync::Mutex;
 
 pub mod app;
 
@@ -99,4 +102,16 @@ pub struct App {
 
     // Focus target
     pub focus: FocusTarget,
+
+    // Change the command_receiver to use Arc to make it cloneable
+    pub command_receiver: Option<(
+        Arc<Mutex<mpsc::Receiver<String>>>,
+        usize,
+        String,
+        Vec<String>,
+        mpsc::Sender<String>
+    )>,
+
+    // Add this to your App struct
+    pub password_mode: bool,
 }

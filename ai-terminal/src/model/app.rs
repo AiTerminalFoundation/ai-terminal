@@ -1,5 +1,6 @@
 use std::env;
 use std::path::PathBuf;
+use std::sync::{Arc, Mutex, mpsc};
 
 use crate::config::{
     AI_INSTRUCTIONS, AI_WELCOME_MESSAGE, DEFAULT_OLLAMA_MODEL, DEFAULT_PANEL_RATIO,
@@ -63,6 +64,12 @@ pub struct App {
 
     // Focus target
     pub focus: FocusTarget,
+
+    // Change the command_receiver to use Arc to make it cloneable
+    pub command_receiver: Option<(Arc<Mutex<mpsc::Receiver<String>>>, usize, String, Vec<String>)>,
+
+    // Password mode
+    pub password_mode: bool,
 }
 
 impl crate::model::App {
@@ -143,6 +150,10 @@ impl crate::model::App {
             auto_execute_commands: false,
             // Focus target
             focus: FocusTarget::Terminal,
+            // Change the command_receiver to use Arc to make it cloneable
+            command_receiver: None,
+            // Password mode
+            password_mode: false,
         }
     }
 }

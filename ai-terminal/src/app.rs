@@ -2,6 +2,8 @@ use iced::widget::{column, container, row, text_input, scrollable};
 use iced::{Application, Command, Element, Length, Theme, Font};
 use iced::keyboard::{self, Event as KeyEvent};
 use iced::event::Event;
+use iced::subscription;
+use std::time::Duration;
 
 use crate::model::{App as AppState, Panel, CommandStatus};
 use crate::ollama::{api, commands};
@@ -31,6 +33,9 @@ pub enum Message {
     TerminalScroll(scrollable::Viewport),
     ToggleFocus,
     ScrollToBottom,
+    UpdateTerminalOutput(String),
+    SendInput(String),
+    PollCommandOutput,
 }
 
 pub struct TerminalApp {
@@ -104,11 +109,53 @@ impl Application for TerminalApp {
             }
         }
 
-        iced::subscription::events_with(EventHandler::handle)
+        let keyboard_events = iced::subscription::events_with(EventHandler::handle);
+        
+        // Only create the terminal poll subscription if we have a command running
+        let terminal_poll = if self.state.command_receiver.is_some() {
+            subscription::unfold(
+                "terminal_poll",
+                State::Ready,
+                move |state| async move {
+                    match state {
+                        State::Ready => {
+                            tokio::time::sleep(Duration::from_millis(10)).await;
+                            (Message::PollCommandOutput, State::Waiting)
+                        }
+                        State::Waiting => {
+                            tokio::time::sleep(Duration::from_millis(10)).await;
+                            (Message::PollCommandOutput, State::Waiting)
+                        }
+                    }
+                },
+            )
+        } else {
+            subscription::unfold("inactive_poll", (), |_| async {
+                tokio::time::sleep(Duration::from_secs(3600)).await;
+                (Message::PollCommandOutput, ())
+            })
+        };
+        
+        iced::Subscription::batch(vec![
+            keyboard_events,
+            terminal_poll,
+        ])
     }
 
     fn update(&mut self, message: Message) -> Command<Message> {
+        // First, check if we have a streaming command that needs polling
+        if let Some(command) = self.state.poll_command_output() {
+            return command;
+        }
+        
         match message {
+            Message::PollCommandOutput => {
+                if let Some(cmd) = self.state.poll_command_output() {
+                    cmd
+                } else {
+                    Command::none()
+                }
+            }
             Message::TerminalInput(value) => {
                 self.terminal_input = value;
                 Command::none()
@@ -120,8 +167,12 @@ impl Application for TerminalApp {
             Message::ExecuteCommand => {
                 if !self.terminal_input.is_empty() {
                     self.state.input = self.terminal_input.clone();
+                    
+                    // Start command execution
                     self.state.execute_command();
                     self.terminal_input.clear();
+                    
+                    // Always scroll to bottom when executing a command
                     return components::scrollable_container::scroll_to_bottom();
                 }
                 Command::none()
@@ -249,7 +300,7 @@ impl Application for TerminalApp {
                         // Add the AI response to output
                         println!("Adding response to output: {}", response);
                         self.state.ai_output.push(response.clone());
-                        return components::scrollable_container::scroll_to_bottom();
+                        components::scrollable_container::scroll_to_bottom()
                     }
                     Err(error) => {
                         println!("Processing error response: {}", error);
@@ -261,10 +312,9 @@ impl Application for TerminalApp {
                             }
                         }
                         self.state.ai_output.push(format!("Error: {}", error));
-                        return components::scrollable_container::scroll_to_bottom();
+                        components::scrollable_container::scroll_to_bottom()
                     }
                 }
-                Command::none()
             }
             Message::SwitchPanel => {
                 self.state.active_panel = match self.state.active_panel {
@@ -347,6 +397,17 @@ impl Application for TerminalApp {
             }
             Message::ScrollToBottom => {
                 components::scrollable_container::scroll_to_bottom()
+            }
+            Message::UpdateTerminalOutput(line) => {
+                self.state.output.push(line);
+                components::scrollable_container::scroll_to_bottom()
+            }
+            Message::SendInput(input) => {
+                if self.state.password_mode {
+                    self.state.send_input(input);
+                    self.terminal_input.clear();  // Clear the input after sending password
+                }
+                Command::none()
             }
         }
     }
@@ -454,18 +515,36 @@ impl TerminalApp {
         .width(Length::Fill)
         .style(DraculaTheme::current_dir_style());
 
-        let input = text_input("Enter command...", &self.terminal_input)
-            .on_input(Message::TerminalInput)
-            .on_submit(Message::ExecuteCommand)
-            .padding(5)
-            .font(Font::MONOSPACE)
-            .size(12)
-            .id(text_input::Id::new(TERMINAL_INPUT_ID))
-            .style(if self.focus == FocusTarget::Terminal {
-                DraculaTheme::focused_text_input_style()
-            } else {
-                DraculaTheme::text_input_style()
-            });
+        let input = if self.state.password_mode {
+            // Password input field (hidden text)
+            text_input("Enter password...", &self.terminal_input)
+                .on_input(Message::TerminalInput)
+                .on_submit(Message::SendInput(self.terminal_input.clone()))  // Send password on Enter
+                .password()  // This makes the input field hide the text
+                .padding(5)
+                .font(Font::MONOSPACE)
+                .size(12)
+                .id(text_input::Id::new(TERMINAL_INPUT_ID))
+                .style(if self.focus == FocusTarget::Terminal {
+                    DraculaTheme::focused_text_input_style()
+                } else {
+                    DraculaTheme::text_input_style()
+                })
+        } else {
+            // Normal command input field
+            text_input("Enter command...", &self.terminal_input)
+                .on_input(Message::TerminalInput)
+                .on_submit(Message::ExecuteCommand)
+                .padding(5)
+                .font(Font::MONOSPACE)
+                .size(12)
+                .id(text_input::Id::new(TERMINAL_INPUT_ID))
+                .style(if self.focus == FocusTarget::Terminal {
+                    DraculaTheme::focused_text_input_style()
+                } else {
+                    DraculaTheme::text_input_style()
+                })
+        };
 
         column![
             terminal_output,
@@ -570,4 +649,10 @@ impl TerminalApp {
             }
         }
     }
+}
+
+#[derive(Debug, Clone)]
+enum State {
+    Ready,
+    Waiting,
 }

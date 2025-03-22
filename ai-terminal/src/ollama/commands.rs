@@ -1,6 +1,5 @@
 use crate::config::{HELP_COMMANDS};
 use crate::model::App;
-use crate::ollama::api;
 
 pub fn process_ai_command(app: &mut App, command: &str) {
     let parts: Vec<&str> = command.split_whitespace().collect();

@@ -1,4 +1,4 @@
-use iced::keyboard::{KeyCode, Modifiers, Event as KeyEvent};
+use iced::keyboard::{KeyCode, Event as KeyEvent};
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum FocusTarget {
