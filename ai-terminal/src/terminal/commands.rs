@@ -1,10 +1,7 @@
-use crate::config::SEPARATOR_LINE;
 use crate::model::{App, CommandStatus};
 use std::env;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
-use fltk::enums::Key;
-use crate::ollama::commands::{navigate_history_up, navigate_history_down};
 
 impl App {
     pub fn execute_command(&mut self) {
@@ -53,16 +50,11 @@ impl App {
                 self.command_status[command_index] = CommandStatus::Failure;
                 command_output.push("Error changing directory".to_string());
             }
-
-            // Add a separator after the command output
-            self.output.push(SEPARATOR_LINE.repeat(40));
         } else if command.eq_ignore_ascii_case("clear") || command.eq_ignore_ascii_case("cls") {
             // handling command to clear terminal output
             self.output.clear();
             self.command_status[command_index] = CommandStatus::Success;
             self.output.push(format!("> {}", command));
-            // Add a separator after the command output
-            self.output.push(SEPARATOR_LINE.repeat(40));
         } else {
             // Execute the command
             let (output, success) = self.run_command(command);
@@ -75,9 +67,6 @@ impl App {
             } else {
                 self.command_status[command_index] = CommandStatus::Failure;
             }
-
-            // Add a separator after the command output
-            self.output.push(SEPARATOR_LINE.repeat(40));
         }
 
         // Store the command and its output for context
@@ -86,9 +75,8 @@ impl App {
         self.input.clear();
         self.cursor_position = 0;
 
-        // Set scroll to 0 to always show the most recent output at the bottom
-        // In the Paragraph widget, scroll is applied from the bottom when using negative values
-        self.terminal_scroll = 0;
+        // Set scroll to maximum to show the most recent output
+        self.terminal_scroll = usize::MAX;
     }
 
     pub fn run_command(&self, command: &str) -> (Vec<String>, bool) {
@@ -102,11 +90,30 @@ impl App {
         }
 
         let program = parts[0];
-        let args = &parts[1..];
+        let args: Vec<String> = parts[1..]
+            .iter()
+            .map(|&arg| {
+                if arg == "~" || arg.starts_with("~/") {
+                    if let Some(home) = dirs_next::home_dir() {
+                        if arg == "~" {
+                            home.to_string_lossy().to_string()
+                        } else {
+                            home.join(arg.trim_start_matches("~/"))
+                                .to_string_lossy()
+                                .to_string()
+                        }
+                    } else {
+                        arg.to_string()
+                    }
+                } else {
+                    arg.to_string()
+                }
+            })
+            .collect();
 
         // Execute the command
         match Command::new(program)
-            .args(args)
+            .args(&args)
             .current_dir(&self.current_dir)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
@@ -201,10 +208,35 @@ pub fn execute_command(command: &str, current_dir: &PathBuf) -> (Vec<String>, bo
         return handle_cd_command(command, current_dir);
     }
 
+    // Expand tilde in command arguments
+    let expanded_command = command.split_whitespace()
+        .enumerate()
+        .map(|(i, arg)| {
+            if i == 0 {
+                arg.to_string()
+            } else if arg == "~" || arg.starts_with("~/") {
+                if let Some(home) = dirs_next::home_dir() {
+                    if arg == "~" {
+                        home.to_string_lossy().to_string()
+                    } else {
+                        home.join(arg.trim_start_matches("~/"))
+                            .to_string_lossy()
+                            .to_string()
+                    }
+                } else {
+                    arg.to_string()
+                }
+            } else {
+                arg.to_string()
+            }
+        })
+        .collect::<Vec<String>>()
+        .join(" ");
+
     // Execute external command
     let output = Command::new("sh")
         .arg("-c")
-        .arg(command)
+        .arg(expanded_command)
         .current_dir(current_dir)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -266,17 +298,32 @@ fn handle_cd_command(command: &str, current_dir: &PathBuf) -> (Vec<String>, bool
     }
 }
 
-// Update the handle_key_press function to include a wildcard pattern
-pub fn handle_key_press(app: &mut App, key: Key) {
-    match key {
-        Key::Up => {
-            navigate_history_up(app);
-        },
-        Key::Down => {
-            navigate_history_down(app);
-        },
-        _ => {
-            // Handle other keys or do nothing
+pub fn navigate_history_up(app: &mut App) {
+    if let Some(current_index) = app.command_history_index {
+        if current_index > 0 {
+            app.command_history_index = Some(current_index - 1);
+            if let Some(command) = app.command_history.get(current_index - 1) {
+                app.input = command.clone();
+            }
+        }
+    } else if !app.command_history.is_empty() {
+        app.command_history_index = Some(app.command_history.len() - 1);
+        if let Some(command) = app.command_history.last() {
+            app.input = command.clone();
+        }
+    }
+}
+
+pub fn navigate_history_down(app: &mut App) {
+    if let Some(current_index) = app.command_history_index {
+        if current_index < app.command_history.len() - 1 {
+            app.command_history_index = Some(current_index + 1);
+            if let Some(command) = app.command_history.get(current_index + 1) {
+                app.input = command.clone();
+            }
+        } else {
+            app.command_history_index = None;
+            app.input.clear();
         }
     }
 }

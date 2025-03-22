@@ -1,10 +1,8 @@
 pub const APP_TITLE: &str = "AI Terminal!";
 
 // Terminal instructions
-pub const TERMINAL_INSTRUCTIONS: [&str; 3] = [
+pub const TERMINAL_INSTRUCTIONS: [&str; 1] = [
     "Type commands to execute them in the terminal.",
-    "Press Tab to switch between terminal and AI assistant panels.",
-    "Press Ctrl+C to exit the application.",
 ];
 
 // AI welcome message
@@ -15,25 +13,6 @@ pub const AI_INSTRUCTIONS: [&str; 2] = [
     "Type your questions or requests in the input box below.",
     "I can help you with terminal commands and provide explanations.",
 ];
-
-// AI System prompt
-pub const SYSTEM_PROMPT: &str =
-    "You are a helpful AI assistant integrated into a terminal application. \
-Your primary role is to suggest terminal commands that solve the user's requests. \
-\
-IMPORTANT FORMATTING INSTRUCTIONS: \
-Always format your commands in a code block using triple backticks, with each command on its own line: \
-```command``` if you have more commands use & like in the following example: ```command1 & command2 & command3``` \
-When responding: answer with only one command, the one that solves the user's request and not different options.
-\
-You will receive system information about the user's operating system. \
-Use this information to provide commands that are compatible with their OS. \
-\
-You will also receive context about recent terminal output and chat history. \
-Use this context to provide more relevant and accurate responses. \
-\
-Remember that the user can execute your suggested commands directly from the chat, \
-so ensure they are correct, safe, and properly formatted.";
 
 // Help messages
 pub const HELP_MESSAGES: [&str; 2] = ["Available commands:", "Features:"];

@@ -1,7 +1,6 @@
-use reqwest::blocking::Client;
+use reqwest::Client;
 use std::error::Error;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
 
 use crate::config::{OLLAMA_API_URL, OLLAMA_LIST_MODELS_URL};
 use crate::model::{OllamaModelList, OllamaRequest, OllamaResponse};
@@ -10,7 +9,8 @@ use crate::model::{OllamaModelList, OllamaRequest, OllamaResponse};
 pub static IS_THINKING: AtomicBool = AtomicBool::new(false);
 
 /// Function to send a message to Ollama and get a response
-pub fn ask_ollama(message: &str, model: &str) -> Result<String, Box<dyn Error>> {
+pub async fn ask_ollama(message: &str, model: &str) -> Result<String, Box<dyn Error>> {
+    println!("ask_ollama: Sending message to model {}", model);
     let client = Client::new();
 
     let request = OllamaRequest {
@@ -20,29 +20,38 @@ pub fn ask_ollama(message: &str, model: &str) -> Result<String, Box<dyn Error>> 
         system: None,
     };
 
+    println!("ask_ollama: Sending request to {}", OLLAMA_API_URL);
     let response = client
         .post(OLLAMA_API_URL)
         .json(&request)
-        .send()?
-        .json::<OllamaResponse>()?;
+        .send()
+        .await?
+        .json::<OllamaResponse>()
+        .await?;
 
+    println!("ask_ollama: Got response");
     Ok(response.response)
 }
 
 /// Function to list available Ollama models
-pub fn list_ollama_models() -> Result<Vec<String>, Box<dyn Error>> {
+pub async fn list_ollama_models() -> Result<Vec<String>, Box<dyn Error>> {
+    println!("list_ollama_models: Fetching models from {}", OLLAMA_LIST_MODELS_URL);
     let client = Client::new();
 
     let response = client
         .get(OLLAMA_LIST_MODELS_URL)
-        .send()?
-        .json::<OllamaModelList>()?;
+        .send()
+        .await?
+        .json::<OllamaModelList>()
+        .await?;
 
+    println!("list_ollama_models: Got {} models", response.models.len());
     Ok(response.models.into_iter().map(|m| m.name).collect())
 }
 
 // Send a prompt to Ollama and get the response
-pub fn send_prompt(model: &str, prompt: &str, system: Option<&str>) -> Result<String, String> {
+pub async fn send_prompt(model: &str, prompt: &str) -> Result<String, String> {
+    println!("send_prompt: Sending prompt to model {}", model);
     let result = {
         let client = Client::new();
         
@@ -50,21 +59,33 @@ pub fn send_prompt(model: &str, prompt: &str, system: Option<&str>) -> Result<St
             model: model.to_string(),
             prompt: prompt.to_string(),
             stream: false,
-            system: system.map(|s| s.to_string()),
+            system: None,
         };
         
-        match client.post(OLLAMA_API_URL).json(&request).send() {
+        println!("send_prompt: Sending request to {}", OLLAMA_API_URL);
+        match client.post(OLLAMA_API_URL).json(&request).send().await {
             Ok(response) => {
+                println!("send_prompt: Got response with status {}", response.status());
                 if response.status().is_success() {
-                    match response.json::<OllamaResponse>() {
-                        Ok(ollama_response) => Ok(ollama_response.response),
-                        Err(e) => Err(format!("Failed to parse response: {}", e)),
+                    match response.json::<OllamaResponse>().await {
+                        Ok(ollama_response) => {
+                            println!("send_prompt: Successfully parsed response");
+                            Ok(ollama_response.response)
+                        },
+                        Err(e) => {
+                            println!("send_prompt: Failed to parse response: {}", e);
+                            Err(format!("Failed to parse response: {}", e))
+                        }
                     }
                 } else {
+                    println!("send_prompt: API error with status {}", response.status());
                     Err(format!("API error: {}", response.status()))
                 }
             }
-            Err(e) => Err(format!("Request error: {}", e)),
+            Err(e) => {
+                println!("send_prompt: Request error: {}", e);
+                Err(format!("Request error: {}", e))
+            }
         }
     };
     
@@ -75,26 +96,36 @@ pub fn send_prompt(model: &str, prompt: &str, system: Option<&str>) -> Result<St
 }
 
 // Get a list of available models from Ollama
-pub fn list_models() -> Result<Vec<String>, String> {
+pub async fn list_models() -> Result<Vec<String>, String> {
+    println!("list_models: Fetching models from {}", OLLAMA_LIST_MODELS_URL);
     let client = Client::new();
     
-    match client.get(OLLAMA_LIST_MODELS_URL).send() {
+    match client.get(OLLAMA_LIST_MODELS_URL).send().await {
         Ok(response) => {
+            println!("list_models: Got response with status {}", response.status());
             if response.status().is_success() {
-                match response.json::<OllamaModelList>() {
+                match response.json::<OllamaModelList>().await {
                     Ok(model_list) => {
+                        println!("list_models: Successfully parsed {} models", model_list.models.len());
                         let models = model_list.models.into_iter()
                             .map(|model| model.name)
                             .collect();
                         Ok(models)
                     }
-                    Err(e) => Err(format!("Failed to parse response: {}", e)),
+                    Err(e) => {
+                        println!("list_models: Failed to parse response: {}", e);
+                        Err(format!("Failed to parse response: {}", e))
+                    }
                 }
             } else {
+                println!("list_models: API error with status {}", response.status());
                 Err(format!("API error: {}", response.status()))
             }
         }
-        Err(e) => Err(format!("Request error: {}", e)),
+        Err(e) => {
+            println!("list_models: Request error: {}", e);
+            Err(format!("Request error: {}", e))
+        }
     }
 }
 

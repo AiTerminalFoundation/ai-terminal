@@ -28,13 +28,13 @@ pub struct OllamaModelList {
 }
 
 // Application state models
-#[derive(PartialEq, Clone, Copy)]
+#[derive(PartialEq, Clone, Copy, Debug)]
 pub enum Panel {
     Terminal,
     Assistant,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum CommandStatus {
     Success,
     Failure,
@@ -59,6 +59,8 @@ pub struct App {
     pub active_panel: Panel,
     pub panel_ratio: u32,
     pub is_resizing: bool,
+    pub window_width: f32,
+    pub window_height: f32,
 
     // Scroll state
     pub terminal_scroll: usize,
@@ -91,6 +93,6 @@ pub struct App {
     // System information
     pub os_info: String,
 
-    // Auto-execute commands
+    // Auto-execute commands (disabled by default)
     pub auto_execute_commands: bool,
 }

@@ -4,8 +4,9 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-fltk = { version = "1.4", features = ["fltk-bundled"] }
+iced = { version = "0.10", features = ["tokio", "debug", "advanced"] }
+tokio = { version = "1.36", features = ["full"] }
 dirs-next = "2.0.0"
-reqwest = { version = "0.12.14", features = ["json", "blocking"] }
+reqwest = { version = "0.12.14", features = ["json"] }
 serde = { version = "1.0", features = ["derive"] }
 regex = "1.10.2"
