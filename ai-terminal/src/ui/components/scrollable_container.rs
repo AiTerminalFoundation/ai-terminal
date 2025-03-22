@@ -9,6 +9,12 @@ use crate::app::Message;
 static SCROLL_ID: Lazy<scrollable::Id> = Lazy::new(|| scrollable::Id::new("terminal-scroll"));
 
 pub fn scrollable_container<'a>(content: Element<'a, Message>) -> Element<'a, Message> {
+    // Create custom properties for smoother scrolling
+    let properties = Properties::new()
+        .width(8.0)        // Slightly wider scrollbar
+        .scroller_width(8.0)
+        .margin(1.0);      // Add some margin for better appearance
+
     container(
         scrollable(
             container(content)
@@ -17,10 +23,7 @@ pub fn scrollable_container<'a>(content: Element<'a, Message>) -> Element<'a, Me
         )
         .height(Length::Fill)
         .id(SCROLL_ID.clone())
-        .direction(scrollable::Direction::Vertical(Properties::default()))
-        .on_scroll(|_| {
-            Message::ScrollToBottom
-        })
+        .direction(scrollable::Direction::Vertical(properties))
     )
     .width(Length::Fill)
     .height(Length::Fill)

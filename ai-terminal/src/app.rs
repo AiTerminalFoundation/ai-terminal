@@ -32,6 +32,7 @@ pub enum Message {
     ToggleFocus,
     ScrollToBottom,
     TabPressed,
+    NoOp,
 }
 
 pub struct TerminalApp {
@@ -133,7 +134,13 @@ impl Application for TerminalApp {
                     self.state.input = self.terminal_input.clone();
                     self.state.execute_command();
                     self.terminal_input.clear();
-                    return components::scrollable_container::scroll_to_bottom();
+                    
+                    // Add slight delay before scrolling to improve smoothness
+                    let scroll_cmd = components::scrollable_container::scroll_to_bottom();
+                    return Command::batch(vec![
+                        Command::perform(async {}, |_| Message::NoOp),
+                        scroll_cmd,
+                    ]);
                 }
                 Command::none()
             }
@@ -260,7 +267,13 @@ impl Application for TerminalApp {
                         // Add the AI response to output
                         println!("Adding response to output: {}", response);
                         self.state.ai_output.push(response.clone());
-                        return components::scrollable_container::scroll_to_bottom();
+                        
+                        // Add slight delay before scrolling to improve smoothness
+                        let scroll_cmd = components::scrollable_container::scroll_to_bottom();
+                        return Command::batch(vec![
+                            Command::perform(async {}, |_| Message::NoOp),
+                            scroll_cmd,
+                        ]);
                     }
                     Err(error) => {
                         println!("Processing error response: {}", error);
@@ -272,7 +285,13 @@ impl Application for TerminalApp {
                             }
                         }
                         self.state.ai_output.push(format!("Error: {}", error));
-                        return components::scrollable_container::scroll_to_bottom();
+                        
+                        // Add slight delay before scrolling to improve smoothness
+                        let scroll_cmd = components::scrollable_container::scroll_to_bottom();
+                        return Command::batch(vec![
+                            Command::perform(async {}, |_| Message::NoOp),
+                            scroll_cmd,
+                        ]);
                     }
                 }
             }
@@ -341,6 +360,8 @@ impl Application for TerminalApp {
                 Command::none()
             }
             Message::TerminalScroll(viewport) => {
+                // Only update the scroll position if we're not actively
+                // trying to scroll to the bottom
                 self.state.terminal_scroll = viewport.relative_offset().y as usize;
                 Command::none()
             }
@@ -356,6 +377,8 @@ impl Application for TerminalApp {
                 }
             }
             Message::ScrollToBottom => {
+                // Only scroll to bottom when explicitly requested, not on every scroll event
+                // This prevents scroll stuttering when user is manually scrolling
                 components::scrollable_container::scroll_to_bottom()
             }
             Message::TabPressed => {
@@ -391,6 +414,9 @@ impl Application for TerminalApp {
                 }
                 Command::none()
             }
+            Message::NoOp => {
+                Command::none()
+            }
         }
     }
 
@@ -420,7 +446,15 @@ impl TerminalApp {
         let mut current_block = Vec::new();
 
         // Group commands and their outputs into blocks
-        for line in &self.state.output {
+        // Only render the last N blocks for better performance
+        let visible_output = if self.state.output.len() > 100 {
+            // Only show the last 100 lines for better performance
+            self.state.output.iter().skip(self.state.output.len() - 100).cloned().collect()
+        } else {
+            self.state.output.clone()
+        };
+
+        for line in &visible_output {
             if line.starts_with("> ") && !current_block.is_empty() {
                 // If we were building a previous block, add it
                 blocks.push(current_block);
@@ -533,7 +567,16 @@ impl TerminalApp {
         let mut current_block = Vec::new();
 
         // Group AI messages and responses into blocks
-        for line in &self.state.ai_output {
+        // Only render the last N blocks for better performance
+        let visible_output = if self.state.ai_output.len() > 50 {
+            // Only show the last 50 lines for better performance
+            self.state.ai_output.iter().skip(self.state.ai_output.len() - 50).cloned().collect()
+        } else {
+            self.state.ai_output.clone()
+        };
+
+        // Group AI messages and responses into blocks
+        for line in &visible_output {
             if line.starts_with("> ") && !current_block.is_empty() {
                 // If we were building a previous block, add it
                 blocks.push(current_block);
