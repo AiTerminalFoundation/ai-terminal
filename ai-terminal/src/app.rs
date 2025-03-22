@@ -445,22 +445,20 @@ impl TerminalApp {
         // Create styled blocks
         let output_elements: Element<_> = column(
             blocks.iter().enumerate().map(|(i, block)| {
-                let style = if i < block_status.len() {
-                    match block_status[i] {
-                        CommandStatus::Success => DraculaTheme::success_command_block_style(),
-                        CommandStatus::Failure => DraculaTheme::failure_command_block_style(),
-                        _ => DraculaTheme::command_block_style(),
-                    }
-                } else {
-                    DraculaTheme::command_block_style()
-                };
+                // Always use the default command block style, regardless of status
+                let style = DraculaTheme::command_block_style();
+                
+                // Check if this block has a failure status for coloring the command line
+                let has_failed = i < block_status.len() && block_status[i] == CommandStatus::Failure;
 
                 container(
                     column(
                         block.iter().map(|line| {
                             styled_text(
                                 line,
-                                line.starts_with("> ")
+                                line.starts_with("> "),
+                                // Only pass true for command lines (starting with >) and when the command failed
+                                line.starts_with("> ") && has_failed
                             )
                         }).collect()
                     ).spacing(2)
@@ -491,6 +489,7 @@ impl TerminalApp {
                         self.state.current_dir.display().to_string()
                     }
                 ),
+                false,
                 false
             )
         )
@@ -548,7 +547,8 @@ impl TerminalApp {
                         block.iter().map(|line| {
                             styled_text(
                                 line,
-                                line.starts_with("> ")
+                                line.starts_with("> "),
+                                false // AI commands don't have failure status
                             )
                         }).collect()
                     ).spacing(2)

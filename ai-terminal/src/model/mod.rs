@@ -35,7 +35,7 @@ pub enum Panel {
     Assistant,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum CommandStatus {
     Success,
     Failure,
