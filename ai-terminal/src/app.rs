@@ -1,4 +1,4 @@
-use iced::widget::{column, container, row, text_input, scrollable};
+use iced::widget::{column, container, row, text_input, scrollable, text};
 use iced::{Application, Command, Element, Length, Theme, Font};
 use iced::keyboard::{self, Event as KeyEvent};
 use iced::event::Event;
@@ -36,6 +36,8 @@ pub enum Message {
     UpdateTerminalOutput(String),
     SendInput(String),
     PollCommandOutput,
+    TabPressed,
+    NoOp,
 }
 
 pub struct TerminalApp {
@@ -43,6 +45,8 @@ pub struct TerminalApp {
     terminal_input: String,
     ai_input: String,
     focus: FocusTarget,
+    current_suggestions: Vec<String>,
+    suggestion_index: usize,
 }
 
 impl Application for TerminalApp {
@@ -58,6 +62,8 @@ impl Application for TerminalApp {
                 terminal_input: String::new(),
                 ai_input: String::new(),
                 focus: FocusTarget::Terminal,
+                current_suggestions: Vec::new(),
+                suggestion_index: 0,
             },
             Command::none(),
         )
@@ -73,10 +79,13 @@ impl Application for TerminalApp {
             fn handle(event: Event, _status: iced::event::Status) -> Option<Message> {
                 if let Event::Keyboard(key_event) = event {
                     match key_event {
-                        KeyEvent::KeyPressed { 
+                        KeyEvent::KeyPressed {
                             key_code: keyboard::KeyCode::Tab,
+                            modifiers,
                             ..
-                        } => Some(Message::SwitchPanel),
+                        } if !modifiers.alt() && !modifiers.control() && !modifiers.shift() => {
+                            Some(Message::TabPressed)
+                        }
                         KeyEvent::KeyPressed {
                             key_code: keyboard::KeyCode::Up,
                             ..
@@ -158,6 +167,9 @@ impl Application for TerminalApp {
             }
             Message::TerminalInput(value) => {
                 self.terminal_input = value;
+                // Reset suggestions when input changes
+                self.current_suggestions.clear();
+                self.suggestion_index = 0;
                 Command::none()
             }
             Message::AIInput(value) => {
@@ -172,8 +184,12 @@ impl Application for TerminalApp {
                     self.state.execute_command();
                     self.terminal_input.clear();
                     
-                    // Always scroll to bottom when executing a command
-                    return components::scrollable_container::scroll_to_bottom();
+                    // Add slight delay before scrolling to improve smoothness
+                    let scroll_cmd = components::scrollable_container::scroll_to_bottom();
+                    return Command::batch(vec![
+                        Command::perform(async {}, |_| Message::NoOp),
+                        scroll_cmd,
+                    ]);
                 }
                 Command::none()
             }
@@ -300,7 +316,13 @@ impl Application for TerminalApp {
                         // Add the AI response to output
                         println!("Adding response to output: {}", response);
                         self.state.ai_output.push(response.clone());
-                        components::scrollable_container::scroll_to_bottom()
+                        
+                        // Add slight delay before scrolling to improve smoothness
+                        let scroll_cmd = components::scrollable_container::scroll_to_bottom();
+                        return Command::batch(vec![
+                            Command::perform(async {}, |_| Message::NoOp),
+                            scroll_cmd,
+                        ]);
                     }
                     Err(error) => {
                         println!("Processing error response: {}", error);
@@ -312,7 +334,13 @@ impl Application for TerminalApp {
                             }
                         }
                         self.state.ai_output.push(format!("Error: {}", error));
-                        components::scrollable_container::scroll_to_bottom()
+                        
+                        // Add slight delay before scrolling to improve smoothness
+                        let scroll_cmd = components::scrollable_container::scroll_to_bottom();
+                        return Command::batch(vec![
+                            Command::perform(async {}, |_| Message::NoOp),
+                            scroll_cmd,
+                        ]);
                     }
                 }
             }
@@ -381,6 +409,8 @@ impl Application for TerminalApp {
                 Command::none()
             }
             Message::TerminalScroll(viewport) => {
+                // Only update the scroll position if we're not actively
+                // trying to scroll to the bottom
                 self.state.terminal_scroll = viewport.relative_offset().y as usize;
                 Command::none()
             }
@@ -396,6 +426,8 @@ impl Application for TerminalApp {
                 }
             }
             Message::ScrollToBottom => {
+                // Only scroll to bottom when explicitly requested, not on every scroll event
+                // This prevents scroll stuttering when user is manually scrolling
                 components::scrollable_container::scroll_to_bottom()
             }
             Message::UpdateTerminalOutput(line) => {
@@ -407,6 +439,42 @@ impl Application for TerminalApp {
                     self.state.send_input(input);
                     self.terminal_input.clear();  // Clear the input after sending password
                 }
+                Command::none()
+            }
+            Message::TabPressed => {
+                println!("[app.rs] Tab pressed message received");
+                if self.focus == FocusTarget::Terminal {
+                    println!("[app.rs] Focus is on terminal");
+                    
+                    // If we don't have any suggestions yet, get them
+                    if self.current_suggestions.is_empty() {
+                        println!("[app.rs] Getting new suggestions");
+                        self.state.input = self.terminal_input.clone();
+                        self.current_suggestions = self.state.get_autocomplete_suggestions();
+                        self.suggestion_index = 0;
+                        println!("[app.rs] Got suggestions: {:?}", self.current_suggestions);
+                    } else {
+                        // We already have suggestions, move to the next one
+                        println!("[app.rs] Moving to next suggestion");
+                        self.suggestion_index = (self.suggestion_index + 1) % self.current_suggestions.len();
+                    }
+
+                    // Apply the current suggestion if we have any
+                    if !self.current_suggestions.is_empty() {
+                        println!("[app.rs] Using suggestion {}: {}", self.suggestion_index, self.current_suggestions[self.suggestion_index]);
+                        self.terminal_input = self.current_suggestions[self.suggestion_index].clone();
+                        // Move cursor to end after applying suggestion
+                        return text_input::move_cursor_to_end(text_input::Id::new(TERMINAL_INPUT_ID));
+                    } else {
+                        println!("[app.rs] No suggestions found");
+                    }
+                } else {
+                    println!("[app.rs] Focus is not on terminal");
+                    self.focus = FocusTarget::Terminal;
+                }
+                Command::none()
+            }
+            Message::NoOp => {
                 Command::none()
             }
         }
@@ -438,7 +506,15 @@ impl TerminalApp {
         let mut current_block = Vec::new();
 
         // Group commands and their outputs into blocks
-        for line in &self.state.output {
+        // Only render the last N blocks for better performance
+        let visible_output = if self.state.output.len() > 100 {
+            // Only show the last 100 lines for better performance
+            self.state.output.iter().skip(self.state.output.len() - 100).cloned().collect()
+        } else {
+            self.state.output.clone()
+        };
+
+        for line in &visible_output {
             if line.starts_with("> ") && !current_block.is_empty() {
                 // If we were building a previous block, add it
                 blocks.push(current_block);
@@ -462,22 +538,20 @@ impl TerminalApp {
         // Create styled blocks
         let output_elements: Element<_> = column(
             blocks.iter().enumerate().map(|(i, block)| {
-                let style = if i < block_status.len() {
-                    match block_status[i] {
-                        CommandStatus::Success => DraculaTheme::success_command_block_style(),
-                        CommandStatus::Failure => DraculaTheme::failure_command_block_style(),
-                        _ => DraculaTheme::command_block_style(),
-                    }
-                } else {
-                    DraculaTheme::command_block_style()
-                };
+                // Always use the default command block style, regardless of status
+                let style = DraculaTheme::command_block_style();
+                
+                // Check if this block has a failure status for coloring the command line
+                let has_failed = i < block_status.len() && block_status[i] == CommandStatus::Failure;
 
                 container(
                     column(
                         block.iter().map(|line| {
                             styled_text(
                                 line,
-                                line.starts_with("> ")
+                                line.starts_with("> "),
+                                // Only pass true for command lines (starting with >) and when the command failed
+                                line.starts_with("> ") && has_failed
                             )
                         }).collect()
                     ).spacing(2)
@@ -495,25 +569,35 @@ impl TerminalApp {
 
         let terminal_output = components::scrollable_container::scrollable_container(output_elements);
 
-        let current_dir = container(
-            styled_text(
-                &format!("{}",
-                    if let Some(home) = dirs_next::home_dir() {
-                        if let Ok(path) = self.state.current_dir.strip_prefix(&home) {
-                            format!("~/{}", path.display())
-                        } else {
-                            self.state.current_dir.display().to_string()
-                        }
-                    } else {
-                        self.state.current_dir.display().to_string()
-                    }
-                ),
-                false
-            )
-        )
-        .padding(5)
-        .width(Length::Fill)
-        .style(DraculaTheme::current_dir_style());
+        let dir_path = if let Some(home) = dirs_next::home_dir() {
+            if let Ok(path) = self.state.current_dir.strip_prefix(&home) {
+                format!("~/{}", path.display())
+            } else {
+                self.state.current_dir.display().to_string()
+            }
+        } else {
+            self.state.current_dir.display().to_string()
+        };
+
+        // Create directory path display, possibly with git info
+        let current_dir_content = if self.state.is_git_repo {
+            if let Some(branch) = &self.state.git_branch {
+                row![
+                    styled_text(&dir_path, false, false),
+                    styled_text(" ", false, false),
+                    crate::ui::components::git_branch_text(branch)
+                ]
+            } else {
+                row![styled_text(&dir_path, false, false)]
+            }
+        } else {
+            row![styled_text(&dir_path, false, false)]
+        };
+
+        let current_dir = container(current_dir_content)
+            .padding(5)
+            .width(Length::Fill)
+            .style(DraculaTheme::current_dir_style());
 
         let input = if self.state.password_mode {
             // Password input field (hidden text)
@@ -561,7 +645,16 @@ impl TerminalApp {
         let mut current_block = Vec::new();
 
         // Group AI messages and responses into blocks
-        for line in &self.state.ai_output {
+        // Only render the last N blocks for better performance
+        let visible_output = if self.state.ai_output.len() > 50 {
+            // Only show the last 50 lines for better performance
+            self.state.ai_output.iter().skip(self.state.ai_output.len() - 50).cloned().collect()
+        } else {
+            self.state.ai_output.clone()
+        };
+
+        // Group AI messages and responses into blocks
+        for line in &visible_output {
             if line.starts_with("> ") && !current_block.is_empty() {
                 // If we were building a previous block, add it
                 blocks.push(current_block);
@@ -583,7 +676,8 @@ impl TerminalApp {
                         block.iter().map(|line| {
                             styled_text(
                                 line,
-                                line.starts_with("> ")
+                                line.starts_with("> "),
+                                false // AI commands don't have failure status
                             )
                         }).collect()
                     ).spacing(2)
@@ -635,8 +729,35 @@ impl TerminalApp {
     }
 
     pub fn handle_input(&mut self, key_event: KeyEvent) {
-        if handle_keyboard_shortcuts(key_event, &mut self.focus) {
-            return;
+        match key_event {
+            KeyEvent::KeyPressed { 
+                key_code: keyboard::KeyCode::Tab,
+                modifiers,
+                ..
+            } if !modifiers.alt() && !modifiers.control() && !modifiers.shift() => {
+                println!("[app.rs] Tab key pressed in handle_input");
+                if self.focus == FocusTarget::Terminal {
+                    println!("[app.rs] Focus is on terminal, getting suggestions");
+                    self.state.input = self.terminal_input.clone();
+                    println!("[app.rs] Current input: {}", self.terminal_input);
+                    let suggestions = self.state.get_autocomplete_suggestions();
+                    println!("[app.rs] Got suggestions: {:?}", suggestions);
+                    if !suggestions.is_empty() {
+                        println!("[app.rs] Using first suggestion: {}", suggestions[0]);
+                        self.terminal_input = suggestions[0].clone();
+                    } else {
+                        println!("[app.rs] No suggestions found");
+                    }
+                } else {
+                    println!("[app.rs] Focus is not on terminal");
+                }
+                return;
+            }
+            _ => {
+                if handle_keyboard_shortcuts(key_event, &mut self.focus) {
+                    return;
+                }
+            }
         }
         
         // Handle other input based on focus

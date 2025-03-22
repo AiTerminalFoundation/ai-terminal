@@ -43,8 +43,13 @@ impl App {
         let mut command_output = Vec::new();
 
         // Handle cd command specially
-        if command.starts_with("cd ") {
-            let path = command.trim_start_matches("cd ").trim();
+        if command.starts_with("cd ") || command.eq_ignore_ascii_case("cd") {
+
+            let mut path = "~";
+            if !command.eq_ignore_ascii_case("cd") {
+                path = command.trim_start_matches("cd ").trim();
+            }
+
             let success = self.change_directory(path);
 
             // Update command status
@@ -295,6 +300,12 @@ impl App {
         match env::set_current_dir(&new_dir) {
             Ok(_) => {
                 self.current_dir = new_dir;
+                
+                // Check if this is a git repository and get branch info
+                let (is_git_repo, branch) = crate::terminal::utils::get_git_info(&self.current_dir);
+                self.is_git_repo = is_git_repo;
+                self.git_branch = branch;
+                
                 self.output.push(format!(
                     "Changed directory to: {}",
                     self.current_dir.display()

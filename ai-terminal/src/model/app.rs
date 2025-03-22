@@ -15,6 +15,8 @@ pub struct App {
     pub output: Vec<String>,
     pub cursor_position: usize,
     pub current_dir: PathBuf,
+    pub is_git_repo: bool,
+    pub git_branch: Option<String>,
 
     // AI assistant panel state
     pub ai_input: String,
@@ -83,6 +85,9 @@ impl crate::model::App {
         // Detect OS information
         let os_info = detect_os();
 
+        // Check if current directory is a git repository
+        let (is_git_repo, git_branch) = crate::terminal::utils::get_git_info(&current_dir);
+
         // Initial output messages
         let mut initial_output = vec![
             format!("Operating System: {}", os_info),
@@ -114,6 +119,8 @@ impl crate::model::App {
             output: initial_output,
             cursor_position: 0,
             current_dir,
+            is_git_repo,
+            git_branch,
             // Initialize AI assistant fields
             ai_input: String::new(),
             ai_output: initial_ai_output,
