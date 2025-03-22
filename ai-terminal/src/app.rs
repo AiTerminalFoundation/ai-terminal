@@ -31,6 +31,7 @@ pub enum Message {
     TerminalScroll(scrollable::Viewport),
     ToggleFocus,
     ScrollToBottom,
+    TabPressed,
 }
 
 pub struct TerminalApp {
@@ -38,6 +39,8 @@ pub struct TerminalApp {
     terminal_input: String,
     ai_input: String,
     focus: FocusTarget,
+    current_suggestions: Vec<String>,
+    suggestion_index: usize,
 }
 
 impl Application for TerminalApp {
@@ -53,6 +56,8 @@ impl Application for TerminalApp {
                 terminal_input: String::new(),
                 ai_input: String::new(),
                 focus: FocusTarget::Terminal,
+                current_suggestions: Vec::new(),
+                suggestion_index: 0,
             },
             Command::none(),
         )
@@ -68,10 +73,13 @@ impl Application for TerminalApp {
             fn handle(event: Event, _status: iced::event::Status) -> Option<Message> {
                 if let Event::Keyboard(key_event) = event {
                     match key_event {
-                        KeyEvent::KeyPressed { 
+                        KeyEvent::KeyPressed {
                             key_code: keyboard::KeyCode::Tab,
+                            modifiers,
                             ..
-                        } => Some(Message::SwitchPanel),
+                        } if !modifiers.alt() && !modifiers.control() && !modifiers.shift() => {
+                            Some(Message::TabPressed)
+                        }
                         KeyEvent::KeyPressed {
                             key_code: keyboard::KeyCode::Up,
                             ..
@@ -111,6 +119,9 @@ impl Application for TerminalApp {
         match message {
             Message::TerminalInput(value) => {
                 self.terminal_input = value;
+                // Reset suggestions when input changes
+                self.current_suggestions.clear();
+                self.suggestion_index = 0;
                 Command::none()
             }
             Message::AIInput(value) => {
@@ -348,6 +359,39 @@ impl Application for TerminalApp {
             Message::ScrollToBottom => {
                 components::scrollable_container::scroll_to_bottom()
             }
+            Message::TabPressed => {
+                println!("[app.rs] Tab pressed message received");
+                if self.focus == FocusTarget::Terminal {
+                    println!("[app.rs] Focus is on terminal");
+                    
+                    // If we don't have any suggestions yet, get them
+                    if self.current_suggestions.is_empty() {
+                        println!("[app.rs] Getting new suggestions");
+                        self.state.input = self.terminal_input.clone();
+                        self.current_suggestions = self.state.get_autocomplete_suggestions();
+                        self.suggestion_index = 0;
+                        println!("[app.rs] Got suggestions: {:?}", self.current_suggestions);
+                    } else {
+                        // We already have suggestions, move to the next one
+                        println!("[app.rs] Moving to next suggestion");
+                        self.suggestion_index = (self.suggestion_index + 1) % self.current_suggestions.len();
+                    }
+
+                    // Apply the current suggestion if we have any
+                    if !self.current_suggestions.is_empty() {
+                        println!("[app.rs] Using suggestion {}: {}", self.suggestion_index, self.current_suggestions[self.suggestion_index]);
+                        self.terminal_input = self.current_suggestions[self.suggestion_index].clone();
+                        // Move cursor to end after applying suggestion
+                        return text_input::move_cursor_to_end(text_input::Id::new(TERMINAL_INPUT_ID));
+                    } else {
+                        println!("[app.rs] No suggestions found");
+                    }
+                } else {
+                    println!("[app.rs] Focus is not on terminal");
+                    self.focus = FocusTarget::Terminal;
+                }
+                Command::none()
+            }
         }
     }
 
@@ -556,8 +600,35 @@ impl TerminalApp {
     }
 
     pub fn handle_input(&mut self, key_event: KeyEvent) {
-        if handle_keyboard_shortcuts(key_event, &mut self.focus) {
-            return;
+        match key_event {
+            KeyEvent::KeyPressed { 
+                key_code: keyboard::KeyCode::Tab,
+                modifiers,
+                ..
+            } if !modifiers.alt() && !modifiers.control() && !modifiers.shift() => {
+                println!("[app.rs] Tab key pressed in handle_input");
+                if self.focus == FocusTarget::Terminal {
+                    println!("[app.rs] Focus is on terminal, getting suggestions");
+                    self.state.input = self.terminal_input.clone();
+                    println!("[app.rs] Current input: {}", self.terminal_input);
+                    let suggestions = self.state.get_autocomplete_suggestions();
+                    println!("[app.rs] Got suggestions: {:?}", suggestions);
+                    if !suggestions.is_empty() {
+                        println!("[app.rs] Using first suggestion: {}", suggestions[0]);
+                        self.terminal_input = suggestions[0].clone();
+                    } else {
+                        println!("[app.rs] No suggestions found");
+                    }
+                } else {
+                    println!("[app.rs] Focus is not on terminal");
+                }
+                return;
+            }
+            _ => {
+                if handle_keyboard_shortcuts(key_event, &mut self.focus) {
+                    return;
+                }
+            }
         }
         
         // Handle other input based on focus
