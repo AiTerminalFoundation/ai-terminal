@@ -8,6 +8,12 @@ use crate::ollama::{api, commands};
 use crate::ui::components::{styled_text, drag_handle};
 use crate::ui::theme::DraculaTheme;
 use crate::terminal::utils;
+use crate::config::keyboard::{FocusTarget, handle_keyboard_shortcuts};
+use crate::ui::components;
+
+// Add these constants at the top of the file
+const TERMINAL_INPUT_ID: &str = "terminal_input";
+const AI_INPUT_ID: &str = "ai_input";
 
 #[derive(Debug, Clone)]
 pub enum Message {
@@ -23,12 +29,15 @@ pub enum Message {
     HistoryDown,
     TildePressed,
     TerminalScroll(scrollable::Viewport),
+    ToggleFocus,
+    ScrollToBottom,
 }
 
 pub struct TerminalApp {
     state: AppState,
     terminal_input: String,
     ai_input: String,
+    focus: FocusTarget,
 }
 
 impl Application for TerminalApp {
@@ -43,6 +52,7 @@ impl Application for TerminalApp {
                 state: AppState::new(),
                 terminal_input: String::new(),
                 ai_input: String::new(),
+                focus: FocusTarget::Terminal,
             },
             Command::none(),
         )
@@ -53,28 +63,48 @@ impl Application for TerminalApp {
     }
 
     fn subscription(&self) -> iced::Subscription<Message> {
-        iced::subscription::events_with(|event, _status| {
-            match event {
-                Event::Keyboard(KeyEvent::KeyPressed { key_code, modifiers }) => {
-                    match key_code {
-                        keyboard::KeyCode::Tab => Some(Message::SwitchPanel),
-                        keyboard::KeyCode::Up => Some(Message::HistoryUp),
-                        keyboard::KeyCode::Down => Some(Message::HistoryDown),
-                        keyboard::KeyCode::Left if modifiers.alt() => {
-                            Some(Message::ResizeLeft)
-                        }
-                        keyboard::KeyCode::Right if modifiers.alt() => {
-                            Some(Message::ResizeRight)
-                        }
-                        keyboard::KeyCode::Grave if modifiers.contains(keyboard::Modifiers::SHIFT) => {
-                            Some(Message::TildePressed)
-                        }
+        struct EventHandler;
+        impl EventHandler {
+            fn handle(event: Event, _status: iced::event::Status) -> Option<Message> {
+                if let Event::Keyboard(key_event) = event {
+                    match key_event {
+                        KeyEvent::KeyPressed { 
+                            key_code: keyboard::KeyCode::Tab,
+                            ..
+                        } => Some(Message::SwitchPanel),
+                        KeyEvent::KeyPressed {
+                            key_code: keyboard::KeyCode::Up,
+                            ..
+                        } => Some(Message::HistoryUp),
+                        KeyEvent::KeyPressed {
+                            key_code: keyboard::KeyCode::Down,
+                            ..
+                        } => Some(Message::HistoryDown),
+                        KeyEvent::KeyPressed {
+                            key_code: keyboard::KeyCode::Left,
+                            modifiers,
+                        } if modifiers.alt() => Some(Message::ResizeLeft),
+                        KeyEvent::KeyPressed {
+                            key_code: keyboard::KeyCode::Right,
+                            modifiers,
+                        } if modifiers.alt() => Some(Message::ResizeRight),
+                        KeyEvent::KeyPressed {
+                            key_code: keyboard::KeyCode::Grave,
+                            modifiers,
+                        } if modifiers.shift() => Some(Message::TildePressed),
+                        KeyEvent::KeyPressed {
+                            key_code: keyboard::KeyCode::E,
+                            modifiers,
+                        } if modifiers.control() => Some(Message::ToggleFocus),
                         _ => None,
                     }
+                } else {
+                    None
                 }
-                _ => None,
             }
-        })
+        }
+
+        iced::subscription::events_with(EventHandler::handle)
     }
 
     fn update(&mut self, message: Message) -> Command<Message> {
@@ -92,6 +122,7 @@ impl Application for TerminalApp {
                     self.state.input = self.terminal_input.clone();
                     self.state.execute_command();
                     self.terminal_input.clear();
+                    return components::scrollable_container::scroll_to_bottom();
                 }
                 Command::none()
             }
@@ -101,7 +132,8 @@ impl Application for TerminalApp {
                     self.ai_input.clear();
                     
                     // Add query to output
-                    self.state.ai_output.push(format!("> {}", query));
+                    let formatted_query = format!("> {}", query);
+                    self.state.ai_output.push(formatted_query.clone());
 
                     // Check if the input is a command
                     if query.starts_with('/') {
@@ -210,12 +242,14 @@ impl Application for TerminalApp {
                         let extracted_command = utils::extract_commands(&response);
                         if !extracted_command.is_empty() {
                             println!("Extracted command: {}", extracted_command);
-                            self.state.last_ai_command = Some(extracted_command);
+                            self.state.last_ai_command = Some(extracted_command.clone());
+                            self.terminal_input = extracted_command;
                         }
 
                         // Add the AI response to output
                         println!("Adding response to output: {}", response);
-                        self.state.ai_output.push(response);
+                        self.state.ai_output.push(response.clone());
+                        return components::scrollable_container::scroll_to_bottom();
                     }
                     Err(error) => {
                         println!("Processing error response: {}", error);
@@ -227,6 +261,7 @@ impl Application for TerminalApp {
                             }
                         }
                         self.state.ai_output.push(format!("Error: {}", error));
+                        return components::scrollable_container::scroll_to_bottom();
                     }
                 }
                 Command::none()
@@ -249,33 +284,40 @@ impl Application for TerminalApp {
                 Command::none()
             }
             Message::HistoryUp => {
-                // Handle history navigation up
-                if let Some(index) = self.state.command_history_index {
-                    if index > 0 {
-                        self.state.command_history_index = Some(index - 1);
-                        if let Some(command) = self.state.command_history.get(index - 1) {
+                if self.focus == FocusTarget::Terminal {
+                    if let Some(current_index) = self.state.command_history_index {
+                        // Already navigating history, try to go to older command
+                        if current_index > 0 {
+                            self.state.command_history_index = Some(current_index - 1);
+                            if let Some(command) = self.state.command_history.get(current_index - 1) {
+                                self.terminal_input = command.clone();
+                            }
+                        }
+                    } else if !self.state.command_history.is_empty() {
+                        // Start from newest command (last in the vector)
+                        let last_idx = self.state.command_history.len() - 1;
+                        self.state.command_history_index = Some(last_idx);
+                        if let Some(command) = self.state.command_history.last() {
                             self.terminal_input = command.clone();
                         }
-                    }
-                } else if !self.state.command_history.is_empty() {
-                    self.state.command_history_index = Some(self.state.command_history.len() - 1);
-                    if let Some(command) = self.state.command_history.last() {
-                        self.terminal_input = command.clone();
                     }
                 }
                 Command::none()
             }
             Message::HistoryDown => {
-                // Handle history navigation down
-                if let Some(index) = self.state.command_history_index {
-                    if index < self.state.command_history.len() - 1 {
-                        self.state.command_history_index = Some(index + 1);
-                        if let Some(command) = self.state.command_history.get(index + 1) {
-                            self.terminal_input = command.clone();
+                if self.focus == FocusTarget::Terminal {
+                    if let Some(current_index) = self.state.command_history_index {
+                        // Move to newer command
+                        if current_index < self.state.command_history.len() - 1 {
+                            self.state.command_history_index = Some(current_index + 1);
+                            if let Some(command) = self.state.command_history.get(current_index + 1) {
+                                self.terminal_input = command.clone();
+                            }
+                        } else {
+                            // At newest command, clear input
+                            self.state.command_history_index = None;
+                            self.terminal_input.clear();
                         }
-                    } else {
-                        self.state.command_history_index = None;
-                        self.terminal_input.clear();
                     }
                 }
                 Command::none()
@@ -291,6 +333,20 @@ impl Application for TerminalApp {
             Message::TerminalScroll(viewport) => {
                 self.state.terminal_scroll = viewport.relative_offset().y as usize;
                 Command::none()
+            }
+            Message::ToggleFocus => {
+                self.focus = match self.focus {
+                    FocusTarget::Terminal => FocusTarget::AiChat,
+                    FocusTarget::AiChat => FocusTarget::Terminal,
+                };
+                // Return a command to focus the correct input
+                match self.focus {
+                    FocusTarget::Terminal => text_input::focus(text_input::Id::new(TERMINAL_INPUT_ID)),
+                    FocusTarget::AiChat => text_input::focus(text_input::Id::new(AI_INPUT_ID)),
+                }
+            }
+            Message::ScrollToBottom => {
+                components::scrollable_container::scroll_to_bottom()
             }
         }
     }
@@ -376,10 +432,7 @@ impl TerminalApp {
         .width(Length::Fill)
         .into();
 
-        let terminal_output = scrollable(output_elements)
-            .height(Length::Fill)
-            .on_scroll(Message::TerminalScroll)
-            .id(scrollable::Id::new("terminal-output"));
+        let terminal_output = components::scrollable_container::scrollable_container(output_elements);
 
         let current_dir = container(
             styled_text(
@@ -407,7 +460,12 @@ impl TerminalApp {
             .padding(5)
             .font(Font::MONOSPACE)
             .size(12)
-            .style(DraculaTheme::text_input_style());
+            .id(text_input::Id::new(TERMINAL_INPUT_ID))
+            .style(if self.focus == FocusTarget::Terminal {
+                DraculaTheme::focused_text_input_style()
+            } else {
+                DraculaTheme::text_input_style()
+            });
 
         column![
             terminal_output,
@@ -462,9 +520,7 @@ impl TerminalApp {
         .width(Length::Fill)
         .into();
 
-        let ai_output = scrollable(output_elements)
-            .height(Length::Fill)
-            .id(scrollable::Id::new("ai-output"));
+        let ai_output = components::scrollable_container::scrollable_container(output_elements);
 
         let input = text_input("Ask AI...", &self.ai_input)
             .on_input(Message::AIInput)
@@ -472,7 +528,12 @@ impl TerminalApp {
             .padding(5)
             .font(Font::MONOSPACE)
             .size(12)
-            .style(DraculaTheme::text_input_style());
+            .id(text_input::Id::new(AI_INPUT_ID))
+            .style(if self.focus == FocusTarget::AiChat {
+                DraculaTheme::focused_text_input_style()
+            } else {
+                DraculaTheme::text_input_style()
+            });
 
         column![
             ai_output,
@@ -492,5 +553,21 @@ impl TerminalApp {
             query,
             self.state.current_dir.display()
         )
+    }
+
+    pub fn handle_input(&mut self, key_event: KeyEvent) {
+        if handle_keyboard_shortcuts(key_event, &mut self.focus) {
+            return;
+        }
+        
+        // Handle other input based on focus
+        match self.focus {
+            FocusTarget::Terminal => {
+                // ... existing terminal input handling ...
+            }
+            FocusTarget::AiChat => {
+                // ... existing AI chat input handling ...
+            }
+        }
     }
 }

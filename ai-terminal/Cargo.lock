@@ -60,6 +60,7 @@ version = "0.1.0"
 dependencies = [
  "dirs-next",
  "iced",
+ "once_cell",
  "regex",
  "reqwest",
  "serde",

@@ -50,6 +50,52 @@ impl text_input::StyleSheet for TextInputStyle {
     }
 }
 
+struct FocusedTextInputStyle;
+
+impl text_input::StyleSheet for FocusedTextInputStyle {
+    type Style = Theme;
+
+    fn active(&self, _style: &Self::Style) -> text_input::Appearance {
+        text_input::Appearance {
+            background: DraculaTheme::CURRENT_LINE.into(),
+            border_radius: 4.0.into(),
+            border_width: 2.0,
+            border_color: DraculaTheme::PURPLE,
+            icon_color: DraculaTheme::FOREGROUND,
+        }
+    }
+
+    fn focused(&self, style: &Self::Style) -> text_input::Appearance {
+        self.active(style)
+    }
+
+    fn placeholder_color(&self, _style: &Self::Style) -> Color {
+        DraculaTheme::COMMENT
+    }
+
+    fn value_color(&self, _style: &Self::Style) -> Color {
+        DraculaTheme::FOREGROUND
+    }
+
+    fn selection_color(&self, _style: &Self::Style) -> Color {
+        DraculaTheme::SELECTION
+    }
+
+    fn disabled_color(&self, _style: &Self::Style) -> Color {
+        DraculaTheme::COMMENT
+    }
+
+    fn disabled(&self, _style: &Self::Style) -> text_input::Appearance {
+        text_input::Appearance {
+            background: DraculaTheme::BACKGROUND.into(),
+            border_radius: 4.0.into(),
+            border_width: 1.0,
+            border_color: DraculaTheme::COMMENT,
+            icon_color: DraculaTheme::COMMENT,
+        }
+    }
+}
+
 impl DraculaTheme {
     const BACKGROUND: Color = Color::from_rgb(
         0x28 as f32 / 255.0,
@@ -193,5 +239,9 @@ impl DraculaTheme {
             border_width: 0.0,
             border_color: Color::TRANSPARENT,
         })
+    }
+
+    pub fn focused_text_input_style() -> iced::theme::TextInput {
+        iced::theme::TextInput::Custom(Box::new(FocusedTextInputStyle))
     }
 } 
