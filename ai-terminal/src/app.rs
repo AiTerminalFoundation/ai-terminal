@@ -1,17 +1,11 @@
 use iced::widget::{container, row, text_input};
 use iced::{Application, Command, Element, Length, Theme};
 use iced::keyboard::Event as KeyEvent;
-use iced::event::Event;
-use iced::subscription;
-use std::time::Duration;
 
 use crate::model::{App as AppState, Panel};
-use crate::ollama::{api, commands};
-use crate::ui::components::{drag_handle, TerminalPanel, AiPanel, ShortcutsModal};
+use crate::ui::components::{drag_handle, ShortcutsModal};
 use crate::ui::theme::DraculaTheme;
-use crate::terminal::utils;
-use crate::config::keyboard::{FocusTarget, handle_keyboard_shortcuts, handle_keyboard_event, ShortcutAction};
-use crate::ui::components;
+use crate::config::keyboard::{FocusTarget};
 use crate::ui::messages::Message;
 use crate::ui::panel_state::{TerminalPanelState, AiPanelState, PanelViews};
 use crate::ui::subscriptions;

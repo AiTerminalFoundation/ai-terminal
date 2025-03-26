@@ -2,7 +2,7 @@ use iced::Command;
 use iced::widget::text_input;
 use std::time::Duration;
 
-use crate::model::{App as AppState, Panel};
+use crate::model::{App as AppState};
 use crate::config::keyboard::FocusTarget;
 use crate::ui::messages::Message;
 use crate::ui::panel_state::{TerminalPanelState, AiPanelState};
@@ -49,12 +49,6 @@ pub fn handle_terminal_input(
     
     terminal_panel.panel.update_input(terminal_input.clone());
     
-    Command::none()
-}
-
-// Handler for AI Input message
-pub fn handle_ai_input(ai_input: &mut String, value: String) -> Command<Message> {
-    *ai_input = value.clone();
     Command::none()
 }
 

@@ -151,7 +151,7 @@ impl App {
         
         // Send an initial output to force display refresh
         // This line helps ensure the UI updates even if command takes time to produce output
-        tx.send(format!("Running command: {}", command)).ok();
+        tx.send("".to_string()).ok();
         
         // Detect if this is a directory listing command
         let is_ls_command = command.trim() == "ls" || command.trim().starts_with("ls ");

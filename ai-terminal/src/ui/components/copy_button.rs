@@ -1,5 +1,5 @@
 use iced::widget::{button, container, text};
-use iced::{Element, Length, Color};
+use iced::{Element, Length};
 
 use crate::ui::messages::Message;
 use crate::ui::theme::DraculaTheme;

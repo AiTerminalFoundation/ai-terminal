@@ -60,12 +60,7 @@ impl TerminalPanelState {
         self.focus = focus;
         self.panel.set_terminal_focus(focus);
     }
-    
-    pub fn update_search_input(&mut self, input: String) {
-        self.search_input = input.clone();
-        self.panel.update_search_input(input);
-    }
-    
+
     pub fn update_search_count(&mut self, index: usize, total: usize) {
         self.panel.update_search_count(index, total);
     }

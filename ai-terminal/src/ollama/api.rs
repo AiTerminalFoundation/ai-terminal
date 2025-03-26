@@ -2,7 +2,6 @@ use reqwest::Client;
 use crate::config::{OLLAMA_API_URL, OLLAMA_LIST_MODELS_URL};
 use crate::model::{OllamaModelList, OllamaRequest, OllamaResponse};
 use crate::ollama::prompt_eng::{trim_context, extract_user_query};
-use std::fmt;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 // Global flag to track if a request is in progress

@@ -4,7 +4,7 @@ use iced::keyboard::Event as KeyEvent;
 use std::time::Duration;
 
 use crate::ui::messages::Message;
-use crate::config::keyboard::{handle_keyboard_event, handle_keyboard_shortcuts, FocusTarget, ShortcutAction};
+use crate::config::keyboard::{handle_keyboard_event, ShortcutAction};
 
 #[derive(Debug, Clone)]
 pub enum State {
