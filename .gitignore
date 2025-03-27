@@ -70,3 +70,6 @@ Thumbs.db
 
 # Logs
 *.log 
+.DS_Store
+/ai-terminal/.angular
+/ai-terminal/node_modules

@@ -1,0 +1,921 @@
+:host {
+  display: block;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  background-color: #282a36;
+  font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+  font-size: 12px;
+}
+
+/* Remove all other styles */
+
+.logo.angular:hover {
+  filter: drop-shadow(0 0 2em #e32727);
+}
+:root {
+  font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 400;
+
+  color: #0f0f0f;
+  background-color: #f6f6f6;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-text-size-adjust: 100%;
+}
+
+.container {
+  margin: 0;
+  padding-top: 10vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  text-align: center;
+}
+
+.logo {
+  height: 6em;
+  padding: 1.5em;
+  will-change: filter;
+  transition: 0.75s;
+}
+
+.logo.tauri:hover {
+  filter: drop-shadow(0 0 2em #24c8db);
+}
+
+.row {
+  display: flex;
+  justify-content: center;
+}
+
+a {
+  font-weight: 500;
+  color: #646cff;
+  text-decoration: inherit;
+}
+
+a:hover {
+  color: #535bf2;
+}
+
+h1 {
+  text-align: center;
+}
+
+input,
+button {
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 0.6em 1.2em;
+  font-size: 1em;
+  font-weight: 500;
+  font-family: inherit;
+  color: #0f0f0f;
+  background-color: #ffffff;
+  transition: border-color 0.25s;
+  box-shadow: 0 2px 2px rgba(0, 0, 0, 0.2);
+}
+
+button {
+  cursor: pointer;
+}
+
+button:hover {
+  border-color: #396cd8;
+}
+button:active {
+  border-color: #396cd8;
+  background-color: #e8e8e8;
+}
+
+input,
+button {
+  outline: none;
+}
+
+#greet-input {
+  margin-right: 5px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color: #f6f6f6;
+    background-color: #2f2f2f;
+  }
+
+  a:hover {
+    color: #24c8db;
+  }
+
+  input,
+  button {
+    color: #ffffff;
+    background-color: #0f0f0f98;
+  }
+  button:active {
+    background-color: #0f0f0f69;
+  }
+}
+
+.split-container {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  position: relative;
+  user-select: none;
+}
+
+.panel {
+  height: 100%;
+  background-color: #2b2d3a;
+  color: #f8f8f2;
+  font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 8px;
+}
+
+.terminal-panel {
+  min-width: 200px;
+  max-width: 80%;
+  margin: 8px 4px 8px 8px;
+}
+
+.ai-panel {
+  flex: 1;
+  min-width: 200px;
+  margin: 8px 8px 8px 4px;
+}
+
+.panel-content {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  border-radius: 8px;
+  overflow: hidden;
+  padding: 0;
+  margin: 0;
+  background-color: #2b2d3a;
+}
+
+.output-area {
+  flex: 1;
+  padding: 16px;
+  overflow-y: auto;
+  font-size: 12px;
+  line-height: 1.5;
+  border-radius: 0;
+  scroll-behavior: smooth;
+  margin-top: 0;
+  background-color: #282a36;
+  box-sizing: border-box;
+  padding-bottom: 28px; /* Extra padding at bottom to account for floating input */
+  position: relative;
+  z-index: 1;
+  user-select: text; /* Allow selection in output areas */
+}
+
+.terminal-panel .input-area {
+  border: 1px solid rgba(80, 250, 123, 0.5);
+  border-top: 1px solid rgba(139, 233, 253, 0.5);
+  box-shadow: 0 4px 12px rgba(80, 250, 123, 0.1), 0 0 3px rgba(80, 250, 123, 0.15);
+}
+
+.terminal-panel .input-area:hover, .terminal-panel .input-area:focus-within {
+  box-shadow: 0 6px 16px rgba(80, 250, 123, 0.15), 0 0 6px rgba(80, 250, 123, 0.2);
+}
+
+.ai-panel .input-area {
+  border: 1px solid rgba(189, 147, 249, 0.5);
+  border-top: 1px solid rgba(255, 121, 198, 0.5);
+  box-shadow: 0 4px 12px rgba(189, 147, 249, 0.1), 0 0 3px rgba(189, 147, 249, 0.15);
+}
+
+.ai-panel .input-area:hover, .ai-panel .input-area:focus-within {
+  box-shadow: 0 6px 16px rgba(189, 147, 249, 0.15), 0 0 6px rgba(189, 147, 249, 0.2);
+}
+
+.input-area {
+  position: relative;
+  padding: 12px 16px;
+  display: flex;
+  align-items: flex-start;
+  background-color: #2b2d3a;
+  background-image: linear-gradient(to bottom, #30324a, #2b2d3a);
+  border-radius: 8px;
+  margin: 0 16px 16px 16px;
+  flex-direction: column;
+  width: calc(100% - 32px);
+  box-sizing: border-box;
+  transform: translateY(-4px);
+  z-index: 5;
+  transition: box-shadow 0.3s ease, transform 0.3s ease;
+}
+
+.input-area:hover, .input-area:focus-within {
+  transform: translateY(-6px);
+}
+
+.terminal-panel .current-directory {
+  color: rgba(80, 250, 123, 0.8);
+}
+
+.ai-panel .current-directory {
+  color: rgba(189, 147, 249, 0.8);
+}
+
+.current-directory {
+  font-weight: bold;
+  padding: 8px 16px;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background-color: #282a36;
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+
+.prompt-container {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  padding: 0 4px;
+}
+
+.prompt {
+  margin-right: 12px;
+  font-weight: bold;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: inline-block;
+  line-height: 24px;
+}
+
+/* Terminal prompt is softer green */
+.terminal-panel .prompt {
+  color: rgba(80, 250, 123, 0.85);
+}
+
+/* AI prompt is softer purple */
+.ai-panel .prompt {
+  color: rgba(189, 147, 249, 0.85);
+}
+
+/* Command prompt is yellow/gold */
+.prompt-command {
+  color: #ffc107;
+}
+
+.input-area textarea {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: #f8f8f2;
+  font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+  font-size: 12px;
+  outline: none;
+  resize: none;
+  min-height: 24px;
+  overflow-y: auto;
+  line-height: 1.5;
+  width: calc(100% - 24px);
+  padding: 0;
+}
+
+.input-area textarea:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.input-area textarea::placeholder {
+  color: #6272a4;
+  opacity: 0.7;
+}
+
+.resizer {
+  width: 8px;
+  background-color: transparent;
+  cursor: col-resize;
+  transition: all 0.2s ease;
+  position: relative;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  margin: 8px 0;
+}
+
+.resizer::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 2px;
+  height: 100%;
+  background-color: #44475a;
+  border-radius: 1px;
+  opacity: 0.5;
+  transition: all 0.2s ease;
+}
+
+.resizer:hover::before {
+  background-color: rgba(189, 147, 249, 0.6);
+  width: 3px;
+  box-shadow: 0 0 8px rgba(189, 147, 249, 0.3);
+  opacity: 0.7;
+}
+
+.resizer.resizing::before {
+  background-color: rgba(189, 147, 249, 0.7);
+  width: 3px;
+  box-shadow: 0 0 12px rgba(189, 147, 249, 0.4);
+  opacity: 0.8;
+}
+
+/* Scrollbar styling */
+.output-area::-webkit-scrollbar {
+  width: 8px;
+}
+
+.output-area::-webkit-scrollbar-track {
+  background: #282a36;
+  border-radius: 4px;
+}
+
+.output-area::-webkit-scrollbar-thumb {
+  background: #44475a;
+  border-radius: 4px;
+  opacity: 0.5;
+}
+
+.output-area::-webkit-scrollbar-thumb:hover {
+  background: #6272a4;
+  opacity: 0.8;
+}
+
+/* Command and chat entry styling */
+.command-entry {
+  margin-bottom: 20px;
+  padding: 8px;
+  border: 1px solid #44475a;
+  border-radius: 8px;
+  opacity: 0.9;
+  transition: all 0.2s ease;
+}
+
+.chat-entry {
+  margin-bottom: 12px;
+  padding: 12px;
+  border: 1px solid #44475a;
+  border-radius: 8px;
+  opacity: 0.8;
+  transition: all 0.2s ease;
+}
+
+.command-entry:hover, .chat-entry:hover {
+  opacity: 1;
+  box-shadow: 0 0 10px rgba(189, 147, 249, 0.2);
+}
+
+.command-line {
+  display: flex;
+  align-items: center;
+  margin-bottom: 6px;
+  border-bottom: 1px dotted #44475a;
+  padding-bottom: 4px;
+}
+
+.chat-line {
+  display: flex;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.command, .message {
+  color: #f8f8f2;
+}
+
+.command-output {
+  margin-left: 12px;
+  color: #f8f8f2;
+  white-space: pre-wrap;
+  opacity: 0.85;
+  position: relative;
+  font-size: 11px;
+  line-height: 1.5;
+  user-select: text;
+}
+
+.chat-output {
+  margin-left: 24px;
+  color: #f8f8f2;
+  white-space: pre-wrap;
+  opacity: 0.8;
+  position: relative;
+  user-select: text;
+  width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
+}
+
+.copy-icon {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  opacity: 0;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  color: #6272a4;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.copy-icon:hover {
+  color: #8be9fd;
+  background-color: rgba(68, 71, 90, 0.3);
+}
+
+.copy-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.command-output:hover .copy-icon,
+.chat-output:hover .copy-icon {
+  opacity: 1;
+}
+
+/* Autocomplete styles */
+.autocomplete-container {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  width: 100%;
+  max-width: 100%;
+  max-height: 200px;
+  background-color: #44475a;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  z-index: 20;
+  margin-bottom: 8px;
+  overflow-y: auto;
+  outline: none;
+  border: 1px solid rgba(80, 250, 123, 0.2);
+}
+
+.autocomplete-container:focus {
+  outline: none;
+  border: 1px solid rgba(189, 147, 249, 0.7);
+  box-shadow: 0 0 0 2px rgba(189, 147, 249, 0.3);
+}
+
+.autocomplete-list {
+  width: 100%;
+}
+
+.autocomplete-item {
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.autocomplete-item:hover {
+  background-color: #6272a4;
+}
+
+.autocomplete-item.selected {
+  background-color: #bd93f9;
+  color: #282a36;
+  font-weight: bold;
+  padding-left: 8px;
+  border-left: 4px solid #ff79c6;
+  position: relative;
+}
+
+/* Add an indicator to show this item is selected */
+.autocomplete-item.selected:after {
+  content: "▶";
+  position: absolute;
+  right: 10px;
+  font-size: 10px;
+  color: #282a36;
+}
+
+/* Dracula theme colors:
+- Background: #282a36
+- Current Line: #44475a
+- Foreground: #f8f8f2
+- Comment: #6272a4
+- Red: #ff5555
+- Orange: #ffb86c
+- Yellow: #f1fa8c
+- Green: #50fa7b
+- Purple: #bd93f9
+- Pink: #ff79c6
+- Cyan: #8be9fd
+*/
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .content-panel {
+    background-color: #2f2f2f;
+    color: #f6f6f6;
+  }
+}
+
+.processing-indicator {
+  color: #8be9fd;
+  font-style: italic;
+  margin-bottom: 8px;
+  font-size: 11px;
+  opacity: 0.8;
+}
+
+.streaming-indicator {
+  color: #50fa7b;
+  font-style: italic;
+  animation: pulse 1.5s infinite;
+  padding-left: 8px;
+  margin-top: 4px;
+}
+
+@keyframes pulse {
+  0% { opacity: 0.5; }
+  50% { opacity: 1; }
+  100% { opacity: 0.5; }
+}
+
+/* Make the terminal more responsive */
+@media (max-width: 768px) {
+  .prompt {
+    max-width: 100px;
+  }
+}
+
+/* Add spacing between command output lines */
+.command-output div {
+  line-height: 1.4;
+  user-select: text;
+}
+
+/* Command status colors */
+.command-success {
+  color: #50fa7b; /* Dracula green */
+  font-weight: bold;
+}
+
+.command-error {
+  color: #ff5555; /* Dracula red */
+  font-weight: bold;
+}
+
+.command-running {
+  color: #f1fa8c; /* Dracula yellow */
+  font-weight: bold;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% { opacity: 0.7; }
+  50% { opacity: 1; }
+  100% { opacity: 0.7; }
+}
+
+/* Terminal panel full width when AI panel is hidden */
+.terminal-panel.full-width {
+  width: calc(100% - 16px) !important; /* Adjust for margins */
+  max-width: 100%;
+}
+
+/* Terminal header styling */
+.terminal-header, .ai-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 16px;
+  background-color: #2b2d3a;
+  border-radius: 8px 8px 0 0;
+  height: 40px;
+  box-sizing: border-box;
+}
+
+/* Panel titles styling */
+.panel-title {
+  font-weight: bold;
+  font-size: 14px;
+  line-height: 24px;
+  color: rgba(139, 233, 253, 0.8);
+}
+
+.ai-title {
+  font-weight: bold;
+  font-size: 14px;
+  line-height: 24px;
+  color: rgba(189, 147, 249, 0.8);
+}
+
+/* Toggle AI button styling */
+.toggle-ai-button {
+  background-color: rgba(189, 147, 249, 0.3);
+  color: #f8f8f2;
+  border: 1px solid rgba(189, 147, 249, 0.5);
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  height: 24px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.toggle-ai-button:hover {
+  background-color: rgba(189, 147, 249, 0.5);
+  box-shadow: 0 0 8px rgba(189, 147, 249, 0.3);
+}
+
+/* Adjust current directory display in header */
+.terminal-header .current-directory {
+  margin-bottom: 0;
+}
+
+/* Add styles for command messages and responses */
+.message-command {
+  color: #ffc107;
+  font-weight: bold;
+}
+
+.chat-command-output {
+  background-color: rgba(0, 0, 0, 0.2);
+  padding: 8px;
+  border-left: 2px solid #ffc107;
+  white-space: pre-wrap;
+  font-family: 'Courier New', monospace;
+}
+
+/* Code Block Styling */
+.code-block-container {
+  margin: 12px 0;
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: #1e1f2a;
+  border: 1px solid rgba(80, 250, 123, 0.2);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  width: fit-content;
+  max-width: 100%;
+}
+
+/* Single line code blocks (no newlines) */
+.code-block-container.single-line {
+  background-color: #2b2d3a;
+  display: flex;
+  margin: 4px 0;
+  align-items: center;
+  border-radius: 4px;
+  border-color: rgba(139, 233, 253, 0.2);
+  width: fit-content;
+  max-width: 100%;
+}
+
+.code-block-container.single-line .code-block {
+  padding: 4px 12px;
+  max-height: none;
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+  overflow-x: auto;
+  width: fit-content;
+  background-color: #2b2d3a;
+}
+
+.code-block-container.single-line .code-block-header {
+  border-bottom: none;
+  border-right: 1px solid rgba(80, 250, 123, 0.2);
+  padding: 4px 8px;
+  background-color: #2b2d3a;
+}
+
+.code-block-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 12px;
+  background-color: #282a36;
+  border-bottom: 1px solid rgba(80, 250, 123, 0.2);
+}
+
+.code-language {
+  font-size: 12px;
+  color: rgba(139, 233, 253, 0.8);
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.copy-code-button {
+  background: transparent;
+  border: none;
+  color: rgba(80, 250, 123, 0.8);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.copy-code-button:hover {
+  background-color: rgba(80, 250, 123, 0.1);
+  color: rgba(80, 250, 123, 1);
+}
+
+.code-block {
+  margin: 0;
+  padding: 12px;
+  overflow-x: auto;
+  background-color: #1e1f2a;
+  color: #f8f8f2;
+  font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  overflow-y: visible;
+  user-select: text;
+  white-space: pre;
+  width: auto;
+}
+
+.code-block code {
+  white-space: pre;
+  font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+}
+
+/* Make the scrollbar in code blocks nicer */
+.code-block::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.code-block::-webkit-scrollbar-track {
+  background: #1e1f2a;
+  border-radius: 4px;
+}
+
+.code-block::-webkit-scrollbar-thumb {
+  background-color: rgba(80, 250, 123, 0.3);
+  border-radius: 4px;
+}
+
+.code-block::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(80, 250, 123, 0.5);
+}
+
+/* Copy notification styling */
+.copy-notification {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  background-color: rgba(80, 250, 123, 0.9);
+  color: #282a36;
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-weight: bold;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  opacity: 0;
+  transform: translateY(20px);
+  transition: all 0.3s ease;
+  z-index: 1000;
+}
+
+.copy-notification.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Additional styling for terminal command-style code blocks */
+.code-block-container.command-block {
+  background-color: #282a36;
+  border-color: rgba(139, 233, 253, 0.2);
+}
+
+.code-block-container.command-block .code-block {
+  background-color: #282a36;
+  font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+  color: #50fa7b;
+}
+
+.code-block-container.command-block .code-block-header {
+  background-color: #282a36;
+  border-bottom-color: rgba(139, 233, 253, 0.2);
+}
+
+/* Better styling for the inline single-line code blocks */
+.code-block-container.single-line {
+  background-color: #2b2d3a;
+  display: flex;
+  margin: 4px 0;
+  max-width: 100%;
+  align-items: center;
+  border-radius: 4px;
+  border-color: rgba(139, 233, 253, 0.2);
+}
+
+.command-history, .chat-history {
+  user-select: text; /* Allow selection in command and chat history */
+}
+
+/* Add a class for disabling selection during resize */
+.resizing-active * {
+  user-select: none !important;
+  cursor: col-resize !important;
+}
+
+/* Command action buttons styling */
+.command-actions {
+  display: none;
+  margin-left: 8px;
+  align-items: center;
+}
+
+.simple-command:hover .command-actions {
+  display: flex;
+}
+
+.command-action-button {
+  background: transparent;
+  border: none;
+  color: rgba(80, 250, 123, 0.8);
+  cursor: pointer;
+  padding: 3px;
+  margin: 0 2px;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.command-action-button:hover {
+  background-color: rgba(80, 250, 123, 0.1);
+  color: rgba(80, 250, 123, 1);
+}
+
+.command-text {
+  cursor: pointer;
+}
+
+/* Code block actions container */
+.code-block-actions {
+  display: flex;
+  align-items: center;
+}
+
+.code-block-actions .copy-code-button {
+  margin-left: 4px;
+}
+
+/* Simple command styling */
+.simple-command {
+  display: flex;
+  background-color: #2b2d3a;
+  padding: 4px 8px;
+  border-radius: 4px;
+  margin: 4px 0;
+  font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+  color: #50fa7b;
+  border: 1px solid rgba(80, 250, 123, 0.2);
+  transition: all 0.2s ease;
+  font-size: 13px;
+  letter-spacing: 0.3px;
+  align-items: center;
+  width: fit-content;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.simple-command:hover {
+  background-color: #383a4a;
+  border-color: rgba(80, 250, 123, 0.4);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.command-text {
+  cursor: pointer;
+  flex: 1;
+  white-space: nowrap;
+  overflow-x: visible;
+  padding-right: 4px;
+}
