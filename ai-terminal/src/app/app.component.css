@@ -13,6 +13,7 @@
 .logo.angular:hover {
   filter: drop-shadow(0 0 2em #e32727);
 }
+
 :root {
   font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
   font-size: 16px;
@@ -89,6 +90,7 @@ button {
 button:hover {
   border-color: #396cd8;
 }
+
 button:active {
   border-color: #396cd8;
   background-color: #e8e8e8;
@@ -118,6 +120,7 @@ button {
     color: #ffffff;
     background-color: #0f0f0f98;
   }
+
   button:active {
     background-color: #0f0f0f69;
   }
@@ -176,10 +179,12 @@ button {
   margin-top: 0;
   background-color: #282a36;
   box-sizing: border-box;
-  padding-bottom: 28px; /* Extra padding at bottom to account for floating input */
+  padding-bottom: 28px;
+  /* Extra padding at bottom to account for floating input */
   position: relative;
   z-index: 1;
-  user-select: text; /* Allow selection in output areas */
+  user-select: text;
+  /* Allow selection in output areas */
 }
 
 .terminal-panel .input-area {
@@ -188,7 +193,8 @@ button {
   box-shadow: 0 4px 12px rgba(80, 250, 123, 0.1), 0 0 3px rgba(80, 250, 123, 0.15);
 }
 
-.terminal-panel .input-area:hover, .terminal-panel .input-area:focus-within {
+.terminal-panel .input-area:hover,
+.terminal-panel .input-area:focus-within {
   box-shadow: 0 6px 16px rgba(80, 250, 123, 0.15), 0 0 6px rgba(80, 250, 123, 0.2);
 }
 
@@ -198,7 +204,8 @@ button {
   box-shadow: 0 4px 12px rgba(189, 147, 249, 0.1), 0 0 3px rgba(189, 147, 249, 0.15);
 }
 
-.ai-panel .input-area:hover, .ai-panel .input-area:focus-within {
+.ai-panel .input-area:hover,
+.ai-panel .input-area:focus-within {
   box-shadow: 0 6px 16px rgba(189, 147, 249, 0.15), 0 0 6px rgba(189, 147, 249, 0.2);
 }
 
@@ -219,7 +226,8 @@ button {
   transition: box-shadow 0.3s ease, transform 0.3s ease;
 }
 
-.input-area:hover, .input-area:focus-within {
+.input-area:hover,
+.input-area:focus-within {
   transform: translateY(-6px);
 }
 
@@ -245,9 +253,9 @@ button {
 
 .prompt-container {
   display: flex;
+  align-items: flex-start;
   width: 100%;
-  align-items: center;
-  padding: 0 4px;
+  position: relative;
 }
 
 .prompt {
@@ -381,7 +389,8 @@ button {
   transition: all 0.2s ease;
 }
 
-.command-entry:hover, .chat-entry:hover {
+.command-entry:hover,
+.chat-entry:hover {
   opacity: 1;
   box-shadow: 0 0 10px rgba(189, 147, 249, 0.2);
 }
@@ -400,7 +409,8 @@ button {
   margin-bottom: 4px;
 }
 
-.command, .message {
+.command,
+.message {
   color: #f8f8f2;
 }
 
@@ -552,9 +562,17 @@ button {
 }
 
 @keyframes pulse {
-  0% { opacity: 0.5; }
-  50% { opacity: 1; }
-  100% { opacity: 0.5; }
+  0% {
+    opacity: 0.5;
+  }
+
+  50% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0.5;
+  }
 }
 
 /* Make the terminal more responsive */
@@ -572,35 +590,48 @@ button {
 
 /* Command status colors */
 .command-success {
-  color: #50fa7b; /* Dracula green */
+  color: #50fa7b;
+  /* Dracula green */
   font-weight: bold;
 }
 
 .command-error {
-  color: #ff5555; /* Dracula red */
+  color: #ff5555;
+  /* Dracula red */
   font-weight: bold;
 }
 
 .command-running {
-  color: #f1fa8c; /* Dracula yellow */
+  color: #f1fa8c;
+  /* Dracula yellow */
   font-weight: bold;
   animation: pulse 1.5s infinite;
 }
 
 @keyframes pulse {
-  0% { opacity: 0.7; }
-  50% { opacity: 1; }
-  100% { opacity: 0.7; }
+  0% {
+    opacity: 0.7;
+  }
+
+  50% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0.7;
+  }
 }
 
 /* Terminal panel full width when AI panel is hidden */
 .terminal-panel.full-width {
-  width: calc(100% - 16px) !important; /* Adjust for margins */
+  width: calc(100% - 16px) !important;
+  /* Adjust for margins */
   max-width: 100%;
 }
 
 /* Terminal header styling */
-.terminal-header, .ai-header {
+.terminal-header,
+.ai-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -833,8 +864,10 @@ button {
   border-color: rgba(139, 233, 253, 0.2);
 }
 
-.command-history, .chat-history {
-  user-select: text; /* Allow selection in command and chat history */
+.command-history,
+.chat-history {
+  user-select: text;
+  /* Allow selection in command and chat history */
 }
 
 /* Add a class for disabling selection during resize */
@@ -918,4 +951,36 @@ button {
   white-space: nowrap;
   overflow-x: visible;
   padding-right: 4px;
+}
+
+/* Add sudo password indicator styles */
+.sudo-password-indicator {
+  position: absolute;
+  top: -25px;
+  left: 0;
+  right: 0;
+  background-color: #2c3e50;
+  color: #e67e22;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  z-index: 5;
+  box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.2);
+}
+
+/* Style for password input mode */
+.password-input {
+  color: transparent;
+  text-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+}
+
+.password-input::selection {
+  background-color: transparent;
+  color: transparent;
+}
+
+/* Alternative password masking - displays dots instead of characters */
+.password-input {
+  -webkit-text-security: disc;
+  text-security: disc;
 }
