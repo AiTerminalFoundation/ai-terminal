@@ -6,7 +6,7 @@ A Rust-based terminal application with integrated AI capabilities.
 
 ## Features
 
-- Modern UI built with Iced
+- Modern UI built with Tauri, using html, css and Typescript
 - Integrated AI assistance
 - Cross-platform support for macOS and Linux
 
@@ -27,7 +27,7 @@ A Rust-based terminal application with integrated AI capabilities.
 2. Build and run the project:
    ```
    cd ai-terminal
-   cargo run
+   cargo tauri dev
    ```
 
 ## Quick Guide to Using Ollama to Download `macsdeve/BetterBash3` Model
