@@ -32,6 +32,17 @@ interface ChatHistory {
   codeBlocks?: { code: string, language: string }[]; // Store extracted code blocks
 }
 
+interface TerminalSession {
+  id: string;
+  name: string;
+  commandHistory: CommandHistory[];
+  currentWorkingDirectory: string;
+  isActive: boolean;
+  gitBranch: string;
+  isSshSessionActive: boolean;
+  currentSshUserHost: string | null;
+}
+
 @Component({
   selector: 'app-root',
   imports: [CommonModule, FormsModule],
@@ -39,6 +50,10 @@ interface ChatHistory {
   styleUrl: './app.component.css'
 })
 export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
+  // Terminal sessions
+  terminalSessions: TerminalSession[] = [];
+  activeSessionId: string = '';
+  
   // Terminal properties
   commandHistory: CommandHistory[] = [];
   currentCommand: string = '';
@@ -91,6 +106,7 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
 
   // SSH session state
   isSshSessionActive: boolean = false;
+  currentSshUserHost: string | null = null; // To store user@host for current SSH session
 
   // Constants for SSH interaction
   readonly SSH_NEEDS_PASSWORD_MARKER = "SSH_INTERACTIVE_PASSWORD_PROMPT_REQUESTED";
@@ -116,6 +132,9 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
   }
 
   async ngOnInit() {
+    // Initialize first terminal session
+    this.createNewSession('Terminal 1', true);
+    
     // Load saved command history
     this.loadCommandHistory();
 
@@ -276,7 +295,11 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
           const newRemotePath = event.payload as string;
           console.log('Remote directory updated event:', newRemotePath);
           if (this.isSshSessionActive) {
-            this.currentWorkingDirectory = newRemotePath;
+            if (this.currentSshUserHost) {
+              this.currentWorkingDirectory = `${this.currentSshUserHost}:${newRemotePath}`;
+            } else {
+              this.currentWorkingDirectory = newRemotePath; // Fallback
+            }
             // Git branch is not applicable for remote, ensure it's clear
             this.gitBranch = '';
           }
@@ -301,6 +324,7 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
         this.ngZone.run(async () => {
           console.log("SSH Session Ended:", event.payload);
           this.isSshSessionActive = false;
+          this.currentSshUserHost = null; // Clear user@host
           // On SSH end, revert to local directory and git branch.
           await this.getCurrentDirectory();
         });
@@ -348,7 +372,9 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
   async getCurrentDirectory() {
     try {
       // Invoke will get either local or remote based on backend logic.
-      const result = await invoke<string>("get_working_directory");
+      const result = await invoke<string>("get_working_directory", {
+        sessionId: this.activeSessionId
+      });
 
       if (!this.isSshSessionActive) {
         // Local session: get git branch and process home path for tilde expansion
@@ -356,13 +382,17 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
           // If homePath is not cached, fetch it along with the git branch
           const [homePath, gitBranch] = await Promise.all([
             invoke<string>("get_home_directory"),
-            invoke<string>("get_git_branch")
+            invoke<string>("get_git_branch", {
+              sessionId: this.activeSessionId
+            })
           ]);
           this.homePath = homePath;
           this.gitBranch = gitBranch;
         } else {
           // homePath is cached, just fetch git branch
-          this.gitBranch = await invoke<string>("get_git_branch");
+          this.gitBranch = await invoke<string>("get_git_branch", {
+            sessionId: this.activeSessionId
+          });
         }
 
         // Replace local home directory path with ~
@@ -373,7 +403,13 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
         }
       } else {
         // SSH session: path is remote, display as is. Clear local git branch.
-        this.currentWorkingDirectory = result.trim();
+        const remotePath = result.trim();
+        if (this.currentSshUserHost) {
+          this.currentWorkingDirectory = `${this.currentSshUserHost}:${remotePath}`;
+        } else {
+          // Fallback if currentSshUserHost is somehow not set (e.g., session restored without command context)
+          this.currentWorkingDirectory = remotePath;
+        }
         this.gitBranch = '';
       }
 
@@ -468,7 +504,9 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
 
     // Fire and forget - don't await the backend response
     // This ensures the UI stays responsive regardless of how long the backend takes
-    invoke<string>("terminate_command")
+    invoke<string>("terminate_command", {
+      sessionId: this.activeSessionId
+    })
       .then(result => {
         console.log('Command terminated:', result);
       })
@@ -492,7 +530,8 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
 
       // Get autocomplete suggestions from backend
       this.autocompleteSuggestions = await invoke<string[]>("autocomplete", {
-        input: this.currentCommand
+        input: this.currentCommand,
+        sessionId: this.activeSessionId
       });
 
       // Don't automatically show suggestions - they will be shown on Tab
@@ -610,12 +649,14 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
           if (wasSudo) {
             await invoke<string>("execute_sudo_command", {
               command: this.originalSudoCommand,
-              password: password
+              password: password,
+              sessionId: this.activeSessionId
             });
           } else { // SSH path: send password to backend
             await invoke<string>("execute_command", { // This is the re-invocation with password
               command: this.originalSSHCommand,
-              sshPassword: password
+              sshPassword: password,
+              sessionId: this.activeSessionId
             });
             // isProcessing will be set to false by ssh_session_started or command_end listeners
           }
@@ -757,8 +798,13 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
         this.currentCommand = ''; // Clear input
         this.commandHistoryIndex = -1; // Reset history navigation
         this.isProcessing = true; // Set processing true for the initial invoke
+        this.currentSshUserHost = this.extractUserHostFromSshCommand(commandToSend); // Store user@host
 
-        invoke<string>("execute_command", { command: commandToSend, sshPassword: null })
+        invoke<string>("execute_command", { 
+          command: commandToSend, 
+          sshPassword: null,
+          sessionId: this.activeSessionId
+        })
           .then(result => {
             if (result === this.SSH_NEEDS_PASSWORD_MARKER) {
               // The 'ssh_pre_exec_password_request' event listener will handle:
@@ -868,7 +914,11 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
         // For streaming commands, the events will update the output
         // Pass sshPassword: null in case the backend signature expects it generally,
         // it will be ignored if not relevant for this specific command execution path.
-        const result = await invoke<string>("execute_command", { command: commandToSend, sshPassword: null });
+        const result = await invoke<string>("execute_command", { 
+          command: commandToSend, 
+          sshPassword: null,
+          sessionId: this.activeSessionId
+        });
 
         // If the result indicates the command was forwarded to an active SSH session
         if (result === this.COMMAND_FORWARDED_TO_ACTIVE_SSH_MARKER) {
@@ -1991,5 +2041,156 @@ Using: ${this.currentLLMModel}`,
       }
     }
     return 'remote host'; // Fallback
+  }
+
+  // Session Management Methods
+  createNewSession(name?: string, setAsActive: boolean = false): string {
+    const sessionId = `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const sessionName = name || `Terminal ${this.terminalSessions.length + 1}`;
+    
+    const newSession: TerminalSession = {
+      id: sessionId,
+      name: sessionName,
+      commandHistory: [],
+      currentWorkingDirectory: '~',
+      isActive: setAsActive,
+      gitBranch: '',
+      isSshSessionActive: false,
+      currentSshUserHost: null
+    };
+
+    this.terminalSessions.push(newSession);
+    
+    if (setAsActive || this.terminalSessions.length === 1) {
+      this.switchToSession(sessionId);
+    }
+    
+    return sessionId;
+  }
+
+  switchToSession(sessionId: string): void {
+    console.log(`Switching from session ${this.activeSessionId} to ${sessionId}`);
+    
+    // Save current session state
+    if (this.activeSessionId) {
+      this.saveCurrentSessionState();
+      console.log(`Saved state for session ${this.activeSessionId}:`, {
+        cwd: this.currentWorkingDirectory,
+        commandHistoryLength: this.commandHistory.length
+      });
+    }
+
+    // Find and activate new session
+    const targetSession = this.terminalSessions.find(s => s.id === sessionId);
+    if (!targetSession) {
+      console.error('Session not found:', sessionId);
+      return;
+    }
+
+    // Mark all sessions as inactive
+    this.terminalSessions.forEach(session => session.isActive = false);
+    
+    // Activate target session
+    targetSession.isActive = true;
+    this.activeSessionId = sessionId;
+    
+    // Restore session state
+    this.restoreSessionState(targetSession);
+    console.log(`Restored session ${sessionId}:`, {
+      cwd: this.currentWorkingDirectory,
+      commandHistoryLength: this.commandHistory.length
+    });
+  }
+
+  closeSession(sessionId: string): void {
+    // Prevent closing the last session
+    if (this.terminalSessions.length <= 1) {
+      return;
+    }
+
+    const sessionIndex = this.terminalSessions.findIndex(s => s.id === sessionId);
+    if (sessionIndex === -1) {
+      return;
+    }
+
+    const wasActive = this.terminalSessions[sessionIndex].isActive;
+    
+    // Remove the session
+    this.terminalSessions.splice(sessionIndex, 1);
+    
+    // If we closed the active session, switch to another one
+    if (wasActive) {
+      // Switch to the session before the closed one, or the first one if we closed the first
+      const newActiveIndex = Math.max(0, sessionIndex - 1);
+      this.switchToSession(this.terminalSessions[newActiveIndex].id);
+    }
+  }
+
+  renameSession(sessionId: string, newName: string): void {
+    const session = this.terminalSessions.find(s => s.id === sessionId);
+    if (session && newName.trim()) {
+      session.name = newName.trim();
+    }
+  }
+
+  private saveCurrentSessionState(): void {
+    const activeSession = this.terminalSessions.find(s => s.id === this.activeSessionId);
+    if (activeSession) {
+      activeSession.commandHistory = [...this.commandHistory];
+      activeSession.currentWorkingDirectory = this.currentWorkingDirectory;
+      activeSession.gitBranch = this.gitBranch;
+      activeSession.isSshSessionActive = this.isSshSessionActive;
+      activeSession.currentSshUserHost = this.currentSshUserHost;
+    }
+  }
+
+  private restoreSessionState(session: TerminalSession): void {
+    this.commandHistory = [...session.commandHistory];
+    this.currentWorkingDirectory = session.currentWorkingDirectory;
+    this.gitBranch = session.gitBranch;
+    this.isSshSessionActive = session.isSshSessionActive;
+    this.currentSshUserHost = session.currentSshUserHost;
+    
+    // Reset UI state
+    this.currentCommand = '';
+    this.commandHistoryIndex = -1;
+    this.isProcessing = false;
+    this.showSuggestions = false;
+    
+    // Update directory display
+    this.getCurrentDirectory();
+  }
+
+  getActiveSession(): TerminalSession | undefined {
+    return this.terminalSessions.find(s => s.id === this.activeSessionId);
+  }
+
+  // Event handlers for tab renaming
+  startRenaming(event: Event): void {
+    const target = event.target as HTMLElement;
+    if (target) {
+      target.contentEditable = 'true';
+      target.focus();
+    }
+  }
+
+  finishRenaming(event: Event, session: TerminalSession): void {
+    const target = event.target as HTMLElement;
+    if (target) {
+      target.contentEditable = 'false';
+      const newName = target.textContent?.trim() || session.name;
+      this.renameSession(session.id, newName);
+      // Restore the display text in case textContent was modified
+      target.textContent = session.name;
+    }
+  }
+
+  handleEnterKey(event: Event): void {
+    const keyboardEvent = event as KeyboardEvent;
+    const target = keyboardEvent.target as HTMLElement;
+    if (target) {
+      target.blur();
+      keyboardEvent.preventDefault();
+    }
   }
 }
