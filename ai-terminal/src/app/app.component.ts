@@ -53,7 +53,7 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
   // Terminal sessions
   terminalSessions: TerminalSession[] = [];
   activeSessionId: string = '';
-  
+
   // Terminal properties
   commandHistory: CommandHistory[] = [];
   currentCommand: string = '';
@@ -67,6 +67,12 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
   autocompleteSuggestions: string[] = [];
   showSuggestions: boolean = false;
   selectedSuggestionIndex: number = -1;
+
+  // History search properties
+  isHistorySearchActive: boolean = false;
+  historySearchQuery: string = '';
+  historySearchResults: { command: string, index: number, timestamp: Date }[] = [];
+  selectedHistoryIndex: number = 0;
 
   // AI Chat properties
   chatHistory: ChatHistory[] = [];
@@ -116,13 +122,15 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
   constructor(private sanitizer: DomSanitizer, private ngZone: NgZone) { }
 
   getPlaceholder(): string {
+    if (this.isHistorySearchActive) {
+      return 'Type to search command history...';
+    }
     if (this.isSudoPasswordPrompt) {
       return 'Sudo Password:';
     }
     if (this.isSSHPasswordPrompt) {
       return 'SSH Password:';
     }
-    // TODO: Consider making the default placeholder dynamic if needed, e.g., based on currentWorkingDirectory
     return 'Enter command...';
   }
 
@@ -134,7 +142,7 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
   async ngOnInit() {
     // Initialize first terminal session
     this.createNewSession('Terminal 1', true);
-    
+
     // Load saved command history
     this.loadCommandHistory();
 
@@ -458,7 +466,13 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
   // Handle key presses globally
   @HostListener('document:keydown', ['$event'])
   handleKeyboardEvent(event: KeyboardEvent) {
-
+    // Handle Ctrl+R to activate history search
+    if (event.ctrlKey && event.key === 'r' && !this.isProcessing) {
+      event.preventDefault();
+      event.stopPropagation();
+      this.activateHistorySearch();
+      return;
+    }
 
     // Handle Ctrl+C to terminate running command
     if (event.ctrlKey && event.key === 'c' && this.isProcessing) {
@@ -574,6 +588,58 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
   }
 
   async executeCommand(event: KeyboardEvent): Promise<void> {
+    // Handle history search mode
+    if (this.isHistorySearchActive) {
+      // Handle special keys in history search mode
+      if (event.key === 'Escape') {
+        this.exitHistorySearch(false);
+        event.preventDefault();
+        return;
+      }
+
+      if (event.key === 'Enter') {
+        this.exitHistorySearch(true);
+        event.preventDefault();
+        return;
+      }
+
+      if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+        event.preventDefault();
+        if (event.key === 'ArrowUp' && this.selectedHistoryIndex > 0) {
+          this.selectedHistoryIndex--;
+          this.updateHistorySearchDisplay();
+        } else if (event.key === 'ArrowDown' && this.selectedHistoryIndex < this.historySearchResults.length - 1) {
+          this.selectedHistoryIndex++;
+          this.updateHistorySearchDisplay();
+        }
+        return;
+      }
+
+      // Handle character input for search
+      if (event.key.length === 1 && !event.ctrlKey && !event.altKey && !event.metaKey) {
+        event.preventDefault();
+        this.historySearchQuery += event.key;
+        this.selectedHistoryIndex = 0;
+        this.performHistorySearch(this.historySearchQuery);
+        return;
+      }
+
+      // Handle backspace
+      if (event.key === 'Backspace') {
+        event.preventDefault();
+        if (this.historySearchQuery.length > 0) {
+          this.historySearchQuery = this.historySearchQuery.slice(0, -1);
+          this.selectedHistoryIndex = 0;
+          this.performHistorySearch(this.historySearchQuery);
+        }
+        return;
+      }
+
+      // For any other special key, prevent default
+      event.preventDefault();
+      return;
+    }
+
     // Hide suggestions when pressing Esc
     if (event.key === 'Escape') {
       this.showSuggestions = false;
@@ -800,8 +866,8 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
         this.isProcessing = true; // Set processing true for the initial invoke
         this.currentSshUserHost = this.extractUserHostFromSshCommand(commandToSend); // Store user@host
 
-        invoke<string>("execute_command", { 
-          command: commandToSend, 
+        invoke<string>("execute_command", {
+          command: commandToSend,
           sshPassword: null,
           sessionId: this.activeSessionId
         })
@@ -914,8 +980,8 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
         // For streaming commands, the events will update the output
         // Pass sshPassword: null in case the backend signature expects it generally,
         // it will be ignored if not relevant for this specific command execution path.
-        const result = await invoke<string>("execute_command", { 
-          command: commandToSend, 
+        const result = await invoke<string>("execute_command", {
+          command: commandToSend,
           sshPassword: null,
           sessionId: this.activeSessionId
         });
@@ -1666,6 +1732,11 @@ Available commands:
       this.autoResize(event);
     }
 
+    // Skip input handling during history search mode since executeCommand handles it
+    if (this.isHistorySearchActive) {
+      return;
+    }
+
     // When in password mode, don't do autocomplete
     if (this.isSudoPasswordPrompt || this.isSSHPasswordPrompt) {
       return;
@@ -1774,6 +1845,129 @@ Available commands:
 
     // Make sure the terminal input maintains focus
     this.focusTerminalInput();
+  }
+
+  // Activate history search mode
+  activateHistorySearch(): void {
+    this.isHistorySearchActive = true;
+    this.historySearchQuery = '';
+    this.historySearchResults = [];
+    this.selectedHistoryIndex = 0;
+    // Set the input to show search prompt
+    this.currentCommand = "(reverse-i-search)`': ";
+    this.focusTerminalInput();
+  }
+
+  // Perform fuzzy search on command history
+  performHistorySearch(query: string): void {
+    console.log('Searching for:', query, 'in', this.commandHistory.length, 'commands');
+
+    if (!query) {
+      this.historySearchResults = [];
+      this.selectedHistoryIndex = 0;
+      this.updateHistorySearchDisplay();
+      return;
+    }
+
+    // Search through all command history (excluding empty commands)
+    const validCommands = this.commandHistory
+      .filter(entry => entry.command && entry.command.trim().length > 0)
+      .map(entry => entry.command.trim());
+
+    // Remove duplicates while preserving order
+    const uniqueCommands = [...new Set(validCommands)];
+
+    console.log('Unique commands to search:', uniqueCommands);
+
+    this.historySearchResults = uniqueCommands
+      .map((command, index) => {
+        const originalEntry = this.commandHistory.find(entry => entry.command === command);
+        const score = this.fuzzyMatch(command.toLowerCase(), query.toLowerCase());
+        console.log(`Command "${command}" score:`, score);
+        return {
+          command: command,
+          index: index,
+          timestamp: originalEntry?.timestamp || new Date(),
+          score: score
+        };
+      })
+      .filter(result => result.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 10) // Limit to top 10 results
+      .map(({ command, index, timestamp }) => ({ command, index, timestamp }));
+
+    console.log('Search results:', this.historySearchResults);
+
+    // Reset selection to first result
+    this.selectedHistoryIndex = 0;
+
+    // Update the display
+    this.updateHistorySearchDisplay();
+  }
+
+  // Simple fuzzy matching algorithm
+  fuzzyMatch(text: string, query: string): number {
+    let score = 0;
+    let textIndex = 0;
+
+    for (let i = 0; i < query.length; i++) {
+      const char = query[i];
+      const foundIndex = text.indexOf(char, textIndex);
+
+      if (foundIndex === -1) {
+        return 0; // Character not found
+      }
+
+      // Give higher score for consecutive matches
+      if (foundIndex === textIndex) {
+        score += 2;
+      } else {
+        score += 1;
+      }
+
+      textIndex = foundIndex + 1;
+    }
+
+    // Bonus for shorter strings (more relevant)
+    score += (50 / text.length);
+
+    // Bonus for exact substring match
+    if (text.includes(query)) {
+      score += 10;
+    }
+
+    return score;
+  }
+
+  // Update the display with current search result
+  updateHistorySearchDisplay(): void {
+    const searchPrefix = "(reverse-i-search)`";
+    const searchSuffix = "': ";
+
+    if (this.historySearchResults.length > 0 &&
+      this.selectedHistoryIndex >= 0 &&
+      this.selectedHistoryIndex < this.historySearchResults.length) {
+      const result = this.historySearchResults[this.selectedHistoryIndex];
+      this.currentCommand = `${searchPrefix}${this.historySearchQuery}${searchSuffix}${result.command}`;
+    } else {
+      this.currentCommand = `${searchPrefix}${this.historySearchQuery}${searchSuffix}`;
+    }
+  }
+
+  // Exit history search mode
+  exitHistorySearch(acceptCommand: boolean = false): void {
+    if (acceptCommand && this.historySearchResults.length > 0 && this.selectedHistoryIndex < this.historySearchResults.length) {
+      // Set the selected command
+      this.currentCommand = this.historySearchResults[this.selectedHistoryIndex].command;
+    } else {
+      // Clear the search prompt
+      this.currentCommand = '';
+    }
+
+    this.isHistorySearchActive = false;
+    this.historySearchQuery = '';
+    this.historySearchResults = [];
+    this.selectedHistoryIndex = 0;
   }
 
   // Load command history from localStorage
@@ -2047,7 +2241,7 @@ Using: ${this.currentLLMModel}`,
   createNewSession(name?: string, setAsActive: boolean = false): string {
     const sessionId = `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     const sessionName = name || `Terminal ${this.terminalSessions.length + 1}`;
-    
+
     const newSession: TerminalSession = {
       id: sessionId,
       name: sessionName,
@@ -2060,17 +2254,17 @@ Using: ${this.currentLLMModel}`,
     };
 
     this.terminalSessions.push(newSession);
-    
+
     if (setAsActive || this.terminalSessions.length === 1) {
       this.switchToSession(sessionId);
     }
-    
+
     return sessionId;
   }
 
   switchToSession(sessionId: string): void {
     console.log(`Switching from session ${this.activeSessionId} to ${sessionId}`);
-    
+
     // Save current session state
     if (this.activeSessionId) {
       this.saveCurrentSessionState();
@@ -2089,11 +2283,11 @@ Using: ${this.currentLLMModel}`,
 
     // Mark all sessions as inactive
     this.terminalSessions.forEach(session => session.isActive = false);
-    
+
     // Activate target session
     targetSession.isActive = true;
     this.activeSessionId = sessionId;
-    
+
     // Restore session state
     this.restoreSessionState(targetSession);
     console.log(`Restored session ${sessionId}:`, {
@@ -2114,10 +2308,10 @@ Using: ${this.currentLLMModel}`,
     }
 
     const wasActive = this.terminalSessions[sessionIndex].isActive;
-    
+
     // Remove the session
     this.terminalSessions.splice(sessionIndex, 1);
-    
+
     // If we closed the active session, switch to another one
     if (wasActive) {
       // Switch to the session before the closed one, or the first one if we closed the first
@@ -2136,6 +2330,11 @@ Using: ${this.currentLLMModel}`,
   private saveCurrentSessionState(): void {
     const activeSession = this.terminalSessions.find(s => s.id === this.activeSessionId);
     if (activeSession) {
+      // Exit history search mode before saving state
+      if (this.isHistorySearchActive) {
+        this.exitHistorySearch(false);
+      }
+
       activeSession.commandHistory = [...this.commandHistory];
       activeSession.currentWorkingDirectory = this.currentWorkingDirectory;
       activeSession.gitBranch = this.gitBranch;
@@ -2150,13 +2349,13 @@ Using: ${this.currentLLMModel}`,
     this.gitBranch = session.gitBranch;
     this.isSshSessionActive = session.isSshSessionActive;
     this.currentSshUserHost = session.currentSshUserHost;
-    
+
     // Reset UI state
     this.currentCommand = '';
     this.commandHistoryIndex = -1;
     this.isProcessing = false;
     this.showSuggestions = false;
-    
+
     // Update directory display
     this.getCurrentDirectory();
   }
