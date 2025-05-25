@@ -174,7 +174,8 @@ button {
   flex: 1;
   padding: 16px;
   overflow-y: auto;
-  overflow-x: hidden; /* Prevent horizontal scrollbar */
+  overflow-x: hidden;
+  /* Prevent horizontal scrollbar */
   font-size: 12px;
   line-height: 1.5;
   border-radius: 0;
@@ -186,7 +187,8 @@ button {
   position: relative;
   z-index: 1;
   user-select: text;
-  width: 100%; /* Ensure it takes the full width */
+  width: 100%;
+  /* Ensure it takes the full width */
 }
 
 .terminal-panel .input-area {
@@ -320,6 +322,7 @@ button {
   opacity: 0.7;
 }
 
+/* Panel resizing */
 .resizer {
   width: 8px;
   background-color: transparent;
@@ -390,7 +393,8 @@ button {
   opacity: 0.9;
   transition: all 0.2s ease;
   max-width: 100%;
-  overflow-x: hidden; /* Prevent horizontal overflow */
+  overflow-x: hidden;
+  /* Prevent horizontal overflow */
   box-sizing: border-box;
 }
 
@@ -758,6 +762,152 @@ button {
   border-radius: 8px 8px 0 0;
   height: 40px;
   box-sizing: border-box;
+}
+
+/* Terminal Tabs Styling */
+.terminal-tabs {
+  background-color: #21222c;
+  border-bottom: 1px solid #44475a;
+  padding: 0;
+  margin: 0;
+}
+
+.tabs-container {
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  height: 36px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: #44475a transparent;
+}
+
+.tabs-container::-webkit-scrollbar {
+  height: 3px;
+}
+
+.tabs-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.tabs-container::-webkit-scrollbar-thumb {
+  background: #44475a;
+  border-radius: 2px;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  padding: 6px 12px;
+  margin-right: 2px;
+  background-color: #282a36;
+  border: 1px solid #44475a;
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 100px;
+  max-width: 200px;
+  position: relative;
+  font-size: 12px;
+  height: 28px;
+  box-sizing: border-box;
+}
+
+.tab:hover {
+  background-color: #44475a;
+  border-color: rgba(189, 147, 249, 0.3);
+}
+
+.tab.active {
+  background-color: #21222c;
+  border-color: rgba(80, 250, 123, 0.5);
+  color: #50fa7b;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(80, 250, 123, 0.1);
+}
+
+.tab.active:hover {
+  background-color: #21222c;
+  border-color: rgba(80, 250, 123, 0.7);
+}
+
+.tab-name {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #f8f8f2;
+  font-size: 12px;
+  line-height: 1;
+  outline: none;
+  border: none;
+  background: transparent;
+  cursor: inherit;
+}
+
+.tab.active .tab-name {
+  color: #50fa7b;
+}
+
+.tab-name[contenteditable="true"] {
+  background-color: rgba(189, 147, 249, 0.1);
+  border: 1px solid rgba(189, 147, 249, 0.3);
+  border-radius: 3px;
+  padding: 2px 4px;
+  margin: -2px -4px;
+  cursor: text;
+}
+
+.close-tab {
+  background: none;
+  border: none;
+  color: #6272a4;
+  cursor: pointer;
+  padding: 2px 4px;
+  margin-left: 6px;
+  border-radius: 3px;
+  font-size: 14px;
+  line-height: 1;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  font-weight: bold;
+}
+
+.close-tab:hover {
+  color: #ff5555;
+  background-color: rgba(255, 85, 85, 0.1);
+}
+
+.new-tab {
+  background: none;
+  border: 1px solid #44475a;
+  color: #6272a4;
+  cursor: pointer;
+  padding: 6px 12px;
+  margin-left: 8px;
+  border-radius: 6px;
+  font-size: 16px;
+  line-height: 1;
+  width: 36px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  font-weight: bold;
+  flex-shrink: 0;
+}
+
+.new-tab:hover {
+  color: #50fa7b;
+  background-color: rgba(80, 250, 123, 0.1);
+  border-color: rgba(80, 250, 123, 0.3);
 }
 
 /* Panel titles styling */
@@ -1256,7 +1406,8 @@ button {
   padding-bottom: 40px;
   /* Add padding to make room for the buttons */
   max-width: 100%;
-  overflow-x: hidden; /* Explicitly prevent horizontal scrolling */
+  overflow-x: hidden;
+  /* Explicitly prevent horizontal scrolling */
 }
 
 .command-output div {
@@ -1595,3 +1746,21 @@ button {
   color: #ffcc00 !important;
   /* More visible password dots */
 }
+
+/* History search mode styles */
+.prompt.search-mode {
+  color: #4a9eff;
+}
+
+.history-search {
+  color: #ccc;
+  font-family: 'Cascadia Code', 'Fira Code', monospace;
+}
+
+.history-search-highlight {
+  background-color: rgba(74, 158, 255, 0.2);
+  border-radius: 2px;
+  padding: 0 2px;
+}
+
+/* Autocomplete container */
