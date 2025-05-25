@@ -22,7 +22,6 @@ AI Terminal is a powerful terminal interface with AI capabilities. It allows you
 ### macOS (Homebrew)
 
 You can install AI Terminal using Homebrew:
-
 ```bash
 brew tap AiTerminalFoundation/ai-terminal
 brew install ai-terminal
