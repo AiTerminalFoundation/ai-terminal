@@ -27,7 +27,7 @@ jobs:
       - name: Install dependencies
         run: |
           cd ai-terminal
-          npm ci
+          npm ci --force
 
       - name: Import Code-Signing Certificates
         uses: apple-actions/import-codesign-certs@v1
