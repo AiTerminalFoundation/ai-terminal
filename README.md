@@ -38,7 +38,7 @@ A Tauri + Angular terminal application with integrated AI capabilities.
 You can install AI Terminal using Homebrew:
 
 ```bash
-brew tap AiTerminalFoundations/ai-terminal
+brew tap AiTerminalFoundation/ai-terminal
 brew install --cask ai-terminal
 ```
 
