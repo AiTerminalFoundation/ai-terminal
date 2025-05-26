@@ -1,6 +1,6 @@
 [package]
 name = "ai-terminal"
-version = "0.9.0"
+version = "1.0.0"
 description = "Your AI Mate Inside Your Favourite Terminal"
 authors = ["Michele Verriello", "Marco De Vellis"]
 edition = "2021"
@@ -25,7 +25,6 @@ dirs = "6.0.0"
 sentry = "0.38.1"
 reqwest = { version = "0.12.15", features = ["json"] }
 nix = { version = "0.30", features = ["signal"] }
-tokio = { version = "1.44.2", features = ["time"] }
 tauri-plugin-shell = "2"
 fix-path-env = { git = "https://github.com/tauri-apps/fix-path-env-rs" }
 serde_json = "1.0" 

@@ -135,6 +135,7 @@ fn get_shell_path() -> Option<String> {
 #[command]
 fn execute_command(
     command: String,
+    session_id: String,
     ssh_password: Option<String>,
     app_handle: AppHandle,
     command_manager: State<'_, CommandManager>,
@@ -146,7 +147,7 @@ fn execute_command(
     // Phase 1: Check and handle active SSH session
     {
         let mut states_guard = command_manager.commands.lock().map_err(|e| e.to_string())?;
-        let key = "default_state".to_string();
+        let key = session_id.clone();
         println!("[Rust EXEC DEBUG] Phase 1: Checking for active SSH session for key: {}", key);
 
         let state = states_guard.entry(key.clone()).or_insert_with(|| {
@@ -175,6 +176,7 @@ fn execute_command(
 
                 let app_handle_clone_for_thread = app_handle.clone();
                 let command_clone_for_thread = command.clone();
+                let session_id_clone_for_thread = session_id.clone();
 
                 println!("[Rust EXEC DEBUG] Attempting to forward command '{}' to active SSH session (Original PID: {})", command_clone_for_thread, active_pid_for_log);
 
@@ -187,7 +189,7 @@ fn execute_command(
                         Err(e) => {
                             eprintln!("[Rust EXEC DEBUG SSH-Write-Thread] Failed to lock SSH ChildStdin: {}. Resetting SSH state.", e);
                             if let Ok(mut states_lock_in_thread) = command_manager_state_for_thread.commands.lock() {
-                                if let Some(s) = states_lock_in_thread.get_mut("default_state") {
+                                if let Some(s) = states_lock_in_thread.get_mut(&session_id_clone_for_thread) {
                                     if s.pid == Some(active_pid_for_log) && s.is_ssh_session_active {
                                         println!("[Rust EXEC DEBUG SSH-Write-Thread] Resetting SSH active state (stdin, pid:{}) due to ChildStdin lock failure.", active_pid_for_log);
                                         s.is_ssh_session_active = false;
@@ -228,7 +230,7 @@ fn execute_command(
                     if let Err(e) = final_result {
                         eprintln!("[Rust EXEC DEBUG SSH-Write-Thread] Failed to write/flush to SSH ChildStdin: {}. Resetting SSH state.", e);
                         if let Ok(mut states_lock_in_thread) = command_manager_state_for_thread.commands.lock() {
-                             if let Some(s) = states_lock_in_thread.get_mut("default_state") {
+                             if let Some(s) = states_lock_in_thread.get_mut(&session_id_clone_for_thread) {
                                 if s.pid == Some(active_pid_for_log) && s.is_ssh_session_active {
                                     println!("[Rust EXEC DEBUG SSH-Write-Thread] Resetting SSH active state (stdin, pid:{}) due to write/flush failure.", active_pid_for_log);
                                     s.is_ssh_session_active = false;
@@ -271,7 +273,7 @@ fn execute_command(
         // This block is the original 'cd' handling logic.
         // It will lock `command_manager.commands` internally.
         let mut states_guard_cd = command_manager.commands.lock().map_err(|e| e.to_string())?;
-        let key_cd = "default_state".to_string();
+        let key_cd = session_id.clone();
         let state_cd = states_guard_cd.entry(key_cd.clone()).or_insert_with(|| CommandState {
              current_dir: env::current_dir().unwrap_or_default().to_string_lossy().to_string(),
              child_wait_handle: None,
@@ -333,7 +335,7 @@ fn execute_command(
     // Phase 3: Prepare for and execute new command (local or new SSH)
     let current_dir_clone = {
         let mut states_guard_dir = command_manager.commands.lock().map_err(|e| e.to_string())?;
-        let key_dir = "default_state".to_string();
+        let key_dir = session_id.clone();
         let state_dir = states_guard_dir.entry(key_dir.clone()).or_insert_with(|| CommandState {
             current_dir: env::current_dir().unwrap_or_default().to_string_lossy().to_string(),
             child_wait_handle: None,
@@ -504,13 +506,12 @@ fn execute_command(
     // Take IO handles before moving child into Arc<Mutex<Child>>
     let child_stdin_handle = child.stdin.take().map(|stdin| Arc::new(Mutex::new(stdin)));
     let child_stdout_handle = child.stdout.take();
-    let child_stderr_handle = child.stderr.take();
-    
-    let child_wait_handle_arc = Arc::new(Mutex::new(child)); // Now 'child' has no IO handles
+    let child_stderr_handle = child.stderr.take();        let child_wait_handle_arc = Arc::new(Mutex::new(child)); // Now 'child' has no IO handles
+        let session_id_for_wait_thread = session_id.clone();
 
     {
         let mut states_guard_update = command_manager.commands.lock().map_err(|e| e.to_string())?;
-        let key_update = "default_state".to_string();
+        let key_update = session_id.clone();
         let state_to_update = states_guard_update.entry(key_update).or_insert_with(|| CommandState {
             current_dir: current_dir_clone.clone(), 
             child_wait_handle: None,
@@ -534,6 +535,7 @@ fn execute_command(
             if let Some(stdin_arc_for_init_pwd) = state_to_update.child_stdin.clone() {
                 let app_handle_for_init_pwd_thread = app_handle_clone.clone(); // Clone app_handle for the thread
                 let initial_pid_for_init_pwd_error = pid;
+                let session_id_for_init_pwd_thread = session_id.clone();
         
                 thread::spawn(move || {
                     // Get CommandManager state inside the thread using the moved app_handle
@@ -549,7 +551,7 @@ fn execute_command(
                             if let Err(e) = stdin_guard.write_all(initial_pwd_command.as_bytes()).and_then(|_| stdin_guard.flush()) {
                                 eprintln!("[Rust EXEC SSH-Init-PWD-Thread] Failed to write/flush initial PWD command for PID {}: {}. Resetting SSH state if still active.", initial_pid_for_init_pwd_error, e);
                                 if let Ok(mut states_lock) = command_manager_state_for_thread.commands.lock() { // Use state obtained within the thread
-                                    if let Some(s) = states_lock.get_mut("default_state") {
+                                    if let Some(s) = states_lock.get_mut(&session_id_for_init_pwd_thread) {
                                         if s.pid == Some(initial_pid_for_init_pwd_error) && s.is_ssh_session_active {
                                             s.is_ssh_session_active = false;
                                             s.child_stdin = None;
@@ -565,7 +567,7 @@ fn execute_command(
                         Err(e) => {
                              eprintln!("[Rust EXEC SSH-Init-PWD-Thread] Failed to lock SSH ChildStdin for initial PWD command (PID {}): {}. Resetting SSH state if still active.", initial_pid_for_init_pwd_error, e);
                                 if let Ok(mut states_lock) = command_manager_state_for_thread.commands.lock() { // Use state obtained within the thread
-                                    if let Some(s) = states_lock.get_mut("default_state") {
+                                    if let Some(s) = states_lock.get_mut(&session_id_for_init_pwd_thread) {
                                         if s.pid == Some(initial_pid_for_init_pwd_error) && s.is_ssh_session_active {
                                             s.is_ssh_session_active = false;
                                             s.child_stdin = None;
@@ -591,6 +593,7 @@ fn execute_command(
         let app_handle_for_stdout_mgr = app_handle_clone.clone(); 
         let app_handle_for_stdout_emit = app_handle_clone.clone(); 
         let current_pid_for_stdout_context = pid;
+        let session_id_for_stdout_thread = session_id.clone();
 
         thread::spawn(move || {
             let mut reader = BufReader::new(stdout_stream);
@@ -650,7 +653,7 @@ fn execute_command(
                                     
                                     let command_manager_state = app_handle_for_stdout_mgr.state::<CommandManager>();
                                     if let Ok(mut states_guard) = command_manager_state.commands.lock() {
-                                        if let Some(state) = states_guard.get_mut("default_state") {
+                                        if let Some(state) = states_guard.get_mut(&session_id_for_stdout_thread) {
                                             if state.pid == Some(current_pid_for_stdout_context) && state.is_ssh_session_active {
                                                 state.remote_current_dir = Some(new_pwd.clone());
                                                 println!("[Rust STDOUT Thread {:?} PID {}] Updated remote_current_dir to: {}", current_thread_id, current_pid_for_stdout_context, new_pwd);
@@ -775,7 +778,7 @@ fn execute_command(
                 }
             };
 
-            let key_cleanup = "default_state".to_string();
+            let key_cleanup = session_id_for_wait_thread.clone();
             if let Some(state_to_clear) = states_guard_cleanup.get_mut(&key_cleanup) {
                 // Important: Only clear if the PID matches, to avoid race conditions
                 // if another command started and this wait thread is for an older one.
@@ -824,13 +827,14 @@ fn execute_command(
 #[command]
 fn execute_sudo_command(
     command: String,
+    session_id: String,
     password: String,
     app_handle: AppHandle,
     command_manager: State<'_, CommandManager>,
 ) -> Result<String, String> {
     let mut states = command_manager.commands.lock().map_err(|e| e.to_string())?;
 
-    let key = "default_state".to_string();
+    let key = session_id;
     let state = states.entry(key.clone()).or_insert_with(|| CommandState {
         current_dir: env::current_dir()
             .unwrap_or_default()
@@ -980,10 +984,11 @@ fn execute_sudo_command(
 #[command]
 fn autocomplete(
     input: String,
+    session_id: String,
     command_manager: State<'_, CommandManager>,
 ) -> Result<Vec<String>, String> {
     let states = command_manager.commands.lock().map_err(|e| e.to_string())?;
-    let key = "default_state".to_string();
+    let key = session_id;
 
     let current_dir = if let Some(state) = states.get(&key) {
         &state.current_dir
@@ -1121,9 +1126,9 @@ fn split_path_prefix(path: &str) -> (&str, &str) {
 }
 
 #[command]
-fn get_working_directory(command_manager: State<'_, CommandManager>) -> Result<String, String> {
+fn get_working_directory(session_id: String, command_manager: State<'_, CommandManager>) -> Result<String, String> {
     let states = command_manager.commands.lock().map_err(|e| e.to_string())?;
-    let key = "default_state".to_string();
+    let key = session_id;
 
     if let Some(state) = states.get(&key) {
         if state.is_ssh_session_active {
@@ -1133,7 +1138,7 @@ fn get_working_directory(command_manager: State<'_, CommandManager>) -> Result<S
             Ok(state.current_dir.clone())
         }
     } else {
-        // Fallback if default_state is somehow missing
+        // Fallback if session doesn't exist - create new default state
         Ok(env::current_dir().unwrap_or_default().to_string_lossy().to_string())
     }
 }
@@ -1392,9 +1397,9 @@ fn set_host(host: String, command_manager: State<'_, CommandManager>) -> Result<
 }
 
 #[command]
-fn get_git_branch(command_manager: State<'_, CommandManager>) -> Result<String, String> {
+fn get_git_branch(session_id: String, command_manager: State<'_, CommandManager>) -> Result<String, String> {
     let states = command_manager.commands.lock().map_err(|e| e.to_string())?;
-    let key = "default_state".to_string();
+    let key = session_id;
 
     let current_dir = if let Some(state) = states.get(&key) {
         &state.current_dir
@@ -1426,9 +1431,9 @@ fn get_git_branch(command_manager: State<'_, CommandManager>) -> Result<String, 
 }
 
 #[tauri::command]
-fn get_current_pid(command_manager: State<'_, CommandManager>) -> Result<u32, String> {
+fn get_current_pid(session_id: String, command_manager: State<'_, CommandManager>) -> Result<u32, String> {
     let states = command_manager.commands.lock().map_err(|e| e.to_string())?;
-    let key = "default_state".to_string();
+    let key = session_id;
 
     if let Some(state) = states.get(&key) {
         Ok(state.pid.unwrap_or(0))
@@ -1438,9 +1443,9 @@ fn get_current_pid(command_manager: State<'_, CommandManager>) -> Result<u32, St
 }
 
 #[tauri::command]
-fn terminate_command(command_manager: State<'_, CommandManager>) -> Result<(), String> {
+fn terminate_command(session_id: String, command_manager: State<'_, CommandManager>) -> Result<(), String> {
     let mut states = command_manager.commands.lock().map_err(|e| e.to_string())?;
-    let key = "default_state".to_string();
+    let key = session_id;
 
     let pid = if let Some(state) = states.get(&key) {
         state.pid.unwrap_or(0)

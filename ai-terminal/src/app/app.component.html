@@ -9,6 +9,27 @@
           Show AI
         </button>
       </div>
+
+      <!-- Terminal Tabs -->
+      <div class="terminal-tabs">
+        <div class="tabs-container">
+          <div *ngFor="let session of terminalSessions" class="tab" [class.active]="session.isActive"
+            (click)="switchToSession(session.id)">
+            <span class="tab-name" [contentEditable]="false" (dblclick)="startRenaming($event)"
+              (blur)="finishRenaming($event, session)" (keydown.enter)="handleEnterKey($event)">
+              {{ session.name }}
+            </span>
+            <button class="close-tab" (click)="closeSession(session.id); $event.stopPropagation()"
+              *ngIf="terminalSessions.length > 1" title="Close tab">
+              ×
+            </button>
+          </div>
+          <button class="new-tab" (click)="createNewSession()" title="New tab">
+            +
+          </button>
+        </div>
+      </div>
+
       <div class="output-area" #outputArea>
         <div class="command-history">
           <div *ngFor="let entry of commandHistory" class="command-entry"
@@ -73,10 +94,12 @@
           </div>
         </div>
         <div class="prompt-container">
-          <span class="prompt">$</span>
+          <span class="prompt" [class.search-mode]="isHistorySearchActive">{{ isHistorySearchActive ? '🔍' : '$'
+            }}</span>
           <textarea [(ngModel)]="currentCommand" (ngModelChange)="onKeyInput($event)" (keydown)="executeCommand($event)"
             (input)="onKeyInput($event)" (keyup)="onKeyInput($event)" [disabled]="isProcessing"
-            [class.password-input]="isSudoPasswordPrompt" placeholder="Enter command..." autofocus></textarea>
+            [class.password-input]="isSudoPasswordPrompt || isSSHPasswordPrompt"
+            [class.history-search]="isHistorySearchActive" [placeholder]="getPlaceholder()" autofocus></textarea>
         </div>
       </div>
     </div>
