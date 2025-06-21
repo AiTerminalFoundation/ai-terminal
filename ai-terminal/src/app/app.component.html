@@ -99,7 +99,7 @@
           <textarea [(ngModel)]="currentCommand" (ngModelChange)="onKeyInput($event)" (keydown)="executeCommand($event)"
             (input)="onKeyInput($event)" (keyup)="onKeyInput($event)" [disabled]="isProcessing"
             [class.password-input]="isSudoPasswordPrompt || isSSHPasswordPrompt"
-            [class.history-search]="isHistorySearchActive" [placeholder]="getPlaceholder()" autofocus></textarea>
+            [class.history-search]="isHistorySearchActive" [placeholder]="getPlaceholder()" autofocus spellcheck="false"></textarea>
         </div>
       </div>
     </div>
@@ -206,7 +206,7 @@
         <div class="prompt-container">
           <span class="prompt">></span>
           <textarea [(ngModel)]="currentQuestion" (keydown)="askAI($event)" (input)="autoResize($event)"
-            [disabled]="isProcessingAI" placeholder="Ask AI or type /help, /models, /model..." autofocus></textarea>
+            [disabled]="isProcessingAI" placeholder="Ask AI or type /help, /models, /model..." autofocus spellcheck="false"></textarea>
         </div>
       </div>
     </div>
