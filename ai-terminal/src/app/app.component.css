@@ -5,7 +5,7 @@
   overflow: hidden;
   background-color: #282a36;
   font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
-  font-size: 12px;
+  font-size: 14px;
 }
 
 /* Remove all other styles */
@@ -16,7 +16,7 @@
 
 :root {
   font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
-  font-size: 16px;
+  font-size: 12px;
   line-height: 24px;
   font-weight: 400;
 
@@ -74,7 +74,7 @@ button {
   border-radius: 8px;
   border: 1px solid transparent;
   padding: 0.6em 1.2em;
-  font-size: 1em;
+  font-size: 12px;
   font-weight: 500;
   font-family: inherit;
   color: #0f0f0f;
@@ -172,7 +172,7 @@ button {
 
 .output-area {
   flex: 1;
-  padding: 16px;
+  padding: 12px;
   overflow-y: auto;
   overflow-x: hidden;
   /* Prevent horizontal scrollbar */
@@ -243,7 +243,6 @@ button {
 }
 
 .current-directory {
-  font-weight: bold;
   padding: 4px 16px;
   width: calc(100% - 16px);
   overflow: hidden;
@@ -273,7 +272,6 @@ button {
 
 .prompt {
   margin-right: 12px;
-  font-weight: bold;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -300,8 +298,8 @@ button {
   flex: 1;
   background: transparent;
   border: none;
-  color: #f8f8f2;
-  font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+  color: #c9c9c9;
+  font-family: monospace;
   font-size: 12px;
   outline: none;
   resize: none;
@@ -310,6 +308,7 @@ button {
   line-height: 1.5;
   width: calc(100% - 24px);
   padding: 0;
+  letter-spacing: 1px;
 }
 
 .input-area textarea:disabled {
@@ -713,20 +712,15 @@ button {
 /* Command status colors */
 .command-success {
   color: #50fa7b;
-  /* Dracula green */
-  font-weight: bold;
 }
 
 .command-error {
   color: #ff5555;
-  /* Dracula red */
-  font-weight: bold;
 }
 
 .command-running {
   color: #f1fa8c;
   /* Dracula yellow */
-  font-weight: bold;
   animation: pulse 1.5s infinite;
 }
 
@@ -766,8 +760,8 @@ button {
 
 /* Terminal Tabs Styling */
 .terminal-tabs {
-  background-color: #21222c;
-  border-bottom: 1px solid #44475a;
+  background-color: rgba(40, 42, 54, 0.3);;
+  border-bottom: 1px solid rgba(40, 42, 54, 0.3);;
   padding: 0;
   margin: 0;
 }
@@ -887,7 +881,7 @@ button {
 .new-tab {
   background: none;
   border: 1px solid #44475a;
-  color: #6272a4;
+  color: white;
   cursor: pointer;
   padding: 6px 12px;
   margin-left: 8px;
@@ -900,7 +894,6 @@ button {
   align-items: center;
   justify-content: center;
   transition: all 0.2s ease;
-  font-weight: bold;
   flex-shrink: 0;
 }
 
@@ -999,7 +992,6 @@ button {
 /* Add styles for command messages and responses */
 .message-command {
   color: #ffc107;
-  font-weight: bold;
 }
 
 .chat-command-output {
@@ -1473,10 +1465,11 @@ button {
   gap: 8px;
   padding: 2px 0;
   margin: 2px 0;
-  font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+  font-family: monospace;
   border-bottom: 1px solid rgba(139, 233, 253, 0.2);
   padding-bottom: 8px;
   margin-bottom: 8px;
+  letter-spacing: 0.5px;
 }
 
 .chat-question {
@@ -1496,7 +1489,6 @@ button {
 .chat-question .prompt {
   color: rgba(189, 147, 249, 0.85);
   margin-right: 8px;
-  font-weight: bold;
 }
 
 .chat-question .message {
@@ -1597,7 +1589,7 @@ button {
   }
 
   .command-text {
-    font-size: 11px;
+    font-size: 12px;
   }
 
   .command-explanation {
