@@ -1407,12 +1407,6 @@ fn get_git_branch(session_id: String, command_manager: State<'_, CommandManager>
         return Ok("".to_string());
     };
 
-    // Check if .git directory exists
-    let git_dir = Path::new(current_dir).join(".git");
-    if !git_dir.exists() {
-        return Ok("".to_string());
-    }
-
     // Get current branch
     let output = Command::new("git")
         .arg("rev-parse")
