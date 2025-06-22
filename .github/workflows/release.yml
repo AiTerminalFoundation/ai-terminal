@@ -146,48 +146,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Update Website Versions
-        env:
-          WEBSITE_REPO: AiTerminalFoundation/website
-          GITHUB_TOKEN: ${{ secrets.HOMEBREW_TOKEN }}
-        run: |
-          # Clone the website repository
-          git clone https://x-access-token:${GITHUB_TOKEN}@github.com/${WEBSITE_REPO}.git website
-          cd website
-
-          # Update versions.js with new version info
-          VERSION="${{ env.RELEASE_VERSION }}"
-          DMG_URL="https://github.com/AiTerminalFoundation/ai-terminal/releases/download/v${VERSION}/ai-terminal-${VERSION}.dmg"
-          DEB_X86_URL="https://github.com/AiTerminalFoundation/ai-terminal/releases/download/v${VERSION}/ai-terminal_${VERSION}_amd64.deb"
-          DEB_ARM_URL="https://github.com/AiTerminalFoundation/ai-terminal/releases/download/v${VERSION}/ai-terminal_${VERSION}_arm64.deb"
-          
-          # Create a temporary file with the updated content
-          cat > versions.js << EOL
-          const VERSION_INFO = {
-              macos: {
-                  version: '${VERSION}',
-                  downloadUrl: '${DMG_URL}'
-              },
-              windows: {
-                  version: '${VERSION}',
-                  downloadUrl: '#',
-                  isComingSoon: true
-              },
-              linux: {
-                  version: '${VERSION}',
-                  downloadUrl: '${DEB_X86_URL}',
-                  arm64DownloadUrl: '${DEB_ARM_URL}'
-              }
-          };
-          EOL
-
-          # Commit and push changes
-          git config user.name "GitHub Actions"
-          git config user.email "actions@github.com"
-          git add versions.js
-          git commit -m "Update ai-terminal version to v${VERSION}"
-          git push
-
       - name: Update Homebrew Formula and Cask
         env:
           HOMEBREW_TAP_REPO: AiTerminalFoundation/homebrew-ai-terminal

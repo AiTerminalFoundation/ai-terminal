@@ -43,6 +43,29 @@
                 }">
                 {{ entry.command }}
               </span>
+              <div class="command-entry-actions">
+                <button class="output-action-button" data-tooltip="Copy output"
+                  (click)="copyToClipboard(getFilteredOutput(entry.output))"
+                  *ngIf="entry.isComplete && entry.output.length > 0">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                  </svg>
+                </button>
+                <button class="output-action-button" data-tooltip="Scroll to top" (click)="scrollToTop(entry)">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M18 15l-6-6-6 6" />
+                  </svg>
+                </button>
+                <button class="output-action-button" data-tooltip="Scroll to end" (click)="scrollToEnd(entry)">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M6 9l6 6 6-6" />
+                  </svg>
+                </button>
+              </div>
             </div>
             <div class="command-output">
 
@@ -52,37 +75,34 @@
                            !line.includes('Command failed.') && 
                            !line.includes('Command started. Output will stream')">{{ line }}</div>
               </ng-container>
-
-              <!-- Copy icon - only show for completed commands with output -->
-              <span class="copy-icon" (click)="copyToClipboard(getFilteredOutput(entry.output))"
-                *ngIf="entry.isComplete && entry.output.length > 0">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                  stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                </svg>
-              </span>
-
-              <!-- Scroll to top button -->
-              <button class="scroll-to-top-button" data-tooltip="Scroll to top" (click)="scrollToTop(entry)">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                  stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M18 15l-6-6-6 6" />
-                </svg>
-              </button>
             </div>
           </div>
         </div>
       </div>
       <div class="current-directory">
-        {{ currentWorkingDirectory }}
-        <span class="git-branch" *ngIf="gitBranch">git({{ gitBranch }})</span>
+        <span>{{ currentWorkingDirectory }}</span>
+        <div class="git-branch-container" *ngIf="gitBranch">
+          <button class="git-branch-button" (click)="toggleBranchSelector($event)">
+            git({{ gitBranch }})
+          </button>
+          <div class="branch-selector-popup" *ngIf="showBranchSelector">
+            <div class="branch-list-container">
+              <div *ngFor="let branch of gitBranches" 
+                   class="branch-item" 
+                   [class.active]="branch === gitBranch"
+                   (click)="switchBranch(branch)">
+                {{ branch }}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
       <div class="input-area">
         <!-- Autocomplete suggestions - moved above input -->
-        <div class="autocomplete-container" *ngIf="showSuggestions && autocompleteSuggestions.length > 0" tabindex="0"
+        <div class="autocomplete-container" #autocompleteContainer *ngIf="showSuggestions && autocompleteSuggestions.length > 0" tabindex="0"
           (keydown.arrowDown)="navigateToSuggestion('down'); $event.preventDefault()"
           (keydown.arrowUp)="navigateToSuggestion('up'); $event.preventDefault()"
+          (keydown.tab)="navigateToSuggestion('down'); $event.preventDefault()"
           (keydown.enter)="applySuggestion(autocompleteSuggestions[selectedSuggestionIndex]); focusTerminalInput(); $event.preventDefault()"
           (keydown.escape)="showSuggestions = false; focusTerminalInput(); $event.preventDefault()">
           <div class="autocomplete-list">
@@ -96,8 +116,8 @@
         <div class="prompt-container">
           <span class="prompt" [class.search-mode]="isHistorySearchActive">{{ isHistorySearchActive ? '🔍' : '$'
             }}</span>
-          <textarea [(ngModel)]="currentCommand" (ngModelChange)="onKeyInput($event)" (keydown)="executeCommand($event)"
-            (input)="onKeyInput($event)" (keyup)="onKeyInput($event)" [disabled]="isProcessing"
+          <textarea [(ngModel)]="currentCommand" (keydown)="executeCommand($event)"
+            (input)="onKeyInput($event)" [disabled]="isProcessing"
             [class.password-input]="isSudoPasswordPrompt || isSSHPasswordPrompt"
             [class.history-search]="isHistorySearchActive" [placeholder]="getPlaceholder()" autofocus spellcheck="false"></textarea>
         </div>

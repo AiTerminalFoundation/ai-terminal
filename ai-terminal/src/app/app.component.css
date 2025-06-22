@@ -172,7 +172,6 @@ button {
 
 .output-area {
   flex: 1;
-  padding: 12px;
   overflow-y: auto;
   overflow-x: hidden;
   /* Prevent horizontal scrollbar */
@@ -243,18 +242,14 @@ button {
 }
 
 .current-directory {
-  padding: 4px 16px;
-  width: calc(100% - 16px);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  padding: 8px 15px;
   background-color: #282a36;
-  font-size: 12px;
-  margin-bottom: 0;
+  color: #a9a9a9;
+  font-size: 13px;
+  border-top: 1px solid #444;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  box-sizing: border-box;
 }
 
 .git-branch {
@@ -385,6 +380,43 @@ button {
 
 /* Command and chat entry styling */
 .command-entry {
+  border-top: 1px solid #44475a;
+  transition: all 0.2s ease;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.command-entry-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.output-action-button {
+  background: none;
+  border: 1px solid rgba(98, 114, 164, 0.3);
+  padding: 4px;
+  color: #f8f8f2;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  opacity: 0.6;
+}
+
+.output-action-button:hover {
+  opacity: 1;
+  background-color: rgba(98, 114, 164, 0.2);
+  border-color: rgba(98, 114, 164, 0.8);
+}
+
+.output-action-button svg {
+  stroke: currentColor;
+}
+
+.chat-entry {
   margin-bottom: 20px;
   padding: 8px;
   border: 1px solid #44475a;
@@ -395,26 +427,10 @@ button {
   overflow-x: hidden;
   /* Prevent horizontal overflow */
   box-sizing: border-box;
-}
-
-.command-entry:hover {
-  transform: scale(1.01);
-  border-color: rgba(80, 250, 123, 0.4);
-  box-shadow: 0 4px 12px rgba(80, 250, 123, 0.15);
-  opacity: 1;
-}
-
-.chat-entry {
-  margin-bottom: 20px;
-  padding: 8px;
-  border: 1px solid #44475a;
-  border-radius: 8px;
-  opacity: 0.9;
-  transition: all 0.2s ease;
+  position: relative;
 }
 
 .chat-entry:hover {
-  transform: scale(1.01);
   border-color: rgba(189, 147, 249, 0.4);
   box-shadow: 0 4px 12px rgba(189, 147, 249, 0.15);
   opacity: 1;
@@ -601,6 +617,7 @@ button {
   padding: 6px 12px;
   cursor: pointer;
   transition: all 0.2s;
+  font-size: 11px;
 }
 
 .autocomplete-item:hover {
@@ -609,19 +626,6 @@ button {
 
 .autocomplete-item.selected {
   background-color: #bd93f9;
-  color: #282a36;
-  font-weight: bold;
-  padding-left: 8px;
-  border-left: 4px solid #ff79c6;
-  position: relative;
-}
-
-/* Add an indicator to show this item is selected */
-.autocomplete-item.selected:after {
-  content: "▶";
-  position: absolute;
-  right: 10px;
-  font-size: 10px;
   color: #282a36;
 }
 
@@ -1390,10 +1394,9 @@ button {
 }
 
 .command-output {
-  position: relative;
-  padding: 8px;
+  padding: 8px 12px;
   margin: 4px 0;
-  border-radius: 4px;
+  border-radius: 0;
   background-color: rgba(40, 42, 54, 0.3);
   padding-bottom: 40px;
   /* Add padding to make room for the buttons */
@@ -1460,16 +1463,25 @@ button {
 }
 
 .command-line {
+  position: -webkit-sticky;
+  position: sticky;
+  top: 0;
+  background-color:#363948;
+  z-index: 2;
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 2px 0;
-  margin: 2px 0;
+  padding: 8px 12px;
+  margin: 0;
   font-family: monospace;
-  border-bottom: 1px solid rgba(139, 233, 253, 0.2);
-  padding-bottom: 8px;
-  margin-bottom: 8px;
+  border-bottom: none;
+  box-shadow: 0 1px 0 rgba(139, 233, 253, 0.2);
   letter-spacing: 0.5px;
+}
+
+.command-line .command {
+  overflow-x: auto;
+  white-space: nowrap;
 }
 
 .chat-question {
@@ -1755,4 +1767,89 @@ button {
   padding: 0 2px;
 }
 
-/* Autocomplete container */
+.git-branch-container {
+  position: relative;
+  display: inline-block;
+}
+
+.git-branch-button {
+  background-color: #333;
+  color: #8ade96;
+  border: 1px solid #444;
+  border-radius: 4px;
+  padding: 2px 8px;
+  cursor: pointer;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.git-branch-button:hover {
+  background-color: #444;
+}
+
+.branch-selector-popup {
+  position: absolute;
+  bottom: 100%;
+  right: 0;
+  margin-bottom: 8px;
+  background-color: #44475a;
+  border: 1px solid rgba(80, 250, 123, 0.2);
+  border-radius: 4px;
+  z-index: 1000;
+  width: max-content;
+  min-width: 200px;
+  max-height: 300px;
+  overflow-y: auto;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.branch-list-container {
+  display: flex;
+  flex-direction: column;
+}
+
+.branch-item {
+  padding: 6px 12px;
+  cursor: pointer;
+  color: #f8f8f2;
+  font-size: 11px;
+  border-bottom: none;
+  transition: all 0.2s;
+}
+
+.branch-item:last-child {
+  border-bottom: none;
+}
+
+.branch-item:hover {
+  background-color: #6272a4;
+}
+
+.branch-item.active {
+  background-color: #bd93f9;
+  color: #282a36;
+  font-weight: normal;
+}
+
+.branch-item.more-items {
+  font-style: italic;
+  color: #888;
+  cursor: default;
+}
+
+.branch-item.more-items:hover {
+  background-color: transparent;
+}
+
+/* Input Area Styles */
+.input-area {
+  padding: 5px;
+  background-color: #1e1e1e;
+}
+
+.command-line .command {
+  overflow-x: auto;
+  white-space: nowrap;
+}
