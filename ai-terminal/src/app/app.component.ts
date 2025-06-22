@@ -525,6 +525,30 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
   // Handle key presses globally
   @HostListener('document:keydown', ['$event'])
   handleKeyboardEvent(event: KeyboardEvent) {
+    // Handle ESC key to close popups or cancel actions
+    if (event.key === 'Escape') {
+      if (this.isHistorySearchActive) {
+        this.exitHistorySearch(false);
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
+      if (this.showSuggestions) {
+        this.showSuggestions = false;
+        event.preventDefault();
+        event.stopPropagation();
+        this.focusTerminalInput();
+        return;
+      }
+      if (this.showBranchSelector) {
+        this.showBranchSelector = false;
+        event.preventDefault();
+        event.stopPropagation();
+        this.focusTerminalInput();
+        return;
+      }
+    }
+
     // Handle Ctrl+R to activate history search
     if (event.ctrlKey && event.key === 'r' && !this.isProcessing) {
       event.preventDefault();
@@ -648,12 +672,6 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
     // Handle history search mode
     if (this.isHistorySearchActive) {
       // Handle special keys in history search mode
-      if (event.key === 'Escape') {
-        this.exitHistorySearch(false);
-        event.preventDefault();
-        return;
-      }
-
       if (event.key === 'Enter') {
         this.exitHistorySearch(true);
         event.preventDefault();
