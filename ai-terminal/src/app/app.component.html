@@ -116,8 +116,8 @@
         <div class="prompt-container">
           <span class="prompt" [class.search-mode]="isHistorySearchActive">{{ isHistorySearchActive ? '🔍' : '$'
             }}</span>
-          <textarea [(ngModel)]="currentCommand" (ngModelChange)="onKeyInput($event)" (keydown)="executeCommand($event)"
-            (input)="onKeyInput($event)" (keyup)="onKeyInput($event)" [disabled]="isProcessing"
+          <textarea [(ngModel)]="currentCommand" (keydown)="executeCommand($event)"
+            (input)="onKeyInput($event)" [disabled]="isProcessing"
             [class.password-input]="isSudoPasswordPrompt || isSSHPasswordPrompt"
             [class.history-search]="isHistorySearchActive" [placeholder]="getPlaceholder()" autofocus spellcheck="false"></textarea>
         </div>

@@ -631,8 +631,7 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
         sessionId: this.activeSessionId
       });
 
-      // Don't automatically show suggestions - they will be shown on Tab
-      // Just collect them in the background
+      this.showSuggestions = this.autocompleteSuggestions.length > 0;
 
       // Reset selection index
       this.selectedSuggestionIndex = -1;
@@ -653,7 +652,7 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
       this.currentCommand = suggestion;
     }
 
-    // Hide suggestions - won't show again until Tab is pressed
+    // Hide suggestions
     this.showSuggestions = false;
     this.selectedSuggestionIndex = -1;
   }
@@ -722,10 +721,15 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
       return;
     }
 
-    // Handle arrow keys for command history navigation when no suggestions are visible
-    if ((event.key === 'ArrowUp' || event.key === 'ArrowDown') && !this.showSuggestions) {
-      event.preventDefault();
-      this.navigateCommandHistory(event.key === 'ArrowUp' ? 'up' : 'down');
+    // Handle arrow keys for command history or suggestion navigation
+    if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+      if (this.showSuggestions && this.autocompleteSuggestions.length > 0) {
+        event.preventDefault();
+        this.navigateToSuggestion(event.key === 'ArrowUp' ? 'up' : 'down');
+      } else {
+        event.preventDefault();
+        this.navigateCommandHistory(event.key === 'ArrowUp' ? 'up' : 'down');
+      }
       return;
     }
 
@@ -828,29 +832,27 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
     if (event.key === 'Tab') {
       event.preventDefault();
 
-      if (this.showSuggestions) {
+      if (this.showSuggestions && this.autocompleteSuggestions.length > 0) {
         // If suggestions are already showing, navigate them
         this.navigateToSuggestion('down');
       } else {
         // Otherwise, request new suggestions
         await this.requestAutocomplete();
-
-        if (this.autocompleteSuggestions.length === 1) {
-          // If only one suggestion, apply it directly
-          this.applySuggestion(this.autocompleteSuggestions[0]);
-          this.focusTerminalInput();
-        } else if (this.autocompleteSuggestions.length > 1) {
-          // If multiple suggestions, show them
-          this.showSuggestions = true;
-          this.selectedSuggestionIndex = 0;
-          setTimeout(() => this.focusSuggestions(), 0);
-        }
       }
       return;
     }
 
     // Handle Enter key for command execution
     if (event.key === 'Enter') {
+      // If suggestions are visible and one is selected, apply it and prevent execution
+      if (this.showSuggestions && this.selectedSuggestionIndex >= 0) {
+        event.preventDefault();
+        this.applySuggestion(this.autocompleteSuggestions[this.selectedSuggestionIndex]);
+        this.showSuggestions = false;
+        this.focusTerminalInput();
+        return;
+      }
+
       // Don't hide suggestions if a suggestion is selected (global handler will handle this case)
       if (!(this.showSuggestions && this.selectedSuggestionIndex >= 0)) {
         this.showSuggestions = false;
@@ -1792,17 +1794,7 @@ Available commands:
       return;
     }
 
-    // Check input content after any change
-    const trimmedCommand = this.currentCommand.trim();
-
-    // Clear suggestions if input is empty or only contains spaces
-    if (trimmedCommand.length === 0) {
-      this.showSuggestions = false;
-      return;
-    }
-
-    // Only update suggestions in the background but never show them
-    // They will be shown only when the user presses Tab
+    // When not processing, fetch suggestions
     if (!this.isProcessing) {
       this.requestAutocomplete();
     }
@@ -1843,10 +1835,16 @@ Available commands:
       return;
     }
 
+    const numSuggestions = this.autocompleteSuggestions.length;
+
     if (direction === 'down') {
-      this.selectedSuggestionIndex = (this.selectedSuggestionIndex + 1) % this.autocompleteSuggestions.length;
-    } else {
-      this.selectedSuggestionIndex = (this.selectedSuggestionIndex - 1 + this.autocompleteSuggestions.length) % this.autocompleteSuggestions.length;
+      this.selectedSuggestionIndex = (this.selectedSuggestionIndex + 1) % numSuggestions;
+    } else { // direction === 'up'
+      if (this.selectedSuggestionIndex <= 0) { // Handles -1 (none selected) and 0 (first selected)
+        this.selectedSuggestionIndex = numSuggestions - 1;
+      } else {
+        this.selectedSuggestionIndex = this.selectedSuggestionIndex - 1;
+      }
     }
 
     setTimeout(() => this.scrollSuggestionIntoView(), 0);
