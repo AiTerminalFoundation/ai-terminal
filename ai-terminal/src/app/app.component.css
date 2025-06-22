@@ -244,13 +244,13 @@ button {
 
 .current-directory {
   padding: 8px 15px;
-  background-color: #2c2c2c;
+  background-color: #282a36;
   color: #a9a9a9;
   font-size: 13px;
   border-top: 1px solid #444;
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: space-between;
 }
 
 .git-branch {
@@ -1748,9 +1748,9 @@ button {
 }
 
 .git-branch-button {
-  background-color: #3e3e3e;
-  color: #dcdcdc;
-  border: 1px solid #555;
+  background-color: #333;
+  color: #8ade96;
+  border: 1px solid #444;
   border-radius: 4px;
   padding: 2px 8px;
   cursor: pointer;
@@ -1761,7 +1761,7 @@ button {
 }
 
 .git-branch-button:hover {
-  background-color: #4a4a4a;
+  background-color: #444;
 }
 
 .branch-selector-popup {
@@ -1769,15 +1769,15 @@ button {
   bottom: 100%;
   left: 0;
   margin-bottom: 5px;
-  background-color: #2c2c2c;
-  border: 1px solid #555;
+  background-color: #2b2b2b;
+  border: 1px solid #444;
   border-radius: 4px;
   z-index: 1000;
   width: max-content;
   min-width: 200px;
   max-height: 300px;
   overflow-y: auto;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
 }
 
 .branch-list-container {
@@ -1788,9 +1788,9 @@ button {
 .branch-item {
   padding: 8px 12px;
   cursor: pointer;
-  color: #dcdcdc;
+  color: #ccc;
   font-size: 13px;
-  border-bottom: 1px solid #444;
+  border-bottom: 1px solid #333;
 }
 
 .branch-item:last-child {
@@ -1798,21 +1798,27 @@ button {
 }
 
 .branch-item:hover {
-  background-color: #3e3e3e;
+  background-color: #3c3c3c;
 }
 
 .branch-item.active {
-  background-color: #4a6fa1;
-  color: white;
+  background-color: #005f5f;
+  color: #fff;
   font-weight: bold;
 }
 
 .branch-item.more-items {
   font-style: italic;
-  color: #a9a9a9;
+  color: #888;
   cursor: default;
 }
 
 .branch-item.more-items:hover {
   background-color: transparent;
+}
+
+/* Input Area Styles */
+.input-area {
+  padding: 5px;
+  background-color: #1e1e1e;
 }

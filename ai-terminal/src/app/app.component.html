@@ -75,7 +75,7 @@
         </div>
       </div>
       <div class="current-directory">
-        {{ currentWorkingDirectory }}
+        <span>{{ currentWorkingDirectory }}</span>
         <div class="git-branch-container" *ngIf="gitBranch">
           <button class="git-branch-button" (click)="toggleBranchSelector($event)">
             git({{ gitBranch }})
