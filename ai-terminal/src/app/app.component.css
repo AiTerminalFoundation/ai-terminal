@@ -243,18 +243,14 @@ button {
 }
 
 .current-directory {
-  padding: 4px 16px;
-  width: calc(100% - 16px);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  background-color: #282a36;
-  font-size: 12px;
-  margin-bottom: 0;
+  padding: 8px 15px;
+  background-color: #2c2c2c;
+  color: #a9a9a9;
+  font-size: 13px;
+  border-top: 1px solid #444;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  box-sizing: border-box;
+  gap: 10px;
 }
 
 .git-branch {
@@ -1744,4 +1740,79 @@ button {
   background-color: rgba(74, 158, 255, 0.2);
   border-radius: 2px;
   padding: 0 2px;
+}
+
+.git-branch-container {
+  position: relative;
+  display: inline-block;
+}
+
+.git-branch-button {
+  background-color: #3e3e3e;
+  color: #dcdcdc;
+  border: 1px solid #555;
+  border-radius: 4px;
+  padding: 2px 8px;
+  cursor: pointer;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.git-branch-button:hover {
+  background-color: #4a4a4a;
+}
+
+.branch-selector-popup {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  margin-bottom: 5px;
+  background-color: #2c2c2c;
+  border: 1px solid #555;
+  border-radius: 4px;
+  z-index: 1000;
+  width: max-content;
+  min-width: 200px;
+  max-height: 300px;
+  overflow-y: auto;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.branch-list-container {
+  display: flex;
+  flex-direction: column;
+}
+
+.branch-item {
+  padding: 8px 12px;
+  cursor: pointer;
+  color: #dcdcdc;
+  font-size: 13px;
+  border-bottom: 1px solid #444;
+}
+
+.branch-item:last-child {
+  border-bottom: none;
+}
+
+.branch-item:hover {
+  background-color: #3e3e3e;
+}
+
+.branch-item.active {
+  background-color: #4a6fa1;
+  color: white;
+  font-weight: bold;
+}
+
+.branch-item.more-items {
+  font-style: italic;
+  color: #a9a9a9;
+  cursor: default;
+}
+
+.branch-item.more-items:hover {
+  background-color: transparent;
 }

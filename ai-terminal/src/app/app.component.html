@@ -76,7 +76,24 @@
       </div>
       <div class="current-directory">
         {{ currentWorkingDirectory }}
-        <span class="git-branch" *ngIf="gitBranch">git({{ gitBranch }})</span>
+        <div class="git-branch-container" *ngIf="gitBranch">
+          <button class="git-branch-button" (click)="toggleBranchSelector($event)">
+            git({{ gitBranch }})
+          </button>
+          <div class="branch-selector-popup" *ngIf="showBranchSelector">
+            <div class="branch-list-container">
+              <div *ngFor="let branch of gitBranches | slice:0:15" 
+                   class="branch-item" 
+                   [class.active]="branch === gitBranch"
+                   (click)="switchBranch(branch)">
+                {{ branch }}
+              </div>
+              <div *ngIf="gitBranches.length > 15" class="branch-item more-items">
+                ... and {{ gitBranches.length - 15 }} more
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
       <div class="input-area">
         <!-- Autocomplete suggestions - moved above input -->

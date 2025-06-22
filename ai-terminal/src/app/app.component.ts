@@ -115,12 +115,16 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
   isSshSessionActive: boolean = false;
   currentSshUserHost: string | null = null; // To store user@host for current SSH session
 
+  // Git branch selector properties
+  showBranchSelector: boolean = false;
+  gitBranches: string[] = [];
+
   // Constants for SSH interaction
   readonly SSH_NEEDS_PASSWORD_MARKER = "SSH_INTERACTIVE_PASSWORD_PROMPT_REQUESTED";
   readonly SSH_PRE_EXEC_PASSWORD_EVENT = "ssh_pre_exec_password_request";
   readonly COMMAND_FORWARDED_TO_ACTIVE_SSH_MARKER = "COMMAND_FORWARDED_TO_ACTIVE_SSH";
 
-  constructor(private sanitizer: DomSanitizer, private ngZone: NgZone) { }
+  constructor(private sanitizer: DomSanitizer, private ngZone: NgZone, private elRef: ElementRef) { }
 
   getPlaceholder(): string {
     if (this.isHistorySearchActive) {
@@ -133,6 +137,60 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
       return 'SSH Password:';
     }
     return 'Enter command...';
+  }
+
+  async toggleBranchSelector(event: MouseEvent): Promise<void> {
+    event.stopPropagation();
+    this.showBranchSelector = !this.showBranchSelector;
+    console.log('showBranchSelector toggled to:', this.showBranchSelector);
+    if (this.showBranchSelector) {
+      await this.fetchGitBranches();
+    }
+  }
+
+  async fetchGitBranches(): Promise<void> {
+    try {
+      console.log("Fetching branches")
+      const activeSession = this.getActiveSession();
+      if (activeSession) {
+        const branches = await invoke<string[]>('get_git_branches', { sessionId: this.activeSessionId });
+        console.log('Fetched branches:', branches);
+        // Clean up branch names
+        this.gitBranches = branches.map(b => b.trim().replace('remotes/origin/', ''));
+      }
+      console.log('Fetched branches active:', activeSession);
+    } catch (error) {
+      console.error('Failed to fetch git branches:', error);
+      this.gitBranches = []; // Clear branches on error
+    }
+  }
+
+  async switchBranch(branch: string): Promise<void> {
+    if (branch === this.gitBranch) {
+      this.showBranchSelector = false;
+      return;
+    }
+
+    try {
+      const activeSession = this.getActiveSession();
+      if (activeSession) {
+        this.isProcessing = true; // Show loading state
+        this.currentCommand = `git checkout ${branch}`; // Display command
+        this.showBranchSelector = false;
+
+        await invoke('switch_branch', { branchName: branch, sessionId: this.activeSessionId });
+
+        // Backend will send events to update UI, but we can optimistically update here
+        this.gitBranch = branch;
+        await this.getCurrentDirectory(); // Refresh CWD and branch
+      }
+    } catch (error) {
+      console.error(`Failed to switch to branch ${branch}:`, error);
+      // You could add a user-facing error message here
+    } finally {
+      this.isProcessing = false;
+      this.currentCommand = '';
+    }
   }
 
   // Public method to sanitize HTML content
@@ -2369,6 +2427,18 @@ Using: ${this.currentLLMModel}`,
     if (target) {
       target.blur();
       keyboardEvent.preventDefault();
+    }
+  }
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent) {
+    const branchButton = this.elRef.nativeElement.querySelector('.git-branch-button');
+    const branchPopup = this.elRef.nativeElement.querySelector('.branch-selector-popup');
+
+    // If the popup is open and the click is not on the button or inside the popup
+    if (this.showBranchSelector && branchButton && !branchButton.contains(event.target as Node) && branchPopup && !branchPopup.contains(event.target as Node)) {
+      this.showBranchSelector = false;
+      console.log('Clicked outside, closing branch selector.');
     }
   }
 }
