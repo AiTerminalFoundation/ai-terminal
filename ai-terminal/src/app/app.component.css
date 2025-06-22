@@ -172,7 +172,6 @@ button {
 
 .output-area {
   flex: 1;
-  padding: 0 12px;
   overflow-y: auto;
   overflow-x: hidden;
   /* Prevent horizontal scrollbar */
@@ -382,11 +381,9 @@ button {
 /* Command and chat entry styling */
 .command-entry {
   border-top: 1px solid #44475a;
-  opacity: 0.9;
   transition: all 0.2s ease;
   max-width: 100%;
   box-sizing: border-box;
-  position: relative;
 }
 
 .command-entry-actions {
@@ -1480,7 +1477,8 @@ button {
   padding: 8px 12px;
   margin: 0;
   font-family: monospace;
-  border-bottom: 1px solid rgba(139, 233, 253, 0.2);
+  border-bottom: none;
+  box-shadow: 0 1px 0 rgba(139, 233, 253, 0.2);
   letter-spacing: 0.5px;
 }
 
