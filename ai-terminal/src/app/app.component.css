@@ -394,7 +394,6 @@ button {
 }
 
 .command-entry:hover {
-  transform: scale(1.01);
   border-color: rgba(80, 250, 123, 0.4);
   box-shadow: 0 4px 12px rgba(80, 250, 123, 0.15);
   opacity: 1;
@@ -410,7 +409,6 @@ button {
 }
 
 .chat-entry:hover {
-  transform: scale(1.01);
   border-color: rgba(189, 147, 249, 0.4);
   box-shadow: 0 4px 12px rgba(189, 147, 249, 0.15);
   opacity: 1;
