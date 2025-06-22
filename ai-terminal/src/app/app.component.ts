@@ -93,6 +93,7 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
 
   // Auto-scroll
   @ViewChild('outputArea') outputAreaRef!: ElementRef;
+  @ViewChild('autocompleteContainer') autocompleteContainer!: ElementRef;
   shouldScroll = false;
 
   // Cache home directory path to avoid repeated requests
@@ -563,13 +564,11 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
   applySuggestion(suggestion: string): void {
     const parts = this.currentCommand.trim().split(' ');
 
-    if (parts.length <= 1) {
-      // If it's just one word, replace it
-      this.currentCommand = suggestion;
-    } else {
-      // For cd commands or similar, preserve the command and replace the argument
+    if (parts.length > 1 || parts[0] === 'cd') {
       const command = parts[0];
       this.currentCommand = `${command} ${suggestion}`;
+    } else {
+      this.currentCommand = suggestion;
     }
 
     // Hide suggestions - won't show again until Tab is pressed
@@ -749,57 +748,32 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
       return;
     }
 
-    // Tab completion - show suggestions
+    // Handle Tab for autocomplete
     if (event.key === 'Tab') {
       event.preventDefault();
 
-      // Only trigger autocomplete if there's at least one character
-      // Exception: 'cd' command should allow tab completion with empty argument
-      const trimmedCommand = this.currentCommand.trim();
-      const isCdCommand = trimmedCommand === 'cd' || trimmedCommand.startsWith('cd ');
-
-      if (trimmedCommand.length >= 1 || isCdCommand) {
-        // If suggestions are already showing and a suggestion is selected
-        if (this.showSuggestions && this.selectedSuggestionIndex >= 0) {
-          // Apply the selected suggestion
-          this.applySuggestion(this.autocompleteSuggestions[this.selectedSuggestionIndex]);
-          // Make sure focus is maintained
-          this.focusTerminalInput();
-          return;
-        }
-
-        // Get suggestions from backend
+      if (this.showSuggestions) {
+        // If suggestions are already showing, navigate them
+        this.navigateToSuggestion('down');
+      } else {
+        // Otherwise, request new suggestions
         await this.requestAutocomplete();
 
-        // Show suggestions if we have any
-        if (this.autocompleteSuggestions.length > 0) {
-          this.showSuggestions = true;
-
+        if (this.autocompleteSuggestions.length === 1) {
           // If only one suggestion, apply it directly
-          if (this.autocompleteSuggestions.length === 1) {
-            this.applySuggestion(this.autocompleteSuggestions[0]);
-            // Make sure focus is maintained
-            this.focusTerminalInput();
-            return;
-          }
-
-          // Select the first suggestion by default
+          this.applySuggestion(this.autocompleteSuggestions[0]);
+          this.focusTerminalInput();
+        } else if (this.autocompleteSuggestions.length > 1) {
+          // If multiple suggestions, show them
+          this.showSuggestions = true;
           this.selectedSuggestionIndex = 0;
-
-          // Focus the suggestions container for keyboard navigation
-          this.focusSuggestions();
+          setTimeout(() => this.focusSuggestions(), 0);
         }
       }
       return;
     }
 
-    // Auto-suggest in the background (but don't show) as the user types
-    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight' &&
-      this.currentCommand.trim().length >= 1 && !this.isProcessing) {
-      await this.requestAutocomplete();
-    }
-
-    // Hide suggestions when pressing Enter to execute command
+    // Handle Enter key for command execution
     if (event.key === 'Enter') {
       // Don't hide suggestions if a suggestion is selected (global handler will handle this case)
       if (!(this.showSuggestions && this.selectedSuggestionIndex >= 0)) {
@@ -1794,36 +1768,41 @@ Available commands:
     }
 
     if (direction === 'down') {
-      this.selectedSuggestionIndex = Math.min(
-        this.selectedSuggestionIndex + 1,
-        this.autocompleteSuggestions.length - 1
-      );
+      this.selectedSuggestionIndex = (this.selectedSuggestionIndex + 1) % this.autocompleteSuggestions.length;
     } else {
-      this.selectedSuggestionIndex = Math.max(this.selectedSuggestionIndex - 1, 0);
+      this.selectedSuggestionIndex = (this.selectedSuggestionIndex - 1 + this.autocompleteSuggestions.length) % this.autocompleteSuggestions.length;
     }
 
-    // Make sure the suggestions container maintains focus
-    this.focusSuggestions();
+    setTimeout(() => this.scrollSuggestionIntoView(), 0);
+  }
+
+  private scrollSuggestionIntoView(): void {
+    if (this.autocompleteContainer?.nativeElement) {
+      const selectedElement = this.autocompleteContainer.nativeElement.querySelector('.autocomplete-item.selected');
+      if (selectedElement) {
+        selectedElement.scrollIntoView({ block: 'nearest' });
+      }
+    }
   }
 
   // Navigate through command history with arrow keys
   navigateCommandHistory(direction: 'up' | 'down'): void {
-    // Do nothing if there's no command history or processing a command
-    if (this.commandHistory.length === 0 || this.isProcessing) {
+    const history = this.commandHistory.map(h => h.command);
+    if (history.length === 0) {
       return;
     }
 
     if (direction === 'up') {
       // If not navigating history yet, start from the last command
       if (this.commandHistoryIndex === -1) {
-        this.commandHistoryIndex = this.commandHistory.length - 1;
+        this.commandHistoryIndex = history.length - 1;
       } else {
         // Move up in history (if not at the beginning)
         this.commandHistoryIndex = Math.max(0, this.commandHistoryIndex - 1);
       }
 
       // Set the current command to the historical command
-      this.currentCommand = this.commandHistory[this.commandHistoryIndex].command;
+      this.currentCommand = history[this.commandHistoryIndex];
     } else if (direction === 'down') {
       // If already at the end of history, do nothing
       if (this.commandHistoryIndex === -1) {
@@ -1834,12 +1813,12 @@ Available commands:
       this.commandHistoryIndex++;
 
       // If we went past the end of history, clear input and reset index
-      if (this.commandHistoryIndex >= this.commandHistory.length) {
+      if (this.commandHistoryIndex >= history.length) {
         this.currentCommand = '';
         this.commandHistoryIndex = -1;
       } else {
         // Otherwise set to the command at current index
-        this.currentCommand = this.commandHistory[this.commandHistoryIndex].command;
+        this.currentCommand = history[this.commandHistoryIndex];
       }
     }
 

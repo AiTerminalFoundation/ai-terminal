@@ -80,9 +80,10 @@
       </div>
       <div class="input-area">
         <!-- Autocomplete suggestions - moved above input -->
-        <div class="autocomplete-container" *ngIf="showSuggestions && autocompleteSuggestions.length > 0" tabindex="0"
+        <div class="autocomplete-container" #autocompleteContainer *ngIf="showSuggestions && autocompleteSuggestions.length > 0" tabindex="0"
           (keydown.arrowDown)="navigateToSuggestion('down'); $event.preventDefault()"
           (keydown.arrowUp)="navigateToSuggestion('up'); $event.preventDefault()"
+          (keydown.tab)="navigateToSuggestion('down'); $event.preventDefault()"
           (keydown.enter)="applySuggestion(autocompleteSuggestions[selectedSuggestionIndex]); focusTerminalInput(); $event.preventDefault()"
           (keydown.escape)="showSuggestions = false; focusTerminalInput(); $event.preventDefault()">
           <div class="autocomplete-list">

@@ -601,6 +601,7 @@ button {
   padding: 6px 12px;
   cursor: pointer;
   transition: all 0.2s;
+  font-size: 11px;
 }
 
 .autocomplete-item:hover {
@@ -610,19 +611,9 @@ button {
 .autocomplete-item.selected {
   background-color: #bd93f9;
   color: #282a36;
-  font-weight: bold;
   padding-left: 8px;
   border-left: 4px solid #ff79c6;
   position: relative;
-}
-
-/* Add an indicator to show this item is selected */
-.autocomplete-item.selected:after {
-  content: "▶";
-  position: absolute;
-  right: 10px;
-  font-size: 10px;
-  color: #282a36;
 }
 
 /* Dracula theme colors:
@@ -1754,5 +1745,3 @@ button {
   border-radius: 2px;
   padding: 0 2px;
 }
-
-/* Autocomplete container */

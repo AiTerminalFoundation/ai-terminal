@@ -999,7 +999,7 @@ fn autocomplete(
     let input_parts: Vec<&str> = input.split_whitespace().collect();
 
     // Autocomplete commands if it's the first word
-    if input_parts.len() <= 1 {
+    if input_parts.len() <= 1 && input_parts.first() != Some(&"cd") {
         // Common shell commands to suggest
         let common_commands = vec![
             "cd", "ls", "pwd", "mkdir", "touch", "cat", "echo", "grep", "find", "cp", "mv", "rm",
@@ -1081,8 +1081,10 @@ fn autocomplete(
                     let is_dir = entry.file_type().map(|ft| ft.is_dir()).unwrap_or(false);
 
                     // For 'cd' command, only show directories
-                    if input_parts.first() == Some(&"cd") && !is_dir {
-                        continue;
+                    if input_parts.len() > 0 && input_parts[0] == "cd" {
+                        if !is_dir {
+                            continue;
+                        }
                     }
 
                     // Add trailing slash for directories
