@@ -1,6 +1,6 @@
 [package]
 name = "ai-terminal"
-version = "1.0.1"
+version = "1.0.2"
 description = "Your AI Mate Inside Your Favourite Terminal"
 authors = ["Michele Verriello", "Marco De Vellis"]
 edition = "2021"
