@@ -1767,10 +1767,10 @@ button {
 .branch-selector-popup {
   position: absolute;
   bottom: 100%;
-  left: 0;
+  right: 0;
   margin-bottom: 5px;
   background-color: #2b2b2b;
-  border: 1px solid #444;
+  border: 1px solid #8d8d8d;
   border-radius: 4px;
   z-index: 1000;
   width: max-content;
