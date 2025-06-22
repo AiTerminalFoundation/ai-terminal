@@ -2276,9 +2276,17 @@ Using: ${this.currentLLMModel}`,
     }
   }
 
+  // Method to scroll to end of a command output block
+  scrollToEnd(entry: CommandHistory): void {
+    const element = document.querySelector(`[data-command-id="${entry.timestamp.getTime()}"]`);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
+  }
+
   // Helper to extract user@host from ssh command for a nicer prompt
   extractUserHostFromSshCommand(sshCommand: string): string {
-    const parts = sshCommand.trim().split(/\s+/);
+    const parts = sshCommand.trim().split(/\\s+/);
     const sshIndex = parts.findIndex(part => part === 'ssh');
     if (sshIndex !== -1 && parts.length > sshIndex + 1) {
       // Find the part that looks like user@host or just host
