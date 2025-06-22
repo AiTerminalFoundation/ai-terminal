@@ -627,9 +627,6 @@ button {
 .autocomplete-item.selected {
   background-color: #bd93f9;
   color: #282a36;
-  padding-left: 8px;
-  border-left: 4px solid #ff79c6;
-  position: relative;
 }
 
 /* Dracula theme colors:
@@ -1796,16 +1793,16 @@ button {
   position: absolute;
   bottom: 100%;
   right: 0;
-  margin-bottom: 5px;
-  background-color: #2b2b2b;
-  border: 1px solid #8d8d8d;
+  margin-bottom: 8px;
+  background-color: #44475a;
+  border: 1px solid rgba(80, 250, 123, 0.2);
   border-radius: 4px;
   z-index: 1000;
   width: max-content;
   min-width: 200px;
   max-height: 300px;
   overflow-y: auto;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .branch-list-container {
@@ -1814,11 +1811,12 @@ button {
 }
 
 .branch-item {
-  padding: 8px 12px;
+  padding: 6px 12px;
   cursor: pointer;
-  color: #ccc;
-  font-size: 13px;
-  border-bottom: 1px solid #333;
+  color: #f8f8f2;
+  font-size: 11px;
+  border-bottom: none;
+  transition: all 0.2s;
 }
 
 .branch-item:last-child {
@@ -1826,13 +1824,13 @@ button {
 }
 
 .branch-item:hover {
-  background-color: #3c3c3c;
+  background-color: #6272a4;
 }
 
 .branch-item.active {
-  background-color: #005f5f;
-  color: #fff;
-  font-weight: bold;
+  background-color: #bd93f9;
+  color: #282a36;
+  font-weight: normal;
 }
 
 .branch-item.more-items {
