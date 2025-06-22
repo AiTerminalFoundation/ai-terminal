@@ -91,6 +91,9 @@
           <button class="git-action-button" (click)="commitAndPush()" title="Commit and Push">
             Commit & Push
           </button>
+          <button class="git-action-button" (click)="openPullRequest()" title="Open Pull Request">
+            Open Pull Request
+          </button>
           <div class="branch-selector-popup" *ngIf="showBranchSelector">
             <div class="branch-list-container">
               <div *ngFor="let branch of gitBranches" 

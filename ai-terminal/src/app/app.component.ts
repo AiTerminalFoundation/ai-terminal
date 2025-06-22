@@ -199,6 +199,39 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
     this.showCommitPopup = true;
   }
 
+  async openPullRequest(): Promise<void> {
+    try {
+      // Call backend to get remote URL and branch
+      console.log("openPullRequest")
+      const result = await invoke<{ remoteUrl: string, branch: string }>('get_github_remote_and_branch', { sessionId: this.activeSessionId });
+      const { remoteUrl, branch } = result;
+      // Parse GitHub repo info
+      let match = remoteUrl.match(/github.com[/:]([^/]+)\/([^/.]+)(?:.git)?/);
+      if (!match) {
+        alert('Could not parse GitHub remote URL: ' + remoteUrl);
+        return;
+      }
+      const owner = match[1];
+      const repo = match[2];
+      const prUrl = `https://github.com/${owner}/${repo}/pull/new/${branch}`;
+      // Use the terminal to run the open command
+      this.currentCommand = `open ${prUrl}`;
+      console.log(this.currentCommand)
+      // Optionally, auto-execute the command
+      const event = new KeyboardEvent('keydown', {
+        key: 'Enter',
+        code: 'Enter',
+        keyCode: 13,
+        which: 13,
+        bubbles: true
+      });
+      this.executeCommand(event);
+    } catch (err) {
+      console.log('openPullRequest error:', err);
+      alert('Failed to open PR: ' + err);
+    }
+  }
+
   cancelCommit(): void {
     this.showCommitPopup = false;
     this.commitMessage = '';

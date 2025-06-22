@@ -1716,6 +1716,40 @@ fn git_commit_and_push(
     Ok(output)
 }
 
+#[tauri::command]
+fn get_github_remote_and_branch(
+    session_id: String,
+    command_manager: tauri::State<'_, CommandManager>,
+) -> Result<serde_json::Value, String> {
+    let states = command_manager.commands.lock().map_err(|e| e.to_string())?;
+    let key = session_id;
+    let current_dir = if let Some(state) = states.get(&key) {
+        &state.current_dir
+    } else {
+        return Err("Could not determine current directory for session".to_string());
+    };
+
+    // Get remote URL
+    let mut remote_cmd = new_git_command();
+    remote_cmd.arg("remote").arg("get-url").arg("origin").current_dir(current_dir);
+    let remote_output = remote_cmd.output().map_err(|e| e.to_string())?;
+    if !remote_output.status.success() {
+        return Err(String::from_utf8_lossy(&remote_output.stderr).to_string());
+    }
+    let remote_url = String::from_utf8_lossy(&remote_output.stdout).trim().to_string();
+
+    // Get branch name
+    let mut branch_cmd = new_git_command();
+    branch_cmd.arg("rev-parse").arg("--abbrev-ref").arg("HEAD").current_dir(current_dir);
+    let branch_output = branch_cmd.output().map_err(|e| e.to_string())?;
+    if !branch_output.status.success() {
+        return Err(String::from_utf8_lossy(&branch_output.stderr).to_string());
+    }
+    let branch = String::from_utf8_lossy(&branch_output.stdout).trim().to_string();
+
+    Ok(serde_json::json!({ "remoteUrl": remote_url, "branch": branch }))
+}
+
 fn main() {
     let _ = fix_path_env::fix();
     // Create a new command manager
@@ -1748,6 +1782,7 @@ fn main() {
             get_system_env,
             git_fetch_and_pull,
             git_commit_and_push,
+            get_github_remote_and_branch,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
