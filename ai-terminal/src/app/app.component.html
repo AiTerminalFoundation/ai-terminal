@@ -82,14 +82,11 @@
           </button>
           <div class="branch-selector-popup" *ngIf="showBranchSelector">
             <div class="branch-list-container">
-              <div *ngFor="let branch of gitBranches | slice:0:15" 
+              <div *ngFor="let branch of gitBranches" 
                    class="branch-item" 
                    [class.active]="branch === gitBranch"
                    (click)="switchBranch(branch)">
                 {{ branch }}
-              </div>
-              <div *ngIf="gitBranches.length > 15" class="branch-item more-items">
-                ... and {{ gitBranches.length - 15 }} more
               </div>
             </div>
           </div>
