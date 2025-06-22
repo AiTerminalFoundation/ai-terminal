@@ -93,6 +93,7 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
 
   // Auto-scroll
   @ViewChild('outputArea') outputAreaRef!: ElementRef;
+  @ViewChild('autocompleteContainer') autocompleteContainer!: ElementRef;
   shouldScroll = false;
 
   // Cache home directory path to avoid repeated requests
@@ -114,12 +115,16 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
   isSshSessionActive: boolean = false;
   currentSshUserHost: string | null = null; // To store user@host for current SSH session
 
+  // Git branch selector properties
+  showBranchSelector: boolean = false;
+  gitBranches: string[] = [];
+
   // Constants for SSH interaction
   readonly SSH_NEEDS_PASSWORD_MARKER = "SSH_INTERACTIVE_PASSWORD_PROMPT_REQUESTED";
   readonly SSH_PRE_EXEC_PASSWORD_EVENT = "ssh_pre_exec_password_request";
   readonly COMMAND_FORWARDED_TO_ACTIVE_SSH_MARKER = "COMMAND_FORWARDED_TO_ACTIVE_SSH";
 
-  constructor(private sanitizer: DomSanitizer, private ngZone: NgZone) { }
+  constructor(private sanitizer: DomSanitizer, private ngZone: NgZone, private elRef: ElementRef) { }
 
   getPlaceholder(): string {
     if (this.isHistorySearchActive) {
@@ -132,6 +137,60 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
       return 'SSH Password:';
     }
     return 'Enter command...';
+  }
+
+  async toggleBranchSelector(event: MouseEvent): Promise<void> {
+    event.stopPropagation();
+    this.showBranchSelector = !this.showBranchSelector;
+    console.log('showBranchSelector toggled to:', this.showBranchSelector);
+    if (this.showBranchSelector) {
+      await this.fetchGitBranches();
+    }
+  }
+
+  async fetchGitBranches(): Promise<void> {
+    try {
+      console.log("Fetching branches")
+      const activeSession = this.getActiveSession();
+      if (activeSession) {
+        const branches = await invoke<string[]>('get_git_branches', { sessionId: this.activeSessionId });
+        console.log('Fetched branches:', branches);
+        // Clean up branch names
+        this.gitBranches = branches.map(b => b.trim().replace('remotes/origin/', ''));
+      }
+      console.log('Fetched branches active:', activeSession);
+    } catch (error) {
+      console.error('Failed to fetch git branches:', error);
+      this.gitBranches = []; // Clear branches on error
+    }
+  }
+
+  async switchBranch(branch: string): Promise<void> {
+    if (branch === this.gitBranch) {
+      this.showBranchSelector = false;
+      return;
+    }
+
+    try {
+      const activeSession = this.getActiveSession();
+      if (activeSession) {
+        this.isProcessing = true; // Show loading state
+        this.currentCommand = `git checkout ${branch}`; // Display command
+        this.showBranchSelector = false;
+
+        await invoke('switch_branch', { branchName: branch, sessionId: this.activeSessionId });
+
+        // Backend will send events to update UI, but we can optimistically update here
+        this.gitBranch = branch;
+        await this.getCurrentDirectory(); // Refresh CWD and branch
+      }
+    } catch (error) {
+      console.error(`Failed to switch to branch ${branch}:`, error);
+      // You could add a user-facing error message here
+    } finally {
+      this.isProcessing = false;
+      this.currentCommand = '';
+    }
   }
 
   // Public method to sanitize HTML content
@@ -466,6 +525,30 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
   // Handle key presses globally
   @HostListener('document:keydown', ['$event'])
   handleKeyboardEvent(event: KeyboardEvent) {
+    // Handle ESC key to close popups or cancel actions
+    if (event.key === 'Escape') {
+      if (this.isHistorySearchActive) {
+        this.exitHistorySearch(false);
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
+      if (this.showSuggestions) {
+        this.showSuggestions = false;
+        event.preventDefault();
+        event.stopPropagation();
+        this.focusTerminalInput();
+        return;
+      }
+      if (this.showBranchSelector) {
+        this.showBranchSelector = false;
+        event.preventDefault();
+        event.stopPropagation();
+        this.focusTerminalInput();
+        return;
+      }
+    }
+
     // Handle Ctrl+R to activate history search
     if (event.ctrlKey && event.key === 'r' && !this.isProcessing) {
       event.preventDefault();
@@ -548,8 +631,7 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
         sessionId: this.activeSessionId
       });
 
-      // Don't automatically show suggestions - they will be shown on Tab
-      // Just collect them in the background
+      this.showSuggestions = this.autocompleteSuggestions.length > 0;
 
       // Reset selection index
       this.selectedSuggestionIndex = -1;
@@ -563,16 +645,14 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
   applySuggestion(suggestion: string): void {
     const parts = this.currentCommand.trim().split(' ');
 
-    if (parts.length <= 1) {
-      // If it's just one word, replace it
-      this.currentCommand = suggestion;
-    } else {
-      // For cd commands or similar, preserve the command and replace the argument
+    if (parts.length > 1 || parts[0] === 'cd') {
       const command = parts[0];
       this.currentCommand = `${command} ${suggestion}`;
+    } else {
+      this.currentCommand = suggestion;
     }
 
-    // Hide suggestions - won't show again until Tab is pressed
+    // Hide suggestions
     this.showSuggestions = false;
     this.selectedSuggestionIndex = -1;
   }
@@ -591,12 +671,6 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
     // Handle history search mode
     if (this.isHistorySearchActive) {
       // Handle special keys in history search mode
-      if (event.key === 'Escape') {
-        this.exitHistorySearch(false);
-        event.preventDefault();
-        return;
-      }
-
       if (event.key === 'Enter') {
         this.exitHistorySearch(true);
         event.preventDefault();
@@ -647,10 +721,15 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
       return;
     }
 
-    // Handle arrow keys for command history navigation when no suggestions are visible
-    if ((event.key === 'ArrowUp' || event.key === 'ArrowDown') && !this.showSuggestions) {
-      event.preventDefault();
-      this.navigateCommandHistory(event.key === 'ArrowUp' ? 'up' : 'down');
+    // Handle arrow keys for command history or suggestion navigation
+    if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+      if (this.showSuggestions && this.autocompleteSuggestions.length > 0) {
+        event.preventDefault();
+        this.navigateToSuggestion(event.key === 'ArrowUp' ? 'up' : 'down');
+      } else {
+        event.preventDefault();
+        this.navigateCommandHistory(event.key === 'ArrowUp' ? 'up' : 'down');
+      }
       return;
     }
 
@@ -749,58 +828,31 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
       return;
     }
 
-    // Tab completion - show suggestions
+    // Handle Tab for autocomplete
     if (event.key === 'Tab') {
       event.preventDefault();
 
-      // Only trigger autocomplete if there's at least one character
-      // Exception: 'cd' command should allow tab completion with empty argument
-      const trimmedCommand = this.currentCommand.trim();
-      const isCdCommand = trimmedCommand === 'cd' || trimmedCommand.startsWith('cd ');
-
-      if (trimmedCommand.length >= 1 || isCdCommand) {
-        // If suggestions are already showing and a suggestion is selected
-        if (this.showSuggestions && this.selectedSuggestionIndex >= 0) {
-          // Apply the selected suggestion
-          this.applySuggestion(this.autocompleteSuggestions[this.selectedSuggestionIndex]);
-          // Make sure focus is maintained
-          this.focusTerminalInput();
-          return;
-        }
-
-        // Get suggestions from backend
+      if (this.showSuggestions && this.autocompleteSuggestions.length > 0) {
+        // If suggestions are already showing, navigate them
+        this.navigateToSuggestion('down');
+      } else {
+        // Otherwise, request new suggestions
         await this.requestAutocomplete();
-
-        // Show suggestions if we have any
-        if (this.autocompleteSuggestions.length > 0) {
-          this.showSuggestions = true;
-
-          // If only one suggestion, apply it directly
-          if (this.autocompleteSuggestions.length === 1) {
-            this.applySuggestion(this.autocompleteSuggestions[0]);
-            // Make sure focus is maintained
-            this.focusTerminalInput();
-            return;
-          }
-
-          // Select the first suggestion by default
-          this.selectedSuggestionIndex = 0;
-
-          // Focus the suggestions container for keyboard navigation
-          this.focusSuggestions();
-        }
       }
       return;
     }
 
-    // Auto-suggest in the background (but don't show) as the user types
-    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight' &&
-      this.currentCommand.trim().length >= 1 && !this.isProcessing) {
-      await this.requestAutocomplete();
-    }
-
-    // Hide suggestions when pressing Enter to execute command
+    // Handle Enter key for command execution
     if (event.key === 'Enter') {
+      // If suggestions are visible and one is selected, apply it and prevent execution
+      if (this.showSuggestions && this.selectedSuggestionIndex >= 0) {
+        event.preventDefault();
+        this.applySuggestion(this.autocompleteSuggestions[this.selectedSuggestionIndex]);
+        this.showSuggestions = false;
+        this.focusTerminalInput();
+        return;
+      }
+
       // Don't hide suggestions if a suggestion is selected (global handler will handle this case)
       if (!(this.showSuggestions && this.selectedSuggestionIndex >= 0)) {
         this.showSuggestions = false;
@@ -1742,17 +1794,7 @@ Available commands:
       return;
     }
 
-    // Check input content after any change
-    const trimmedCommand = this.currentCommand.trim();
-
-    // Clear suggestions if input is empty or only contains spaces
-    if (trimmedCommand.length === 0) {
-      this.showSuggestions = false;
-      return;
-    }
-
-    // Only update suggestions in the background but never show them
-    // They will be shown only when the user presses Tab
+    // When not processing, fetch suggestions
     if (!this.isProcessing) {
       this.requestAutocomplete();
     }
@@ -1793,37 +1835,48 @@ Available commands:
       return;
     }
 
+    const numSuggestions = this.autocompleteSuggestions.length;
+
     if (direction === 'down') {
-      this.selectedSuggestionIndex = Math.min(
-        this.selectedSuggestionIndex + 1,
-        this.autocompleteSuggestions.length - 1
-      );
-    } else {
-      this.selectedSuggestionIndex = Math.max(this.selectedSuggestionIndex - 1, 0);
+      this.selectedSuggestionIndex = (this.selectedSuggestionIndex + 1) % numSuggestions;
+    } else { // direction === 'up'
+      if (this.selectedSuggestionIndex <= 0) { // Handles -1 (none selected) and 0 (first selected)
+        this.selectedSuggestionIndex = numSuggestions - 1;
+      } else {
+        this.selectedSuggestionIndex = this.selectedSuggestionIndex - 1;
+      }
     }
 
-    // Make sure the suggestions container maintains focus
-    this.focusSuggestions();
+    setTimeout(() => this.scrollSuggestionIntoView(), 0);
+  }
+
+  private scrollSuggestionIntoView(): void {
+    if (this.autocompleteContainer?.nativeElement) {
+      const selectedElement = this.autocompleteContainer.nativeElement.querySelector('.autocomplete-item.selected');
+      if (selectedElement) {
+        selectedElement.scrollIntoView({ block: 'nearest' });
+      }
+    }
   }
 
   // Navigate through command history with arrow keys
   navigateCommandHistory(direction: 'up' | 'down'): void {
-    // Do nothing if there's no command history or processing a command
-    if (this.commandHistory.length === 0 || this.isProcessing) {
+    const history = this.commandHistory.map(h => h.command);
+    if (history.length === 0) {
       return;
     }
 
     if (direction === 'up') {
       // If not navigating history yet, start from the last command
       if (this.commandHistoryIndex === -1) {
-        this.commandHistoryIndex = this.commandHistory.length - 1;
+        this.commandHistoryIndex = history.length - 1;
       } else {
         // Move up in history (if not at the beginning)
         this.commandHistoryIndex = Math.max(0, this.commandHistoryIndex - 1);
       }
 
       // Set the current command to the historical command
-      this.currentCommand = this.commandHistory[this.commandHistoryIndex].command;
+      this.currentCommand = history[this.commandHistoryIndex];
     } else if (direction === 'down') {
       // If already at the end of history, do nothing
       if (this.commandHistoryIndex === -1) {
@@ -1834,12 +1887,12 @@ Available commands:
       this.commandHistoryIndex++;
 
       // If we went past the end of history, clear input and reset index
-      if (this.commandHistoryIndex >= this.commandHistory.length) {
+      if (this.commandHistoryIndex >= history.length) {
         this.currentCommand = '';
         this.commandHistoryIndex = -1;
       } else {
         // Otherwise set to the command at current index
-        this.currentCommand = this.commandHistory[this.commandHistoryIndex].command;
+        this.currentCommand = history[this.commandHistoryIndex];
       }
     }
 
@@ -2221,9 +2274,17 @@ Using: ${this.currentLLMModel}`,
     }
   }
 
+  // Method to scroll to end of a command output block
+  scrollToEnd(entry: CommandHistory): void {
+    const element = document.querySelector(`[data-command-id="${entry.timestamp.getTime()}"]`);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
+  }
+
   // Helper to extract user@host from ssh command for a nicer prompt
   extractUserHostFromSshCommand(sshCommand: string): string {
-    const parts = sshCommand.trim().split(/\s+/);
+    const parts = sshCommand.trim().split(/\\s+/);
     const sshIndex = parts.findIndex(part => part === 'ssh');
     if (sshIndex !== -1 && parts.length > sshIndex + 1) {
       // Find the part that looks like user@host or just host
@@ -2390,6 +2451,18 @@ Using: ${this.currentLLMModel}`,
     if (target) {
       target.blur();
       keyboardEvent.preventDefault();
+    }
+  }
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent) {
+    const branchButton = this.elRef.nativeElement.querySelector('.git-branch-button');
+    const branchPopup = this.elRef.nativeElement.querySelector('.branch-selector-popup');
+
+    // If the popup is open and the click is not on the button or inside the popup
+    if (this.showBranchSelector && branchButton && !branchButton.contains(event.target as Node) && branchPopup && !branchPopup.contains(event.target as Node)) {
+      this.showBranchSelector = false;
+      console.log('Clicked outside, closing branch selector.');
     }
   }
 }

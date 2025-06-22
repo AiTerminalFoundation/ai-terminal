@@ -999,7 +999,7 @@ fn autocomplete(
     let input_parts: Vec<&str> = input.split_whitespace().collect();
 
     // Autocomplete commands if it's the first word
-    if input_parts.len() <= 1 {
+    if input_parts.len() <= 1 && input_parts.first() != Some(&"cd") {
         // Common shell commands to suggest
         let common_commands = vec![
             "cd", "ls", "pwd", "mkdir", "touch", "cat", "echo", "grep", "find", "cp", "mv", "rm",
@@ -1081,8 +1081,10 @@ fn autocomplete(
                     let is_dir = entry.file_type().map(|ft| ft.is_dir()).unwrap_or(false);
 
                     // For 'cd' command, only show directories
-                    if input_parts.first() == Some(&"cd") && !is_dir {
-                        continue;
+                    if input_parts.len() > 0 && input_parts[0] == "cd" {
+                        if !is_dir {
+                            continue;
+                        }
                     }
 
                     // Add trailing slash for directories
@@ -1407,20 +1409,14 @@ fn get_git_branch(session_id: String, command_manager: State<'_, CommandManager>
         return Ok("".to_string());
     };
 
-    // Check if .git directory exists
-    let git_dir = Path::new(current_dir).join(".git");
-    if !git_dir.exists() {
-        return Ok("".to_string());
-    }
-
     // Get current branch
-    let output = Command::new("git")
-        .arg("rev-parse")
+    let mut cmd = new_git_command();
+    cmd.arg("rev-parse")
         .arg("--abbrev-ref")
         .arg("HEAD")
-        .current_dir(current_dir)
-        .output()
-        .map_err(|e| e.to_string())?;
+        .current_dir(current_dir);
+
+    let output = cmd.output().map_err(|e| e.to_string())?;
 
     if output.status.success() {
         let branch = String::from_utf8_lossy(&output.stdout).trim().to_string();
@@ -1428,6 +1424,130 @@ fn get_git_branch(session_id: String, command_manager: State<'_, CommandManager>
     } else {
         Ok("".to_string())
     }
+}
+
+#[command]
+fn get_git_branches(session_id: String, command_manager: State<'_, CommandManager>) -> Result<Vec<String>, String> {
+    let states = command_manager.commands.lock().map_err(|e| e.to_string())?;
+    let key = session_id;
+
+    let current_dir = if let Some(state) = states.get(&key) {
+        &state.current_dir
+    } else {
+        return Err("Could not determine current directory for session".to_string());
+    };
+
+    let mut cmd = new_git_command();
+    cmd.arg("branch")
+        .arg("-a")
+        .arg("--no-color")
+        .current_dir(current_dir);
+    
+    let output = cmd.output()
+        .map_err(|e| format!("Failed to execute git branch: {}", e))?;
+
+    if !output.status.success() {
+        return Err(String::from_utf8_lossy(&output.stderr).to_string());
+    }
+
+    let branches = String::from_utf8_lossy(&output.stdout)
+        .lines()
+        .map(|line| line.trim().replace("* ", "").to_string())
+        .filter(|line| !line.contains("->")) // Filter out HEAD pointers
+        .collect::<Vec<String>>();
+
+    Ok(branches)
+}
+
+#[command]
+fn switch_branch(branch_name: String, session_id: String, command_manager: State<'_, CommandManager>) -> Result<(), String> {
+    let states = command_manager.commands.lock().map_err(|e| e.to_string())?;
+    let key = session_id;
+
+    let current_dir = if let Some(state) = states.get(&key) {
+        state.current_dir.clone()
+    } else {
+        return Err("Could not determine current directory for session".to_string());
+    };
+
+    // 1. Check for local changes
+    let mut status_cmd = new_git_command();
+    status_cmd.arg("status")
+        .arg("--porcelain")
+        .current_dir(current_dir.clone());
+
+    let status_output = status_cmd.output()
+        .map_err(|e| format!("Failed to execute git status: {}", e))?;
+
+    let needs_stash = !status_output.stdout.is_empty();
+
+    if needs_stash {
+        // 2. Stash changes if necessary
+        let mut stash_cmd = new_git_command();
+        stash_cmd.arg("stash").current_dir(current_dir.clone());
+
+        let stash_output = stash_cmd.output()
+            .map_err(|e| format!("Failed to execute git stash: {}", e))?;
+        if !stash_output.status.success() {
+            return Err(String::from_utf8_lossy(&stash_output.stderr).to_string());
+        }
+    }
+
+    // 3. Checkout the new branch
+    let mut checkout_cmd = new_git_command();
+    checkout_cmd.arg("checkout")
+        .arg(branch_name.clone())
+        .current_dir(current_dir.clone());
+
+    let checkout_output = checkout_cmd.output()
+        .map_err(|e| format!("Failed to execute git checkout: {}", e))?;
+
+    if !checkout_output.status.success() {
+        // If checkout fails, try to pop stash if we created one
+        if needs_stash {
+            let mut stash_pop_cmd = new_git_command();
+            stash_pop_cmd.arg("stash")
+                .arg("pop")
+                .current_dir(current_dir.clone());
+            
+            stash_pop_cmd.output()
+                .map_err(|e| format!("Failed to execute git stash pop after failed checkout: {}", e))?;
+        }
+        return Err(String::from_utf8_lossy(&checkout_output.stderr).to_string());
+    }
+
+    // 4. Pop stash if changes were stashed
+    if needs_stash {
+        let mut stash_pop_cmd = new_git_command();
+        stash_pop_cmd.arg("stash")
+            .arg("pop")
+            .current_dir(current_dir);
+
+        let stash_pop_output = stash_pop_cmd.output()
+            .map_err(|e| format!("Failed to execute git stash pop: {}", e))?;
+
+        if !stash_pop_output.status.success() {
+            // This is not ideal, the user has switched branch but stash pop failed.
+            // We can return an error message to inform the user.
+            let error_message = String::from_utf8_lossy(&stash_pop_output.stderr).to_string();
+            return Err(format!("Branch switched to {}, but 'git stash pop' failed: {}", branch_name, error_message));
+        }
+    }
+
+    Ok(())
+}
+
+fn new_git_command() -> Command {
+    let mut cmd = Command::new("git");
+    if let Some(path_val) = get_shell_path() {
+        if let Ok(current_path) = std::env::var("PATH") {
+            let new_path = format!("{}{}{}", path_val, std::path::MAIN_SEPARATOR, current_path);
+            cmd.env("PATH", new_path);
+        } else {
+            cmd.env("PATH", path_val);
+        }
+    }
+    cmd
 }
 
 #[tauri::command]
@@ -1538,6 +1658,8 @@ fn main() {
             get_host,
             set_host,
             get_git_branch,
+            get_git_branches,
+            switch_branch,
             get_system_env,
         ])
         .run(tauri::generate_context!())
