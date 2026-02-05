@@ -26,7 +26,7 @@ pub fn execute_command(
     {
         let mut states_guard = command_manager.commands.lock().map_err(|e| e.to_string())?;
 
-        let mut state = get_command_state(&mut states_guard, session_id.clone());
+        let state = get_command_state(&mut states_guard, session_id.clone());
 
         if state.is_ssh_session_active {
             if let Some(stdin_arc_for_thread) = state.child_stdin.clone() {
@@ -154,7 +154,7 @@ pub fn execute_command(
         // This block is the original 'cd' handling logic.
         // It will lock `command_manager.commands` internally.
         let mut states_guard_cd = command_manager.commands.lock().map_err(|e| e.to_string())?;
-        let mut command_state_cd = get_command_state(&mut states_guard_cd, session_id.clone());
+        let command_state_cd = get_command_state(&mut states_guard_cd, session_id.clone());
 
         let path = command.trim_start_matches("cd").trim();
         if path.is_empty() || path == "~" || path == "~/" {
@@ -408,7 +408,7 @@ pub fn execute_command(
 
     {
         let mut states_guard_update = command_manager.commands.lock().map_err(|e| e.to_string())?;
-        let mut state_to_update = get_command_state(&mut states_guard_update, session_id.clone());
+        let state_to_update = get_command_state(&mut states_guard_update, session_id.clone());
 
         state_to_update.pid = Some(pid);
         state_to_update.child_wait_handle = Some(child_wait_handle_arc.clone()); // Store wait handle
@@ -915,10 +915,10 @@ pub fn execute_sudo_command(
     Ok("Command started. Output will stream in realtime.".to_string())
 }
 
-fn get_command_state(
-    command_state_guard: &mut MutexGuard<HashMap<String, CommandState>>,
+fn get_command_state<'a>(
+    command_state_guard: &'a mut MutexGuard<HashMap<String, CommandState>>,
     session_id: String,
-) -> CommandState {
+) -> &'a mut CommandState {
     command_state_guard
         .entry(session_id)
         .or_insert_with(|| CommandState {
@@ -932,5 +932,4 @@ fn get_command_state(
             is_ssh_session_active: false, // ensure default
             remote_current_dir: None,
         })
-        .clone()
 }

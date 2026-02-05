@@ -390,7 +390,7 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
 
       // Listen for command completion
       const unlisten3 = await listen('command_end', async (event) => {
-        this.ngZone.run(async () => {
+        await this.ngZone.run(async () => {
           if (this.commandHistory.length > 0) {
             const currentCmdEntry = this.commandHistory[this.commandHistory.length - 1];
             currentCmdEntry.isComplete = true;
@@ -407,10 +407,6 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
             const commandText = currentCmdEntry.command.trim();
             const isCdCommand = commandText === 'cd' || commandText.startsWith('cd ');
 
-            // if (isCdCommand) { // This was original
-            // For CD commands, update the directory immediately
-            // await this.getCurrentDirectory();
-            // }
             // Only update for local cd. SSH cd relies on remote_directory_updated event.
             if (isCdCommand && !this.isSshSessionActive) {
               await this.getCurrentDirectory();

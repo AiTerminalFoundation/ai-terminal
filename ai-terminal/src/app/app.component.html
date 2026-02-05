@@ -82,28 +82,9 @@
       <div class="current-directory">
         <span>{{ currentWorkingDirectory }}</span>
         <div class="git-branch-container" *ngIf="gitBranch">
-          <button class="git-branch-button" (click)="toggleBranchSelector($event)">
-            git({{ gitBranch }})
-          </button>
-          <button class="git-action-button" (click)="fetchAndPull()" title="Fetch and Pull">
-            Fetch & Pull
-          </button>
-          <button class="git-action-button" (click)="commitAndPush()" title="Commit and Push">
-            Commit & Push
-          </button>
-          <button class="git-action-button" (click)="openPullRequest()" title="Open Pull Request">
-            Open Pull Request
-          </button>
-          <div class="branch-selector-popup" *ngIf="showBranchSelector">
-            <div class="branch-list-container">
-              <div *ngFor="let branch of gitBranches" 
-                   class="branch-item" 
-                   [class.active]="branch === gitBranch"
-                   (click)="switchBranch(branch)">
-                {{ branch }}
-              </div>
-            </div>
-          </div>
+          <p class="prompt-command" (click)="toggleBranchSelector($event)">
+            {{ gitBranch }}
+          </p>
         </div>
       </div>
       <div class="input-area">
