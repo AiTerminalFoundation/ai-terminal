@@ -6,7 +6,6 @@ use crate::utils::command::handle_special_command;
 use crate::utils::operating_system_utils::get_operating_system;
 use tauri::{command, State};
 
-// Implement the ask_ai function for Ollama integration
 #[command]
 pub async fn ask_ai(
     question: String,

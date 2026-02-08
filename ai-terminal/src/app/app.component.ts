@@ -115,10 +115,6 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
   isSshSessionActive: boolean = false;
   currentSshUserHost: string | null = null; // To store user@host for current SSH session
 
-  // Git branch selector properties
-  showBranchSelector: boolean = false;
-  gitBranches: string[] = [];
-
   // Commit popup
   showCommitPopup: boolean = false;
   commitMessage: string = '';
@@ -143,159 +139,6 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
     return 'Enter command...';
   }
 
-  async toggleBranchSelector(event: MouseEvent): Promise<void> {
-    event.stopPropagation();
-    this.showBranchSelector = !this.showBranchSelector;
-    console.log('showBranchSelector toggled to:', this.showBranchSelector);
-    if (this.showBranchSelector) {
-      await this.fetchGitBranches();
-    }
-  }
-
-  async fetchGitBranches(): Promise<void> {
-    try {
-      console.log("Fetching branches")
-      const activeSession = this.getActiveSession();
-      if (activeSession) {
-        const branches = await invoke<string[]>('get_git_branches', { sessionId: this.activeSessionId });
-        console.log('Fetched branches:', branches);
-        // Clean up branch names
-        this.gitBranches = branches.map(b => b.trim().replace('remotes/origin/', ''));
-      }
-      console.log('Fetched branches active:', activeSession);
-    } catch (error) {
-      console.error('Failed to fetch git branches:', error);
-      this.gitBranches = []; // Clear branches on error
-    }
-  }
-
-  async fetchAndPull(): Promise<void> {
-    try {
-      this.isProcessing = true;
-      const result = await invoke<string>('git_fetch_and_pull', { sessionId: this.activeSessionId });
-      this.commandHistory.push({
-        command: 'git fetch && git pull',
-        output: [result],
-        timestamp: new Date(),
-        isComplete: true,
-        success: true
-      });
-    } catch (error) {
-      this.commandHistory.push({
-        command: 'git fetch && git pull',
-        output: [error as string],
-        timestamp: new Date(),
-        isComplete: true,
-        success: false
-      });
-    } finally {
-      this.isProcessing = false;
-      this.shouldScroll = true;
-    }
-  }
-
-  commitAndPush(): void {
-    this.commitMessage = '';
-    this.showCommitPopup = true;
-  }
-
-  async openPullRequest(): Promise<void> {
-    try {
-      // Call backend to get remote URL and branch
-      console.log("openPullRequest")
-      const result = await invoke<{ remoteUrl: string, branch: string }>('get_github_remote_and_branch', { sessionId: this.activeSessionId });
-      const { remoteUrl, branch } = result;
-      // Parse GitHub repo info
-      let match = remoteUrl.match(/github.com[/:]([^/]+)\/([^/.]+)(?:.git)?/);
-      if (!match) {
-        alert('Could not parse GitHub remote URL: ' + remoteUrl);
-        return;
-      }
-      const owner = match[1];
-      const repo = match[2];
-      const prUrl = `https://github.com/${owner}/${repo}/pull/new/${branch}`;
-      // Use the terminal to run the open command
-      this.currentCommand = `open ${prUrl}`;
-      console.log(this.currentCommand)
-      // Optionally, auto-execute the command
-      const event = new KeyboardEvent('keydown', {
-        key: 'Enter',
-        code: 'Enter',
-        keyCode: 13,
-        which: 13,
-        bubbles: true
-      });
-      this.executeCommand(event);
-    } catch (err) {
-      console.log('openPullRequest error:', err);
-      alert('Failed to open PR: ' + err);
-    }
-  }
-
-  cancelCommit(): void {
-    this.showCommitPopup = false;
-    this.commitMessage = '';
-  }
-
-  async submitCommit(): Promise<void> {
-    if (!this.commitMessage.trim()) {
-      return;
-    }
-    this.showCommitPopup = false;
-    const message = this.commitMessage;
-
-    try {
-      this.isProcessing = true;
-      const result = await invoke<string>('git_commit_and_push', { sessionId: this.activeSessionId, message });
-      this.commandHistory.push({
-        command: `git commit -m "${message}" && git push`,
-        output: [result],
-        timestamp: new Date(),
-        isComplete: true,
-        success: true
-      });
-    } catch (error) {
-      this.commandHistory.push({
-        command: `git commit -m "${message}" && git push`,
-        output: [error as string],
-        timestamp: new Date(),
-        isComplete: true,
-        success: false
-      });
-    } finally {
-      this.isProcessing = false;
-      this.shouldScroll = true;
-      this.commitMessage = '';
-    }
-  }
-
-  async switchBranch(branch: string): Promise<void> {
-    if (branch === this.gitBranch) {
-      this.showBranchSelector = false;
-      return;
-    }
-
-    try {
-      const activeSession = this.getActiveSession();
-      if (activeSession) {
-        this.isProcessing = true; // Show loading state
-        this.currentCommand = `git checkout ${branch}`; // Display command
-        this.showBranchSelector = false;
-
-        await invoke('switch_branch', { branchName: branch, sessionId: this.activeSessionId });
-
-        // Backend will send events to update UI, but we can optimistically update here
-        this.gitBranch = branch;
-        await this.getCurrentDirectory(); // Refresh CWD and branch
-      }
-    } catch (error) {
-      console.error(`Failed to switch to branch ${branch}:`, error);
-      // You could add a user-facing error message here
-    } finally {
-      this.isProcessing = false;
-      this.currentCommand = '';
-    }
-  }
 
   // Public method to sanitize HTML content
   public sanitizeHtml(html: string): SafeHtml {
@@ -635,13 +478,6 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
       }
       if (this.showSuggestions) {
         this.showSuggestions = false;
-        event.preventDefault();
-        event.stopPropagation();
-        this.focusTerminalInput();
-        return;
-      }
-      if (this.showBranchSelector) {
-        this.showBranchSelector = false;
         event.preventDefault();
         event.stopPropagation();
         this.focusTerminalInput();
@@ -2551,18 +2387,6 @@ Using: ${this.currentLLMModel}`,
     if (target) {
       target.blur();
       keyboardEvent.preventDefault();
-    }
-  }
-
-  @HostListener('document:click', ['$event'])
-  onDocumentClick(event: MouseEvent) {
-    const branchButton = this.elRef.nativeElement.querySelector('.git-branch-button');
-    const branchPopup = this.elRef.nativeElement.querySelector('.branch-selector-popup');
-
-    // If the popup is open and the click is not on the button or inside the popup
-    if (this.showBranchSelector && branchButton && !branchButton.contains(event.target as Node) && branchPopup && !branchPopup.contains(event.target as Node)) {
-      this.showBranchSelector = false;
-      console.log('Clicked outside, closing branch selector.');
     }
   }
 }

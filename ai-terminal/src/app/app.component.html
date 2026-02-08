@@ -82,7 +82,7 @@
       <div class="current-directory">
         <span>{{ currentWorkingDirectory }}</span>
         <div class="git-branch-container" *ngIf="gitBranch">
-          <p class="prompt-command" (click)="toggleBranchSelector($event)">
+          <p class="prompt-command">
             {{ gitBranch }}
           </p>
         </div>
@@ -219,19 +219,6 @@
             [disabled]="isProcessingAI" placeholder="Ask AI or type /help, /models, /model..." autofocus spellcheck="false"></textarea>
         </div>
       </div>
-    </div>
-  </div>
-</div>
-
-<!-- Commit Message Popup -->
-<div class="commit-popup-overlay" *ngIf="showCommitPopup">
-  <div class="commit-popup">
-    <h4>Enter Commit Message</h4>
-    <input type="text" [(ngModel)]="commitMessage" (keydown.enter)="submitCommit()"
-      placeholder="Your commit message..." autofocus>
-    <div class="commit-popup-actions">
-      <button (click)="cancelCommit()">Cancel</button>
-      <button (click)="submitCommit()" [disabled]="!commitMessage.trim()">Commit & Push</button>
     </div>
   </div>
 </div>

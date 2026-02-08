@@ -12,7 +12,6 @@ fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .setup(|_app| {
-            // Add any setup logic here
             Ok(())
         })
         .manage(command_manager)
@@ -31,13 +30,8 @@ fn main() {
             ollama::model_request::request::get_host,
             ollama::model_request::request::set_host,
             command::git_commands::git::get_git_branch,
-            command::git_commands::git::get_git_branches,
-            command::git_commands::git::switch_branch,
             utils::operating_system_utils::get_system_environment_variables,
-            command::git_commands::git::git_fetch_and_pull,
-            command::git_commands::git::git_commit_and_push,
-            command::git_commands::git::get_github_remote_and_branch,
         ])
         .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .expect("Error launcing AI Terminal");
 }
