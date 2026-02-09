@@ -46,5 +46,3 @@ pub fn get_git_branch(
         Ok("".to_string())
     }
 }
-
-
