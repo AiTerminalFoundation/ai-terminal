@@ -136,7 +136,7 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
     if (this.isSSHPasswordPrompt) {
       return 'SSH Password:';
     }
-    return 'Enter command...';
+    return '';
   }
 
 
@@ -243,9 +243,6 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
             const message = event.payload as string;
             currentCmdEntry.success = message === "Command completed successfully.";
 
-            // Save command history when a command completes
-            this.saveCommandHistory();
-
             // Handle directory updates for cd commands
             const commandText = currentCmdEntry.command.trim();
             const isCdCommand = commandText === 'cd' || commandText.startsWith('cd ');
@@ -283,7 +280,6 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
             isStreaming: false // Not streaming yet, just prompting
           };
           this.commandHistory.push(sshPromptEntry);
-          this.saveCommandHistory(); // Save history
 
           this.originalSSHCommand = originalCommandFromEvent;
           this.isSSHPasswordPrompt = true;
@@ -303,7 +299,6 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
       const unlistenRemoteDir = await listen('remote_directory_updated', (event) => {
         this.ngZone.run(() => {
           const newRemotePath = event.payload as string;
-          console.log('Remote directory updated event:', newRemotePath);
           if (this.isSshSessionActive) {
             if (this.currentSshUserHost) {
               this.currentWorkingDirectory = `${this.currentSshUserHost}:${newRemotePath}`;
@@ -320,7 +315,6 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
       // Listen for SSH session start and end events
       const unlistenSshStarted = await listen('ssh_session_started', (event) => {
         this.ngZone.run(async () => {
-          console.log("SSH Session Started:", event.payload);
           this.isSshSessionActive = true;
           // When SSH starts, explicitly fetch the directory, which should now be remote.
           await this.getCurrentDirectory();
@@ -332,7 +326,6 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
 
       const unlistenSshEnded = await listen('ssh_session_ended', (event) => {
         this.ngZone.run(async () => {
-          console.log("SSH Session Ended:", event.payload);
           this.isSshSessionActive = false;
           this.currentSshUserHost = null; // Clear user@host
           // On SSH end, revert to local directory and git branch.
@@ -838,7 +831,7 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
           isStreaming: true // Will stream after password
         };
         this.commandHistory.push(commandEntry);
-        this.saveCommandHistory(); // Save history
+
         this.shouldScroll = true;
         this.isProcessing = false; // Allow password input
         this.focusTerminalInput();
@@ -879,7 +872,7 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
                 expectingSshEcho: true // Expect the remote shell to echo this command
               };
               this.commandHistory.push(forwardedCommandEntry);
-              this.saveCommandHistory();
+
               this.isProcessing = false; // Input can be re-enabled.
             } else {
               // Other direct results: e.g., key authentication worked, or an immediate error occurred.
@@ -898,7 +891,7 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
                 // Backend's "Output will stream..." message is a good indicator.
               };
               this.commandHistory.push(directResultEntry);
-              this.saveCommandHistory();
+
               // If the command isn't one that typically streams (like an immediate error message),
               // or if it's a success that doesn't stream (less common for SSH connect),
               // isProcessing should be false. The command_end event is the primary way to set this.
@@ -920,7 +913,6 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
               success: false
             };
             this.commandHistory.push(errorEntry);
-            this.saveCommandHistory();
             this.isProcessing = false;
             this.shouldScroll = true;
           });
@@ -942,7 +934,7 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
         commandEntry.expectingSshEcho = true;
       }
       this.commandHistory.push(commandEntry);
-      this.saveCommandHistory();
+
 
       // Clear input immediately
       this.currentCommand = '';
@@ -1164,8 +1156,6 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
     // Special handling for command responses (single line enclosed in triple backticks)
     const commandParts = this.parseCommandFromResponse(text);
     if (commandParts.length > 0) {
-      console.log("Found command parts:", commandParts);
-
       // Build the formatted text with placeholders and collect code blocks
       const formattedParts = commandParts.map((part) => {
         if (part.command) {
@@ -1319,8 +1309,6 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
   // Helper method to directly call Ollama API from frontend
   async callOllamaDirectly(question: string, model: string): Promise<string> {
     try {
-      console.log(`Calling Ollama API with model: ${model}`);
-
       // Get the current operating system
       const os = navigator.platform.toLowerCase().includes('mac') ?
         'macOS' : navigator.platform.toLowerCase().includes('win') ?
@@ -1374,7 +1362,6 @@ IMPORTANT RULES:
 
       // Use relative path with proxy instead of absolute URL
       const apiEndpoint = this.useProxy ? '/api/generate' : `${this.ollamaApiHost}/api/generate`;
-      console.log(`Sending request to ${apiEndpoint}`, requestBody);
 
       // Call Ollama directly
       const response = await fetch(apiEndpoint, {
@@ -1385,8 +1372,6 @@ IMPORTANT RULES:
         body: JSON.stringify(requestBody)
       });
 
-      console.log(`Response status: ${response.status}`);
-
       if (!response.ok) {
         const errorText = await response.text();
         console.error(`Ollama API error (${response.status}):`, errorText);
@@ -1394,7 +1379,6 @@ IMPORTANT RULES:
       }
 
       const data = await response.json();
-      console.log('Ollama response:', data);
 
       if (!data.response) {
         console.error('Unexpected response format:', data);
@@ -1403,7 +1387,6 @@ IMPORTANT RULES:
 
       return data.response;
     } catch (error: any) {
-      console.error('Error calling Ollama API directly:', error);
 
       // Add more specific error messages for different failure types
       if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
@@ -1497,20 +1480,6 @@ IMPORTANT RULES:
         !line.includes('Command completed successfully') &&
         !line.includes('Command failed.'))
       .join('\n');
-  }
-
-  toggleAIPanel(): void {
-    this.isAIPanelVisible = !this.isAIPanelVisible;
-
-    // If we're showing the AI panel again, restore the previous width
-    // Otherwise the terminal panel will use the full-width class from the CSS
-    if (this.isAIPanelVisible) {
-      // Make sure the terminal isn't too wide or too narrow
-      this.leftPanelWidth = Math.min(
-        Math.max(200, this.leftPanelWidth),
-        window.innerWidth * 0.6
-      );
-    }
   }
 
   // Helper method to determine if a chat history entry is a command response
@@ -1849,8 +1818,6 @@ Available commands:
 
   // Perform fuzzy search on command history
   performHistorySearch(query: string): void {
-    console.log('Searching for:', query, 'in', this.commandHistory.length, 'commands');
-
     if (!query) {
       this.historySearchResults = [];
       this.selectedHistoryIndex = 0;
@@ -1866,13 +1833,10 @@ Available commands:
     // Remove duplicates while preserving order
     const uniqueCommands = [...new Set(validCommands)];
 
-    console.log('Unique commands to search:', uniqueCommands);
-
     this.historySearchResults = uniqueCommands
       .map((command, index) => {
         const originalEntry = this.commandHistory.find(entry => entry.command === command);
         const score = this.fuzzyMatch(command.toLowerCase(), query.toLowerCase());
-        console.log(`Command "${command}" score:`, score);
         return {
           command: command,
           index: index,
@@ -1884,8 +1848,6 @@ Available commands:
       .sort((a, b) => b.score - a.score)
       .slice(0, 10) // Limit to top 10 results
       .map(({ command, index, timestamp }) => ({ command, index, timestamp }));
-
-    console.log('Search results:', this.historySearchResults);
 
     // Reset selection to first result
     this.selectedHistoryIndex = 0;
@@ -1961,14 +1923,7 @@ Available commands:
 
   // Load command history from localStorage
   loadCommandHistory(): void {
-    // Initialize with empty array - no longer loading from localStorage
     this.commandHistory = [];
-  }
-
-  // Save command history to localStorage
-  saveCommandHistory(): void {
-    // Do nothing - no longer saving to localStorage
-    // Command history will be kept in memory only and cleared on refresh
   }
 
   // Test the Ollama connection
@@ -1980,18 +1935,15 @@ Available commands:
       });
 
       if (response.ok) {
-        console.log('Ollama connection test successful');
         // We could also pre-populate the model list here
         const data = await response.json();
         if (data && data.models && data.models.length > 0) {
           const availableModels = data.models.map((m: any) => m.name).join(', ');
-          console.log(`Available models: ${availableModels}`);
 
           // Set default model to the first available model if our default isn't in the list
           const modelExists = data.models.some((m: any) => m.name === this.currentLLMModel);
           if (!modelExists && data.models.length > 0) {
             this.currentLLMModel = data.models[0].name;
-            console.log(`Set default model to ${this.currentLLMModel}`);
 
             // Notify in chat history
             this.chatHistory.push({
@@ -2057,7 +2009,6 @@ Using: ${this.currentLLMModel}`,
   // Check if a specific model exists in Ollama
   async checkModelExists(modelName: string): Promise<boolean> {
     try {
-      console.log(`Checking if model ${modelName} exists...`);
       // Try to fetch the list of models
       const response = await fetch(`${this.ollamaApiHost}/api/tags`, {
         method: 'GET'
@@ -2076,20 +2027,17 @@ Using: ${this.currentLLMModel}`,
       }
 
       const modelExists = data.models.some((m: any) => m.name === modelName);
-      console.log(`Model ${modelName} exists: ${modelExists}`);
 
       if (!modelExists) {
-        console.log('Available models:', data.models.map((m: any) => m.name).join(', '));
 
         // If model doesn't exist, automatically switch to the first available model
         if (data.models.length > 0) {
           this.currentLLMModel = data.models[0].name;
-          console.log(`Auto-switched to available model: ${this.currentLLMModel}`);
 
           // Notify in chat
           this.chatHistory.push({
             message: "System",
-            response: `ℹ️ Model '${modelName}' not found. Automatically switched to '${this.currentLLMModel}'.`,
+            response: `ℹModel '${modelName}' not found. Automatically switched to '${this.currentLLMModel}'.`,
             timestamp: new Date(),
             isCommand: true
           });
@@ -2100,7 +2048,6 @@ Using: ${this.currentLLMModel}`,
 
       return modelExists;
     } catch (error: any) {
-      console.error('Error checking if model exists:', error);
       return false;
     }
   }
@@ -2129,11 +2076,6 @@ Using: ${this.currentLLMModel}`,
         }, 300);
       }, 1200);
     }, 10);
-
-    // Toggle to the terminal panel if we're on mobile
-    if (window.innerWidth < 768) {
-      this.isAIPanelVisible = false;
-    }
   }
 
   // Method to execute code directly
@@ -2157,49 +2099,6 @@ Using: ${this.currentLLMModel}`,
     if (window.innerWidth < 768) {
       this.isAIPanelVisible = false;
     }
-  }
-
-  // Method to copy question back to input and send it
-  copyQuestionToInput(question: string): void {
-    // Set the current question
-    this.currentQuestion = question;
-
-    // Focus the input
-    setTimeout(() => {
-      const textarea = document.querySelector('.ai-panel .prompt-container textarea');
-      if (textarea) {
-        (textarea as HTMLTextAreaElement).focus();
-      }
-
-      // Create and dispatch an Enter key event to send the question
-      const event = new KeyboardEvent('keydown', {
-        key: 'Enter',
-        code: 'Enter',
-        keyCode: 13,
-        which: 13,
-        bubbles: true
-      });
-
-      // Send the question
-      this.askAI(event);
-    }, 0);
-
-    // Show a brief notification
-    const notification = document.createElement('div');
-    notification.className = 'copy-notification';
-    notification.textContent = 'Question copied and sent';
-    document.body.appendChild(notification);
-
-    // Animate and remove notification
-    setTimeout(() => {
-      notification.classList.add('show');
-      setTimeout(() => {
-        notification.classList.remove('show');
-        setTimeout(() => {
-          document.body.removeChild(notification);
-        }, 300);
-      }, 1200);
-    }, 10);
   }
 
   // Method to scroll to top of a command output block
@@ -2260,21 +2159,14 @@ Using: ${this.currentLLMModel}`,
   }
 
   switchToSession(sessionId: string): void {
-    console.log(`Switching from session ${this.activeSessionId} to ${sessionId}`);
-
     // Save current session state
     if (this.activeSessionId) {
       this.saveCurrentSessionState();
-      console.log(`Saved state for session ${this.activeSessionId}:`, {
-        cwd: this.currentWorkingDirectory,
-        commandHistoryLength: this.commandHistory.length
-      });
     }
 
     // Find and activate new session
     const targetSession = this.terminalSessions.find(s => s.id === sessionId);
     if (!targetSession) {
-      console.error('Session not found:', sessionId);
       return;
     }
 
@@ -2287,10 +2179,6 @@ Using: ${this.currentLLMModel}`,
 
     // Restore session state
     this.restoreSessionState(targetSession);
-    console.log(`Restored session ${sessionId}:`, {
-      cwd: this.currentWorkingDirectory,
-      commandHistoryLength: this.commandHistory.length
-    });
   }
 
   closeSession(sessionId: string): void {

@@ -4,7 +4,7 @@
   width: 100vw;
   overflow: hidden;
   background-color: #282a36;
-  font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+  font-family: 'JetBrains Mono', 'Menlo', 'Monaco', 'Courier New', monospace;
   font-size: 14px;
 }
 
@@ -15,7 +15,7 @@
 }
 
 :root {
-  font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
+  font-family: 'JetBrains Mono', 'Menlo', 'Monaco', 'Courier New', monospace;
   font-size: 12px;
   line-height: 24px;
   font-weight: 400;
@@ -138,7 +138,7 @@ button {
   height: 100%;
   background-color: #282a36;
   color: #f8f8f2;
-  font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+  font-family: 'JetBrains Mono', 'Menlo', 'Monaco', 'Courier New', monospace;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -190,71 +190,34 @@ button {
   /* Ensure it takes the full width */
 }
 
-.terminal-panel .input-area {
-  border: 1px solid rgba(80, 250, 123, 0.5);
-  border-top: 1px solid rgba(139, 233, 253, 0.5);
-  box-shadow: 0 4px 12px rgba(80, 250, 123, 0.1), 0 0 3px rgba(80, 250, 123, 0.15);
-}
-
-.terminal-panel .input-area:hover,
-.terminal-panel .input-area:focus-within {
-  box-shadow: 0 6px 16px rgba(80, 250, 123, 0.15), 0 0 6px rgba(80, 250, 123, 0.2);
-}
-
-.ai-panel .input-area {
-  border: 1px solid rgba(189, 147, 249, 0.5);
-  border-top: 1px solid rgba(255, 121, 198, 0.5);
-  box-shadow: 0 4px 12px rgba(189, 147, 249, 0.1), 0 0 3px rgba(189, 147, 249, 0.15);
-}
-
-.ai-panel .input-area:hover,
-.ai-panel .input-area:focus-within {
-  box-shadow: 0 6px 16px rgba(189, 147, 249, 0.15), 0 0 6px rgba(189, 147, 249, 0.2);
-}
 
 .input-area {
+  font-size: 12px;
   position: relative;
-  padding: 12px 16px;
   display: flex;
   align-items: flex-start;
-  background-color: #282a36;
   border-radius: 8px;
-  margin: 4px 16px 16px 16px;
+  margin-bottom: 16px;
   flex-direction: column;
-  width: calc(100% - 32px);
   box-sizing: border-box;
-  transform: none;
-  z-index: 5;
-  transition: box-shadow 0.3s ease;
-}
-
-.input-area:hover,
-.input-area:focus-within {
-  transform: none;
-}
-
-.terminal-panel .current-directory {
-  color: rgba(80, 250, 123, 0.8);
-}
-
-.ai-panel .current-directory {
-  color: rgba(189, 147, 249, 0.8);
+  font-family: 'JetBrains Mono', 'Menlo', 'Monaco', 'Courier New', monospace;
+  padding-left: 10px;
+  padding-right: 10px;
+  background-color: #1e1e1e;
+  min-height: 80px;
 }
 
 .current-directory {
-  padding: 8px 15px;
-  background-color: #282a36;
   color: #a9a9a9;
-  font-size: 13px;
-  border-top: 1px solid #444;
+
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  width: 100%;
+  gap: 8px; /* space between path and branch */
 }
 
 .git-branch {
   color: #ffc107;
-  font-weight: normal;
   margin-left: auto;
 }
 
@@ -262,11 +225,9 @@ button {
   display: flex;
   width: 100%;
   align-items: center;
-  padding: 0 4px;
 }
 
 .prompt {
-  margin-right: 12px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -294,7 +255,7 @@ button {
   background: transparent;
   border: none;
   color: #c9c9c9;
-  font-family: monospace;
+  font-family: 'JetBrains Mono', 'Menlo', 'Monaco', 'Courier New', monospace;
   font-size: 12px;
   outline: none;
   resize: none;
@@ -303,7 +264,6 @@ button {
   line-height: 1.5;
   width: calc(100% - 24px);
   padding: 0;
-  letter-spacing: 0.75px;
 }
 
 .input-area textarea:disabled {
@@ -312,7 +272,6 @@ button {
 }
 
 .input-area textarea::placeholder {
-  color: #6272a4;
   opacity: 0.7;
 }
 
@@ -685,7 +644,7 @@ button {
   white-space: pre-wrap !important;
   word-wrap: break-word !important;
   word-break: break-word !important;
-  font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+  font-family: 'JetBrains Mono', 'Menlo', 'Monaco', 'Courier New', monospace;
   line-height: 1.4;
   user-select: text;
   display: block;
@@ -836,17 +795,14 @@ button {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  color: #f8f8f2;
+  color: white;
   font-size: 12px;
   line-height: 1;
   outline: none;
   border: none;
   background: transparent;
   cursor: inherit;
-}
-
-.tab.active .tab-name {
-  color: #50fa7b;
+  font-family: 'JetBrains Mono', 'Menlo', 'Monaco', 'Courier New', monospace;
 }
 
 .tab-name[contenteditable="true"] {
@@ -883,114 +839,26 @@ button {
 }
 
 .new-tab {
-  background: none;
-  border: 1px solid #44475a;
-  color: white;
-  cursor: pointer;
-  padding: 6px 12px;
-  margin-left: 8px;
-  border-radius: 6px;
-  font-size: 16px;
-  line-height: 1;
-  width: 36px;
-  height: 28px;
   display: flex;
   align-items: center;
-  justify-content: center;
+  padding: 6px 12px;
+  margin-right: 2px;
+  background-color: #282a36;
+  border: 1px solid #44475a;
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
+  cursor: pointer;
   transition: all 0.2s ease;
-  flex-shrink: 0;
+  max-width: 100px;
+  position: relative;
+  font-size: 12px;
+  height: 28px;
+  box-sizing: border-box;
 }
 
 .new-tab:hover {
   color: #50fa7b;
-  background-color: rgba(80, 250, 123, 0.1);
   border-color: rgba(80, 250, 123, 0.3);
-}
-
-/* Panel titles styling */
-.panel-title {
-  font-weight: bold;
-  font-size: 14px;
-  line-height: 24px;
-  color: rgba(139, 233, 253, 0.8);
-}
-
-.ai-title {
-  font-weight: bold;
-  font-size: 14px;
-  line-height: 24px;
-  color: rgba(189, 147, 249, 0.8);
-}
-
-/* Toggle AI button styling */
-.toggle-ai-button {
-  background-color: rgba(189, 147, 249, 0.1);
-  color: rgba(189, 147, 249, 0.9);
-  border: 1px solid rgba(189, 147, 249, 0.3);
-  padding: 6px 12px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 12px;
-  height: 28px;
-  line-height: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-  font-weight: 500;
-  letter-spacing: 0.3px;
-  position: relative;
-  overflow: hidden;
-}
-
-.toggle-ai-button::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(45deg, rgba(189, 147, 249, 0.1), rgba(255, 121, 198, 0.1));
-  opacity: 0;
-  transition: opacity 0.2s ease;
-}
-
-.toggle-ai-button:hover {
-  background-color: rgba(189, 147, 249, 0.15);
-  border-color: rgba(189, 147, 249, 0.5);
-  box-shadow: 0 4px 12px rgba(189, 147, 249, 0.2);
-  transform: none;
-}
-
-.toggle-ai-button:hover::before {
-  opacity: 1;
-}
-
-.toggle-ai-button:active {
-  transform: translateY(0);
-  box-shadow: 0 2px 6px rgba(189, 147, 249, 0.15);
-}
-
-/* Add a subtle glow effect when the AI panel is visible */
-.ai-panel .toggle-ai-button {
-  background-color: rgba(255, 121, 198, 0.1);
-  color: rgba(255, 121, 198, 0.9);
-  border-color: rgba(255, 121, 198, 0.3);
-}
-
-.ai-panel .toggle-ai-button:hover {
-  background-color: rgba(255, 121, 198, 0.15);
-  border-color: rgba(255, 121, 198, 0.5);
-  box-shadow: 0 4px 12px rgba(255, 121, 198, 0.2);
-}
-
-.ai-panel .toggle-ai-button::before {
-  background: linear-gradient(45deg, rgba(255, 121, 198, 0.1), rgba(189, 147, 249, 0.1));
-}
-
-/* Adjust current directory display in header */
-.terminal-header .current-directory {
-  margin-bottom: 0;
 }
 
 /* Add styles for command messages and responses */
@@ -1003,7 +871,7 @@ button {
   padding: 8px;
   border-left: 2px solid #ffc107;
   white-space: pre-wrap;
-  font-family: 'Courier New', monospace;
+  font-family: 'JetBrains Mono', 'Menlo', 'Monaco', 'Courier New', monospace;
 }
 
 /* Code Block Styling */
@@ -1033,7 +901,7 @@ button {
   margin: 0;
   background-color: transparent;
   color: #6272a4;
-  font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+  font-family: 'JetBrains Mono', 'Menlo', 'Monaco', 'Courier New', monospace;
   font-size: 12px;
   line-height: 1.5;
   overflow-x: auto;
@@ -1279,7 +1147,7 @@ button {
 
 .code-block-container.command-block .code-block {
   background-color: #282a36;
-  font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+  font-family: 'JetBrains Mono', 'Menlo', 'Monaco', 'Courier New', monospace;
   color: #50fa7b;
 }
 
@@ -1375,7 +1243,7 @@ button {
   align-items: center;
   padding: 6px 12px;
   margin: 0;
-  font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+  font-family: 'JetBrains Mono', 'Menlo', 'Monaco', 'Courier New', monospace;
   background-color: rgba(35, 214, 81, 0.08);
   /* More transparent background */
   border: 1px solid rgba(80, 250, 123, 0.1);
@@ -1409,7 +1277,7 @@ button {
   white-space: pre-wrap !important;
   word-wrap: break-word !important;
   word-break: break-word !important;
-  font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+  font-family: 'JetBrains Mono', 'Menlo', 'Monaco', 'Courier New', monospace;
   line-height: 1.4;
   user-select: text;
   display: block;
@@ -1488,7 +1356,7 @@ button {
   align-items: center;
   padding: 2px 0;
   margin: 2px 0;
-  font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+  font-family: 'JetBrains Mono', 'Menlo', 'Monaco', 'Courier New', monospace;
   border-bottom: 1px solid rgba(139, 233, 253, 0.2);
   padding-bottom: 8px;
   margin-bottom: 8px;
@@ -1757,7 +1625,7 @@ button {
 
 .history-search {
   color: #ccc;
-  font-family: 'Cascadia Code', 'Fira Code', monospace;
+  font-family: 'JetBrains Mono', 'Menlo', 'Monaco', 'Courier New', monospace;
 }
 
 .history-search-highlight {
@@ -1766,188 +1634,7 @@ button {
   padding: 0 2px;
 }
 
-.git-branch-container {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.git-action-button {
-  background-color: #333;
-  color: #8be9fd;
-  border: 1px solid #444;
-  border-radius: 4px;
-  padding: 2px 8px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-  font-size: 12px;
-}
-
-.git-action-button:hover {
-  background-color: #44475a;
-  border-color: #8be9fd;
-}
-
-.git-branch-button {
-  background-color: #333;
-  color: #8ade96;
-  border: 1px solid #444;
-  border-radius: 4px;
-  padding: 2px 8px;
-  cursor: pointer;
-  font-size: 12px;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.git-branch-button:hover {
-  background-color: #444;
-}
-
-.branch-selector-popup {
-  position: absolute;
-  bottom: 100%;
-  right: 0;
-  margin-bottom: 8px;
-  background-color: #44475a;
-  border: 1px solid rgba(80, 250, 123, 0.2);
-  border-radius: 4px;
-  z-index: 1000;
-  width: max-content;
-  min-width: 200px;
-  max-height: 300px;
-  overflow-y: auto;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-}
-
-.branch-list-container {
-  display: flex;
-  flex-direction: column;
-}
-
-.branch-item {
-  padding: 6px 12px;
-  cursor: pointer;
-  color: #f8f8f2;
-  font-size: 11px;
-  border-bottom: none;
-  transition: all 0.2s;
-}
-
-.branch-item:last-child {
-  border-bottom: none;
-}
-
-.branch-item:hover {
-  background-color: #6272a4;
-}
-
-.branch-item.active {
-  background-color: #bd93f9;
-  color: #282a36;
-  font-weight: normal;
-}
-
-.branch-item.more-items {
-  font-style: italic;
-  color: #888;
-  cursor: default;
-}
-
-.branch-item.more-items:hover {
-  background-color: transparent;
-}
-
-/* Input Area Styles */
-.input-area {
-  padding: 5px;
-  background-color: #1e1e1e;
-}
-
 .command-line .command {
   overflow-x: auto;
   white-space: nowrap;
-}
-
-/* Commit Popup Styles */
-.commit-popup-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 2000;
-}
-
-.commit-popup {
-  background-color: #282a36;
-  padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-  width: 400px;
-  max-width: 90%;
-  border: 1px solid #44475a;
-}
-
-.commit-popup h4 {
-  margin-top: 0;
-  color: #f8f8f2;
-}
-
-.commit-popup input {
-  width: 100%;
-  padding: 8px;
-  box-sizing: border-box;
-  background-color: #44475a;
-  border: 1px solid #6272a4;
-  color: #f8f8f2;
-  border-radius: 4px;
-}
-
-.commit-popup-actions {
-  margin-top: 15px;
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-}
-
-.commit-popup-actions button {
-  padding: 8px 16px;
-  border-radius: 4px;
-  border: none;
-  cursor: pointer;
-  background-color: #44475a;
-  color: #f8f8f2;
-  transition: background-color 0.2s;
-}
-
-.commit-popup-actions button:hover {
-  background-color: #6272a4;
-}
-
-.commit-popup-actions button[disabled] {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.commit-popup-actions button:last-child {
-  background-color: #50fa7b;
-  color: #282a36;
-}
-
-.commit-popup-actions button:last-child:hover {
-  background-color: #61ff8c;
-}
-
-.commit-popup-actions button:last-child[disabled] {
-  background-color: #50fa7b;
 }
