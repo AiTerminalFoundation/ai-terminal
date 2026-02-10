@@ -17,6 +17,7 @@ import { CommandHistory } from './models/command-history.model';
 import { ChatHistory } from './models/chat-history.model';
 import { TerminalSession } from './models/terminal-session.model';
 import { TerminalTabComponent } from './components/terminal-tab/terminal-tab.component';
+import { AiCommandService } from './services/ai-command.service';
 import { AiResponseFormatService } from './services/ai-response-format.service';
 import { TerminalEventListenerService } from './services/terminal-event-listener.service';
 import { TerminalOutputService } from './services/terminal-output.service';
@@ -107,6 +108,7 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
     private sanitizer: DomSanitizer,
     private ngZone: NgZone,
     private elRef: ElementRef,
+    private aiCommandService: AiCommandService,
     private aiResponseFormatService: AiResponseFormatService,
     private terminalEventListenerService: TerminalEventListenerService,
     private terminalOutputService: TerminalOutputService,
@@ -1152,84 +1154,23 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
 
   // Handle AI commands starting with /
   async handleAICommand(command: string): Promise<string> {
-    const parts = command.split(' ');
-    const cmd = parts[0].toLowerCase();
-
-    switch (cmd) {
-      case '/help':
-        return `
-Available commands:
-/help - Show this help message
-/models - List available models
-/model [name] - Show current model or switch to a different model
-/host [url] - Show current API host or set a new one
-/retry - Retry connection to Ollama API
-/clear - Clear the AI chat history`;
-
-      case '/models':
-        try {
-          // Get list of models directly from Ollama API
-          const response = await fetch(`${this.ollamaApiHost}/api/tags`);
-
-          if (!response.ok) {
-            throw new Error(`Ollama API error: ${response.status}`);
-          }
-
-          const data = await response.json();
-
-          // Format the response
-          let result = 'Available models:\n';
-          for (const model of data.models) {
-            result += `- ${model.name} (${model.size} bytes)\n`;
-          }
-          return result;
-        } catch (error) {
-          return `Error: Failed to get models from Ollama API: ${error}`;
-        }
-
-      case '/model':
-        if (parts.length > 1) {
-          const modelName = parts[1];
-          try {
-            // Just update the model locally - no need to call backend
-            this.currentLLMModel = modelName;
-            return `Switched to model: ${modelName}`;
-          } catch (error) {
-            return `Error: Failed to switch model: ${error}`;
-          }
-        } else {
-          return `Current model: ${this.currentLLMModel}`;
-        }
-
-      case '/host':
-        if (parts.length > 1) {
-          const hostUrl = parts.slice(1).join(' ');
-          try {
-            // Update API host locally
-            this.ollamaApiHost = hostUrl;
-            // Test the connection with the new host
-            setTimeout(() => this.testOllamaConnection(), 100);
-            return `Changed Ollama API host to: ${hostUrl}`;
-          } catch (error) {
-            return `Error: Failed to set host: ${error}`;
-          }
-        } else {
-          return `Current Ollama API host: ${this.ollamaApiHost}`;
-        }
-
-      case '/retry':
-        // Retry connection and return a message
-        setTimeout(() => this.retryOllamaConnection(), 100);
-        return `Attempting to reconnect to Ollama API...`;
-
-      case '/clear':
-        // Clear the chat history
+    return this.aiCommandService.handleAICommand(command, {
+      currentLLMModel: this.currentLLMModel,
+      ollamaApiHost: this.ollamaApiHost,
+      setCurrentLLMModel: (model: string) => {
+        this.currentLLMModel = model;
+      },
+      setOllamaApiHost: (host: string) => {
+        this.ollamaApiHost = host;
+      },
+      clearChatHistory: () => {
         this.chatHistory = [];
-        return `AI chat history cleared`;
-
-      default:
-        return `Unknown command: ${cmd}. Type /help for available commands.`;
-    }
+      },
+      testOllamaConnection: () => {
+        void this.testOllamaConnection();
+      },
+      retryOllamaConnection: async () => this.retryOllamaConnection()
+    });
   }
 
   // Method to get command explanation from code block
