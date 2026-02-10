@@ -1,5 +1,4 @@
 import {
-  AfterViewChecked,
   Component,
   ElementRef,
   HostListener,
@@ -35,7 +34,7 @@ import {
   templateUrl: './app.component.html',
   styleUrl: './app.component.css'
 })
-export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
+export class AppComponent implements OnInit, OnDestroy {
   // Terminal sessions
   terminalSessions: TerminalSession[] = [];
   activeSessionId: string = '';
@@ -53,6 +52,9 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
   autocompleteSuggestions: string[] = [];
   showSuggestions: boolean = false;
   selectedSuggestionIndex: number = -1;
+  private readonly minAutocompleteInputLength = 2;
+  private autocompleteDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+  private autocompleteRequestToken: number = 0;
 
   // History search properties
   isHistorySearchActive: boolean = false;
@@ -80,7 +82,19 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
   // Auto-scroll
   @ViewChild('outputArea') outputAreaRef!: ElementRef;
   @ViewChild('autocompleteContainer') autocompleteContainer!: ElementRef;
-  shouldScroll = false;
+  private _shouldScroll = false;
+  private scrollFramePending = false;
+  get shouldScroll(): boolean {
+    return this._shouldScroll;
+  }
+
+  set shouldScroll(value: boolean) {
+    this._shouldScroll = value;
+    if (value) {
+      this.scheduleScrollToBottom();
+    }
+  }
+
 
   // Cache home directory path to avoid repeated requests
   private homePath: string | null = null;
@@ -300,33 +314,37 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
   }
 
   ngOnDestroy() {
+    this.clearAutocompleteDebounce();
     // Clean up all event listeners
     for (const unlisten of this.unlistenFunctions) {
       unlisten();
     }
   }
 
-  ngAfterViewChecked() {
-    // Scroll to bottom if needed
-    if (this.shouldScroll && this.outputAreaRef) {
+  private scheduleScrollToBottom() {
+    if (!this.shouldScroll || this.scrollFramePending) {
+      return;
+    }
+
+    this.scrollFramePending = true;
+    requestAnimationFrame(() => {
       this.scrollToBottom();
       this.shouldScroll = false;
-    }
+      this.scrollFramePending = false;
+    });
   }
 
   scrollToBottom() {
     try {
+      if (!this.outputAreaRef?.nativeElement) {
+        return;
+      }
+
       const outputArea = this.outputAreaRef.nativeElement;
       // Force a reflow to ensure the content height is updated
       void outputArea.offsetHeight;
       // Scroll to the maximum possible position
       outputArea.scrollTop = outputArea.scrollHeight;
-
-      // Double-check the scroll position after a small delay
-      // This helps with dynamic content that might affect the scroll height
-      setTimeout(() => {
-        outputArea.scrollTop = outputArea.scrollHeight;
-      }, 50);
     } catch (err) {
       console.error('Error scrolling to bottom:', err);
     }
@@ -503,6 +521,7 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
   }
 
   async requestAutocomplete(): Promise<void> {
+    const requestToken = ++this.autocompleteRequestToken;
     try {
       const trimmedCommand = this.currentCommand.trim();
       const isCdCommand = trimmedCommand === 'cd' || trimmedCommand.startsWith('cd ');
@@ -514,24 +533,63 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
         return;
       }
 
+      // Avoid backend autocomplete calls for very short inputs.
+      // Keep cd-related autocomplete available for directory navigation.
+      if (!isCdCommand && trimmedCommand.length < this.minAutocompleteInputLength) {
+        this.autocompleteSuggestions = [];
+        this.showSuggestions = false;
+        return;
+      }
+
       // Get autocomplete suggestions from backend
       this.autocompleteSuggestions = await invoke<string[]>("autocomplete", {
         input: this.currentCommand,
         sessionId: this.activeSessionId
       });
 
+      // Ignore stale responses from older requests.
+      if (requestToken !== this.autocompleteRequestToken) {
+        return;
+      }
+
       this.showSuggestions = this.autocompleteSuggestions.length > 0;
 
       // Reset selection index
       this.selectedSuggestionIndex = -1;
     } catch (error) {
+      // Ignore stale errors from older requests.
+      if (requestToken !== this.autocompleteRequestToken) {
+        return;
+      }
       console.error('Failed to get autocomplete suggestions:', error);
       this.autocompleteSuggestions = [];
       this.showSuggestions = false;
     }
   }
 
+  private clearAutocompleteDebounce(): void {
+    if (this.autocompleteDebounceTimer) {
+      clearTimeout(this.autocompleteDebounceTimer);
+      this.autocompleteDebounceTimer = null;
+    }
+  }
+
+  private cancelPendingAutocomplete(): void {
+    this.clearAutocompleteDebounce();
+    // Invalidate in-flight async responses from previous input states.
+    this.autocompleteRequestToken++;
+  }
+
+  private scheduleAutocomplete(): void {
+    this.clearAutocompleteDebounce();
+    this.autocompleteDebounceTimer = setTimeout(() => {
+      this.autocompleteDebounceTimer = null;
+      this.requestAutocomplete();
+    }, 200);
+  }
+
   applySuggestion(suggestion: string): void {
+    this.cancelPendingAutocomplete();
     const parts = this.currentCommand.trim().split(' ');
 
     if (parts.length > 1 || parts[0] === 'cd') {
@@ -605,6 +663,7 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
 
     // Hide suggestions when pressing Esc
     if (event.key === 'Escape') {
+      this.cancelPendingAutocomplete();
       this.showSuggestions = false;
       event.preventDefault();
       return;
@@ -750,6 +809,7 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
 
     // Execute command on Enter - only if no suggestions are visible or selected
     if (event.key === 'Enter' && !event.shiftKey && this.currentCommand.trim()) {
+      this.cancelPendingAutocomplete();
       // Skip if we're in the process of selecting a suggestion
       if (this.showSuggestions && this.selectedSuggestionIndex >= 0) {
         return;
@@ -1235,11 +1295,11 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
 
     // When not processing, fetch suggestions
     if (!this.isProcessing) {
-      this.requestAutocomplete();
+      this.scheduleAutocomplete();
     }
 
     // Trigger scroll to bottom when typing
-    this.shouldScroll = true;
+      this.shouldScroll = true;
   }
 
   // Handle click on suggestion
@@ -1694,5 +1754,29 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
       target.blur();
       keyboardEvent.preventDefault();
     }
+  }
+
+  trackBySessionId(_: number, session: TerminalSession): string {
+    return session.id;
+  }
+
+  trackByCommandEntry(_: number, entry: CommandHistory): number {
+    return entry.timestamp.getTime();
+  }
+
+  trackByOutputLine(index: number, line: string): string {
+    return `${index}-${line}`;
+  }
+
+  trackByAutocompleteSuggestion(index: number, suggestion: string): string {
+    return `${index}-${suggestion}`;
+  }
+
+  trackByChatEntry(index: number, entry: ChatHistory): string {
+    return `${entry.timestamp.getTime()}-${index}`;
+  }
+
+  trackByResponseSegment(index: number, segment: string): string {
+    return `${index}-${segment}`;
   }
 }

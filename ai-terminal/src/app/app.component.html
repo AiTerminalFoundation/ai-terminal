@@ -6,7 +6,7 @@
       <div class="terminal-tabs">
         <div class="tabs-container">
           <app-terminal-tab
-            *ngFor="let session of terminalSessions"
+            *ngFor="let session of terminalSessions; trackBy: trackBySessionId"
             [session]="session"
             [canClose]="terminalSessions.length > 1"
             (select)="switchToSession($event)"
@@ -23,7 +23,7 @@
 
       <div class="output-area" #outputArea>
         <div class="command-history">
-          <div *ngFor="let entry of commandHistory" class="command-entry"
+          <div *ngFor="let entry of commandHistory; trackBy: trackByCommandEntry" class="command-entry"
             [attr.data-command-id]="entry.timestamp.getTime()">
             <div class="command-line">
               <span class="command" [ngClass]="{
@@ -37,7 +37,7 @@
             <div class="command-output">
 
               <!-- Output content - show always -->
-              <ng-container *ngFor="let line of entry.output">
+              <ng-container *ngFor="let line of entry.output; trackBy: trackByOutputLine">
                 <div *ngIf="!line.includes('Command completed successfully') && 
                            !line.includes('Command failed.') && 
                            !line.includes('Command started. Output will stream')">{{ line }}</div>
@@ -75,7 +75,7 @@
             (keydown.enter)="applySuggestion(autocompleteSuggestions[selectedSuggestionIndex]); focusTerminalInput(); $event.preventDefault()"
             (keydown.escape)="showSuggestions = false; focusTerminalInput(); $event.preventDefault()">
             <div class="autocomplete-list">
-              <div *ngFor="let suggestion of autocompleteSuggestions; let i = index" class="autocomplete-item"
+              <div *ngFor="let suggestion of autocompleteSuggestions; let i = index; trackBy: trackByAutocompleteSuggestion" class="autocomplete-item"
                 [class.selected]="i === selectedSuggestionIndex"
                 (click)="applySuggestion(suggestion); focusTerminalInput(); showSuggestions = false; $event.preventDefault(); $event.stopPropagation();">
                 {{ suggestion }}
@@ -102,13 +102,13 @@
     <div class="panel-content">
       <div class="output-area">
         <div class="chat-history">
-          <div *ngFor="let entry of chatHistory" class="chat-entry">
+          <div *ngFor="let entry of chatHistory; trackBy: trackByChatEntry" class="chat-entry">
             <!-- Add question display -->
             <div class="chat-question">
               <span class="message">{{ entry.message }}</span>
             </div>
             <div class="chat-output">
-              <ng-container *ngFor="let segment of entry.response.split('\n')">
+              <ng-container *ngFor="let segment of entry.response.split('\n'); trackBy: trackByResponseSegment">
                 <!-- Check if segment is a code block placeholder -->
                 <ng-container *ngIf="isCodeBlockPlaceholder(segment) && entry.codeBlocks">
                   <!-- Get the index of the code block -->
