@@ -34,29 +34,6 @@
                 }">
                 {{ entry.command }}
               </span>
-              <div class="command-entry-actions">
-                <button class="output-action-button" data-tooltip="Copy output"
-                  (click)="copyToClipboard(getFilteredOutput(entry.output))"
-                  *ngIf="entry.isComplete && entry.output.length > 0">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                    stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                  </svg>
-                </button>
-                <button class="output-action-button" data-tooltip="Scroll to top" (click)="scrollToTop(entry)">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                    stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M18 15l-6-6-6 6" />
-                  </svg>
-                </button>
-                <button class="output-action-button" data-tooltip="Scroll to end" (click)="scrollToEnd(entry)">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                    stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M6 9l6 6 6-6" />
-                  </svg>
-                </button>
-              </div>
             </div>
             <div class="command-output">
 

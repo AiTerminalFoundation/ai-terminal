@@ -8,12 +8,6 @@
   font-size: 14px;
 }
 
-/* Remove all other styles */
-
-.logo.angular:hover {
-  filter: drop-shadow(0 0 2em #e32727);
-}
-
 :root {
   font-family: 'JetBrains Mono', 'Menlo', 'Monaco', 'Courier New', monospace;
   font-size: 12px;
@@ -376,36 +370,6 @@ button {
   transition: all 0.2s ease;
   max-width: 100%;
   box-sizing: border-box;
-}
-
-.command-entry-actions {
-  display: flex;
-  gap: 8px;
-  margin-left: auto;
-}
-
-.output-action-button {
-  background: none;
-  border: 1px solid rgba(98, 114, 164, 0.3);
-  padding: 4px;
-  color: #f8f8f2;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 4px;
-  opacity: 0.6;
-}
-
-.output-action-button:hover {
-  opacity: 1;
-  background-color: rgba(98, 114, 164, 0.2);
-  border-color: rgba(98, 114, 164, 0.8);
-}
-
-.output-action-button svg {
-  stroke: currentColor;
 }
 
 .chat-entry {
@@ -1256,97 +1220,6 @@ button {
   border-right: none;
   padding: 2px 4px;
   background-color: #282a36;
-}
-
-/* Scroll to top button styling */
-.scroll-to-top-button {
-  position: absolute;
-  bottom: 8px;
-  right: 40px;
-  background: none;
-  border: 1px solid rgba(98, 114, 164, 0.3);
-  padding: 4px;
-  color: transparent;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 4px;
-  opacity: 0.6;
-  z-index: 1;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.scroll-to-top-button:hover {
-  opacity: 1;
-  background-color: rgba(98, 114, 164, 0.1);
-  transform: none;
-  box-shadow: none;
-  border-color: rgba(98, 114, 164, 0.8);
-}
-
-.scroll-to-top-button svg {
-  width: 14px;
-  height: 14px;
-  stroke: #ffffff;
-  stroke-width: 1.5;
-  fill: transparent;
-  transition: all 0.2s ease;
-}
-
-.scroll-to-top-button:hover svg {
-  stroke: #ffffff;
-  width: 16px;
-  height: 16px;
-}
-
-/* Add tooltip styles for scroll to top button */
-.scroll-to-top-button::after {
-  content: attr(data-tooltip);
-  position: absolute;
-  bottom: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 4px 8px;
-  background-color: #282a3600;
-  color: #f8f8f2;
-  font-size: 12px;
-  border-radius: 4px;
-  white-space: nowrap;
-  opacity: 0;
-  visibility: hidden;
-  transition: all 0.2s ease;
-  pointer-events: none;
-  border: 1px solid rgba(98, 115, 164, 0);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-  z-index: 1000;
-}
-
-.scroll-to-top-button:hover::after {
-  opacity: 1;
-  visibility: visible;
-  transform: translateX(-50%) translateY(0);
-}
-
-/* Add a small arrow to the tooltip */
-.scroll-to-top-button::before {
-  content: '';
-  position: absolute;
-  bottom: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  border: 4px solid transparent;
-  border-top-color: rgba(98, 114, 164, 0.2);
-  opacity: 0;
-  visibility: hidden;
-  transition: all 0.2s ease;
-}
-
-.scroll-to-top-button:hover::before {
-  opacity: 1;
-  visibility: visible;
-  transform: translateX(-50%) translateY(0);
 }
 
 /* Password input styling */

@@ -1592,31 +1592,6 @@ Available commands:
     }
   }
 
-  // Get the original unprocessed response for copying
-  getOriginalResponse(entry: ChatHistory): string {
-    // If there are no code blocks, just return the response
-    if (!entry.codeBlocks || entry.codeBlocks.length === 0) {
-      return entry.response;
-    }
-
-    // Otherwise reconstruct the original response by replacing placeholders with code only (no backticks)
-    let originalResponse = entry.response;
-    for (let i = 0; i < entry.codeBlocks.length; i++) {
-      const placeholder = `<code-block-${i}></code-block-${i}>`;
-
-      // Just use the code without any backticks or formatting
-      originalResponse = originalResponse.replace(placeholder, entry.codeBlocks[i].code);
-    }
-
-    return originalResponse;
-  }
-
-  // Copy the full response including code blocks
-  copyFullResponse(entry: ChatHistory): void {
-    this.copyToClipboard(this.getOriginalResponse(entry));
-    this.showCopiedNotification();
-  }
-
   // Method to get command explanation from code block
   getCommandExplanation(code: string): string | null {
     if (!code) return null;
@@ -2096,22 +2071,6 @@ Using: ${this.currentLLMModel}`,
     // Toggle to the terminal panel if we're on mobile
     if (window.innerWidth < 768) {
       this.isAIPanelVisible = false;
-    }
-  }
-
-  // Method to scroll to top of a command output block
-  scrollToTop(entry: CommandHistory): void {
-    const element = document.querySelector(`[data-command-id="${entry.timestamp.getTime()}"]`);
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-  }
-
-  // Method to scroll to end of a command output block
-  scrollToEnd(entry: CommandHistory): void {
-    const element = document.querySelector(`[data-command-id="${entry.timestamp.getTime()}"]`);
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'end' });
     }
   }
 
