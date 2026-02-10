@@ -205,26 +205,59 @@ button {
   padding-right: 10px;
   background-color: #1e1e1e;
   min-height: 80px;
+  
 }
 
 .current-directory {
-  color: #a9a9a9;
-
+  color: rgb(152, 152, 152);
   display: flex;
   align-items: center;
-  width: 100%;
-  gap: 8px; /* space between path and branch */
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 12px;
+}
+
+.directory-info {
+  background-color: #1e1e1e;
+  padding: 4px 10px;
+  border-radius: 4px;
+  border: 1px solid white;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.directory-icon {
+  flex-shrink: 0;
+  stroke: rgb(152, 152, 152);
+}
+
+
+.current-directory > span:first-child {
+  border-radius: 4px;
+  border: 1px solid rgba(98, 114, 164, 0.3);
 }
 
 .git-branch {
-  color: #ffc107;
-  margin-left: auto;
+  margin: 0;
+  background-color: #1e1e1e;
+  padding: 4px 10px;
+  border-radius: 4px;
+  border: 1px solid rgba(98, 114, 164, 0.3);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.git-icon {
+  flex-shrink: 0;
 }
 
 .prompt-container {
   display: flex;
   width: 100%;
   align-items: center;
+  margin-top: 10px;
 }
 
 .prompt {

@@ -1311,8 +1311,7 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
     try {
       // Get the current operating system
       const os = navigator.platform.toLowerCase().includes('mac') ?
-        'macOS' : navigator.platform.toLowerCase().includes('win') ?
-          'Windows' : 'Linux';
+        'macOS' : 'Linux';
 
       // Create a system prompt that includes OS information and formatting instructions
       const systemPrompt = `You are a helpful terminal assistant. The user is using a ${os} operating system. 
@@ -1374,7 +1373,6 @@ IMPORTANT RULES:
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error(`Ollama API error (${response.status}):`, errorText);
         throw new Error(`Ollama API error: ${response.status} - ${errorText}`);
       }
 
