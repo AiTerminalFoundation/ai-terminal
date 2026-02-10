@@ -16,6 +16,7 @@ import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { CommandHistory } from './models/command-history.model';
 import { ChatHistory } from './models/chat-history.model';
 import { TerminalSession } from './models/terminal-session.model';
+import { TerminalTabComponent } from './components/terminal-tab/terminal-tab.component';
 import {
   COMMAND_FORWARDED_TO_ACTIVE_SSH_MARKER,
   SSH_NEEDS_PASSWORD_MARKER,
@@ -24,7 +25,7 @@ import {
 
 @Component({
   selector: 'app-root',
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, TerminalTabComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css'
 })

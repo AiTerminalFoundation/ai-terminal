@@ -5,17 +5,16 @@
       <!-- Terminal Tabs -->
       <div class="terminal-tabs">
         <div class="tabs-container">
-          <div *ngFor="let session of terminalSessions" class="tab" [class.active]="session.isActive"
-            (click)="switchToSession(session.id)">
-            <span class="tab-name" [contentEditable]="false" (dblclick)="startRenaming($event)"
-              (blur)="finishRenaming($event, session)" (keydown.enter)="handleEnterKey($event)">
-              {{ session.currentWorkingDirectory }}
-            </span>
-            <button class="close-tab" (click)="closeSession(session.id); $event.stopPropagation()"
-              *ngIf="terminalSessions.length > 1" title="Close tab">
-              ×
-            </button>
-          </div>
+          <app-terminal-tab
+            *ngFor="let session of terminalSessions"
+            [session]="session"
+            [canClose]="terminalSessions.length > 1"
+            (select)="switchToSession($event)"
+            (close)="closeSession($event)"
+            (renameStart)="startRenaming($event)"
+            (renameFinish)="finishRenaming($event.event, $event.session)"
+            (renameEnter)="handleEnterKey($event)"
+          ></app-terminal-tab>
           <button class="new-tab" (click)="createNewSession()" title="New tab">
             +
           </button>
