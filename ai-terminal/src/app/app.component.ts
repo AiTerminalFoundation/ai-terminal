@@ -17,6 +17,7 @@ import { CommandHistory } from './models/command-history.model';
 import { ChatHistory } from './models/chat-history.model';
 import { TerminalSession } from './models/terminal-session.model';
 import { TerminalTabComponent } from './components/terminal-tab/terminal-tab.component';
+import { TerminalSessionService } from './services/terminal-session.service';
 import {
   COMMAND_FORWARDED_TO_ACTIVE_SSH_MARKER,
   SSH_NEEDS_PASSWORD_MARKER,
@@ -99,7 +100,12 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
   showCommitPopup: boolean = false;
   commitMessage: string = '';
 
-  constructor(private sanitizer: DomSanitizer, private ngZone: NgZone, private elRef: ElementRef) { }
+  constructor(
+    private sanitizer: DomSanitizer,
+    private ngZone: NgZone,
+    private elRef: ElementRef,
+    private terminalSessionService: TerminalSessionService
+  ) { }
 
   getPlaceholder(): string {
     if (this.isHistorySearchActive) {
@@ -2067,23 +2073,14 @@ Using: ${this.currentLLMModel}`,
 
   // Session Management Methods
   createNewSession(name?: string, setAsActive: boolean = false): string {
-    const sessionId = `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    const sessionName = name || `Terminal ${this.terminalSessions.length + 1}`;
+    const { sessions, sessionId, shouldActivate } = this.terminalSessionService.createNewSession(
+      this.terminalSessions,
+      name,
+      setAsActive
+    );
+    this.terminalSessions = sessions;
 
-    const newSession: TerminalSession = {
-      id: sessionId,
-      name: sessionName,
-      commandHistory: [],
-      currentWorkingDirectory: '~',
-      isActive: setAsActive,
-      gitBranch: '',
-      isSshSessionActive: false,
-      currentSshUserHost: null
-    };
-
-    this.terminalSessions.push(newSession);
-
-    if (setAsActive || this.terminalSessions.length === 1) {
+    if (shouldActivate) {
       this.switchToSession(sessionId);
     }
 
@@ -2096,17 +2093,16 @@ Using: ${this.currentLLMModel}`,
       this.saveCurrentSessionState();
     }
 
-    // Find and activate new session
-    const targetSession = this.terminalSessions.find(s => s.id === sessionId);
+    const { sessions, targetSession } = this.terminalSessionService.switchToSession(
+      this.terminalSessions,
+      sessionId
+    );
+    this.terminalSessions = sessions;
+
     if (!targetSession) {
       return;
     }
 
-    // Mark all sessions as inactive
-    this.terminalSessions.forEach(session => session.isActive = false);
-
-    // Activate target session
-    targetSession.isActive = true;
     this.activeSessionId = sessionId;
 
     // Restore session state
@@ -2114,58 +2110,51 @@ Using: ${this.currentLLMModel}`,
   }
 
   closeSession(sessionId: string): void {
-    // Prevent closing the last session
-    if (this.terminalSessions.length <= 1) {
-      return;
-    }
+    const { sessions, nextActiveSessionId } = this.terminalSessionService.closeSession(
+      this.terminalSessions,
+      sessionId
+    );
+    this.terminalSessions = sessions;
 
-    const sessionIndex = this.terminalSessions.findIndex(s => s.id === sessionId);
-    if (sessionIndex === -1) {
-      return;
-    }
-
-    const wasActive = this.terminalSessions[sessionIndex].isActive;
-
-    // Remove the session
-    this.terminalSessions.splice(sessionIndex, 1);
-
-    // If we closed the active session, switch to another one
-    if (wasActive) {
-      // Switch to the session before the closed one, or the first one if we closed the first
-      const newActiveIndex = Math.max(0, sessionIndex - 1);
-      this.switchToSession(this.terminalSessions[newActiveIndex].id);
+    if (nextActiveSessionId) {
+      this.switchToSession(nextActiveSessionId);
     }
   }
 
   renameSession(sessionId: string, newName: string): void {
-    const session = this.terminalSessions.find(s => s.id === sessionId);
-    if (session && newName.trim()) {
-      session.name = newName.trim();
-    }
+    this.terminalSessions = this.terminalSessionService.renameSession(
+      this.terminalSessions,
+      sessionId,
+      newName
+    );
   }
 
   private saveCurrentSessionState(): void {
-    const activeSession = this.terminalSessions.find(s => s.id === this.activeSessionId);
-    if (activeSession) {
-      // Exit history search mode before saving state
-      if (this.isHistorySearchActive) {
-        this.exitHistorySearch(false);
-      }
-
-      activeSession.commandHistory = [...this.commandHistory];
-      activeSession.currentWorkingDirectory = this.currentWorkingDirectory;
-      activeSession.gitBranch = this.gitBranch;
-      activeSession.isSshSessionActive = this.isSshSessionActive;
-      activeSession.currentSshUserHost = this.currentSshUserHost;
+    // Exit history search mode before saving state
+    if (this.isHistorySearchActive) {
+      this.exitHistorySearch(false);
     }
+
+    this.terminalSessions = this.terminalSessionService.saveCurrentSessionState(
+      this.terminalSessions,
+      this.activeSessionId,
+      {
+        commandHistory: this.commandHistory,
+        currentWorkingDirectory: this.currentWorkingDirectory,
+        gitBranch: this.gitBranch,
+        isSshSessionActive: this.isSshSessionActive,
+        currentSshUserHost: this.currentSshUserHost
+      }
+    );
   }
 
   private restoreSessionState(session: TerminalSession): void {
-    this.commandHistory = [...session.commandHistory];
-    this.currentWorkingDirectory = session.currentWorkingDirectory;
-    this.gitBranch = session.gitBranch;
-    this.isSshSessionActive = session.isSshSessionActive;
-    this.currentSshUserHost = session.currentSshUserHost;
+    const state = this.terminalSessionService.restoreSessionState(session);
+    this.commandHistory = state.commandHistory;
+    this.currentWorkingDirectory = state.currentWorkingDirectory;
+    this.gitBranch = state.gitBranch;
+    this.isSshSessionActive = state.isSshSessionActive;
+    this.currentSshUserHost = state.currentSshUserHost;
 
     // Reset UI state
     this.currentCommand = '';
@@ -2178,7 +2167,7 @@ Using: ${this.currentLLMModel}`,
   }
 
   getActiveSession(): TerminalSession | undefined {
-    return this.terminalSessions.find(s => s.id === this.activeSessionId);
+    return this.terminalSessionService.getActiveSession(this.terminalSessions, this.activeSessionId);
   }
 
   // Event handlers for tab renaming
@@ -2197,7 +2186,8 @@ Using: ${this.currentLLMModel}`,
       const newName = target.textContent?.trim() || session.name;
       this.renameSession(session.id, newName);
       // Restore the display text in case textContent was modified
-      target.textContent = session.name;
+      const renamedSession = this.terminalSessions.find((s) => s.id === session.id);
+      target.textContent = renamedSession?.name || session.name;
     }
   }
 
