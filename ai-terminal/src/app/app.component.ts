@@ -19,6 +19,7 @@ import { TerminalSession } from './models/terminal-session.model';
 import { TerminalTabComponent } from './components/terminal-tab/terminal-tab.component';
 import { AiCommandService } from './services/ai-command.service';
 import { AiResponseFormatService } from './services/ai-response-format.service';
+import { OllamaConnectionService } from './services/ollama-connection.service';
 import { TerminalEventListenerService } from './services/terminal-event-listener.service';
 import { TerminalOutputService } from './services/terminal-output.service';
 import { TerminalSessionService } from './services/terminal-session.service';
@@ -110,6 +111,7 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
     private elRef: ElementRef,
     private aiCommandService: AiCommandService,
     private aiResponseFormatService: AiResponseFormatService,
+    private ollamaConnectionService: OllamaConnectionService,
     private terminalEventListenerService: TerminalEventListenerService,
     private terminalOutputService: TerminalOutputService,
     private terminalSessionService: TerminalSessionService
@@ -1460,128 +1462,44 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
 
   // Test the Ollama connection
   async testOllamaConnection(): Promise<void> {
-    try {
-      // Try to fetch the list of models to test the connection
-      const response = await fetch(`${this.ollamaApiHost}/api/tags`, {
-        method: 'GET'
-      });
-
-      if (response.ok) {
-        // We could also pre-populate the model list here
-        const data = await response.json();
-        if (data && data.models && data.models.length > 0) {
-          const availableModels = data.models.map((m: any) => m.name).join(', ');
-
-          // Set default model to the first available model if our default isn't in the list
-          const modelExists = data.models.some((m: any) => m.name === this.currentLLMModel);
-          if (!modelExists && data.models.length > 0) {
-            this.currentLLMModel = data.models[0].name;
-
-            // Notify in chat history
-            this.chatHistory.push({
-              message: " System",
-              response: `Connected to Ollama API. Available models: ${availableModels}
-Using: ${this.currentLLMModel}`,
-              timestamp: new Date(),
-              isCommand: true
-            });
-          } else if (modelExists) {
-            // If our model exists, just show success
-            this.chatHistory.push({
-              message: " System",
-              response: `Connected to Ollama API. Using model: ${this.currentLLMModel}`,
-              timestamp: new Date(),
-              isCommand: true
-            });
-          }
-        } else {
-          // Ollama is running but no models are available
-          this.chatHistory.push({
-            message: "System",
-            response: `Connected to Ollama API, but no models are available. Please install models with \"ollama pull <model>\".`,
-            timestamp: new Date(),
-            isCommand: true
-          });
-        }
-      } else {
-        console.error('Ollama connection test failed:', response.status);
-        // Add to chat history a message about Ollama not being available
-        this.chatHistory.push({
-          message: "System",
-          response: "Could not connect to Ollama API. Please make sure Ollama is running on " +
-            this.ollamaApiHost + " or change the host using /host command.",
-          timestamp: new Date(),
-          isCommand: true
-        });
+    await this.ollamaConnectionService.testOllamaConnection({
+      ollamaApiHost: this.ollamaApiHost,
+      currentLLMModel: this.currentLLMModel,
+      setCurrentLLMModel: (model: string) => {
+        this.currentLLMModel = model;
+      },
+      addChatEntry: (entry: ChatHistory) => {
+        this.chatHistory.push(entry);
       }
-    } catch (error) {
-      console.error('Error testing Ollama connection:', error);
-      // Add to chat history a message about Ollama not being available
-      this.chatHistory.push({
-        message: "System",
-        response: "Could not connect to Ollama API. Please make sure Ollama is running on " +
-          this.ollamaApiHost + " or change the host using /host command.",
-        timestamp: new Date(),
-        isCommand: true
-      });
-    }
+    });
   }
 
   // Method to retry Ollama connection
   async retryOllamaConnection(): Promise<void> {
-    this.chatHistory.push({
-      message: "System",
-      response: "🔄 Retrying connection to Ollama API...",
-      timestamp: new Date(),
-      isCommand: true
+    await this.ollamaConnectionService.retryOllamaConnection({
+      ollamaApiHost: this.ollamaApiHost,
+      currentLLMModel: this.currentLLMModel,
+      setCurrentLLMModel: (model: string) => {
+        this.currentLLMModel = model;
+      },
+      addChatEntry: (entry: ChatHistory) => {
+        this.chatHistory.push(entry);
+      }
     });
-    await this.testOllamaConnection();
   }
 
   // Check if a specific model exists in Ollama
   async checkModelExists(modelName: string): Promise<boolean> {
-    try {
-      // Try to fetch the list of models
-      const response = await fetch(`${this.ollamaApiHost}/api/tags`, {
-        method: 'GET'
-      });
-
-      if (!response.ok) {
-        console.error(`Failed to get models: ${response.status}`);
-        return false;
+    return this.ollamaConnectionService.checkModelExists(modelName, {
+      ollamaApiHost: this.ollamaApiHost,
+      currentLLMModel: this.currentLLMModel,
+      setCurrentLLMModel: (model: string) => {
+        this.currentLLMModel = model;
+      },
+      addChatEntry: (entry: ChatHistory) => {
+        this.chatHistory.push(entry);
       }
-
-      const data = await response.json();
-
-      if (!data.models || !Array.isArray(data.models)) {
-        console.error('Unexpected response format when checking models:', data);
-        return false;
-      }
-
-      const modelExists = data.models.some((m: any) => m.name === modelName);
-
-      if (!modelExists) {
-
-        // If model doesn't exist, automatically switch to the first available model
-        if (data.models.length > 0) {
-          this.currentLLMModel = data.models[0].name;
-
-          // Notify in chat
-          this.chatHistory.push({
-            message: "System",
-            response: `ℹModel '${modelName}' not found. Automatically switched to '${this.currentLLMModel}'.`,
-            timestamp: new Date(),
-            isCommand: true
-          });
-
-          return true; // Return true since we've fixed the issue by switching
-        }
-      }
-
-      return modelExists;
-    } catch (error: any) {
-      return false;
-    }
+    });
   }
 
   // Method to copy code to terminal input
