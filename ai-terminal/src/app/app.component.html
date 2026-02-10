@@ -11,9 +11,6 @@
             [canClose]="terminalSessions.length > 1"
             (select)="switchToSession($event)"
             (close)="closeSession($event)"
-            (renameStart)="startRenaming($event)"
-            (renameFinish)="finishRenaming($event.event, $event.session)"
-            (renameEnter)="handleEnterKey($event)"
           ></app-terminal-tab>
           <button class="new-tab" (click)="createNewSession(undefined, true)" title="New tab">
             +
@@ -21,75 +18,9 @@
         </div>
       </div>
 
-      <div class="output-area" #outputArea>
-        <div class="command-history">
-          <div *ngFor="let entry of commandHistory; trackBy: trackByCommandEntry" class="command-entry"
-            [ngClass]="{ 'command-entry-error': entry.isComplete && entry.success === false }"
-            [attr.data-command-id]="entry.timestamp.getTime()">
-            <div class="command-line">
-              <span class="command" [ngClass]="{
-                  'command-success': entry.isComplete && entry.success === true,
-                  'command-error': entry.isComplete && entry.success === false,
-                  'command-running': !entry.isComplete
-                }">
-                {{ entry.command }}
-              </span>
-            </div>
-            <div class="command-output">
-
-              <!-- Output content - show always -->
-              <ng-container *ngFor="let line of entry.output; trackBy: trackByOutputLine">
-                <div *ngIf="!line.includes('Command completed successfully') && 
-                           !line.includes('Command failed.') && 
-                           !line.includes('Command started. Output will stream')">{{ line }}</div>
-              </ng-container>
-            </div>
-          </div>
-        </div>
+      <div class="output-area terminal-output-area">
+        <div class="xterm-wrapper" #terminalContainer></div>
       </div>
-      <div class="input-area">
-        <div class="current-directory">
-
-          <span class="directory-info">
-            <svg class="directory-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
-            </svg>
-            {{ currentWorkingDirectory }}
-          </span>
-
-          <span class="git-branch" *ngIf="gitBranch">
-            <svg class="git-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="6" y1="3" x2="6" y2="15"></line>
-              <circle cx="18" cy="6" r="3"></circle>
-              <circle cx="6" cy="18" r="3"></circle>
-              <path d="M18 9a9 9 0 0 1-9 9"></path>
-            </svg>
-            {{ gitBranch }}
-          </span>
-        </div>
-
-          <!-- Autocomplete suggestions - moved above input -->
-          <div class="autocomplete-container" #autocompleteContainer *ngIf="showSuggestions && autocompleteSuggestions.length > 0" tabindex="0"
-            (keydown.arrowDown)="navigateToSuggestion('down'); $event.preventDefault()"
-            (keydown.arrowUp)="navigateToSuggestion('up'); $event.preventDefault()"
-            (keydown.tab)="navigateToSuggestion('down'); $event.preventDefault()"
-            (keydown.enter)="applySuggestion(autocompleteSuggestions[selectedSuggestionIndex]); focusTerminalInput(); $event.preventDefault()"
-            (keydown.escape)="showSuggestions = false; focusTerminalInput(); $event.preventDefault()">
-            <div class="autocomplete-list">
-              <div *ngFor="let suggestion of autocompleteSuggestions; let i = index; trackBy: trackByAutocompleteSuggestion" class="autocomplete-item"
-                [class.selected]="i === selectedSuggestionIndex"
-                (click)="applySuggestion(suggestion); focusTerminalInput(); showSuggestions = false; $event.preventDefault(); $event.stopPropagation();">
-                {{ suggestion }}
-              </div>
-            </div>
-          </div>
-          <div class="prompt-container">
-            <textarea [(ngModel)]="currentCommand" (keydown)="executeCommand($event)"
-              (input)="onKeyInput($event)" [disabled]="isProcessing"
-              [class.password-input]="isSudoPasswordPrompt || isSSHPasswordPrompt"
-              [class.history-search]="isHistorySearchActive" [placeholder]="getPlaceholder()" autofocus spellcheck="false"></textarea>
-          </div>
-        </div>
     </div>
   </div>
 

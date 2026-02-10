@@ -116,6 +116,21 @@
   user-select: text;
 }
 
+.terminal-output-area {
+  overflow: hidden;
+  padding: 6px;
+}
+
+.xterm-wrapper {
+  width: 100%;
+  height: 100%;
+  background: var(--bg-0);
+}
+
+.xterm-wrapper .xterm {
+  height: 100%;
+}
+
 .output-area::-webkit-scrollbar {
   width: 8px;
 }

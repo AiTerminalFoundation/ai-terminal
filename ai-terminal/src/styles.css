@@ -1,3 +1,6 @@
+/* xterm.js styles – must be global so they apply to dynamically created elements */
+@import "@xterm/xterm/css/xterm.css";
+
 /* Global styles */
 html, body {
   margin: 0;
@@ -28,6 +31,3 @@ pre, code, .command-text, .command-output div {
   word-break: break-word !important;
   max-width: 100%;
 }
-
-/* Import component styles */
-@import './app/app.component.css'; 

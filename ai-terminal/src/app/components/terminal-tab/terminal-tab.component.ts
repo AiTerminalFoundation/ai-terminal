@@ -14,9 +14,6 @@ export class TerminalTabComponent {
 
   @Output() select = new EventEmitter<string>();
   @Output() close = new EventEmitter<string>();
-  @Output() renameStart = new EventEmitter<Event>();
-  @Output() renameFinish = new EventEmitter<{ event: Event; session: TerminalSession }>();
-  @Output() renameEnter = new EventEmitter<Event>();
 
   onSelect(): void {
     this.select.emit(this.session.id);
@@ -25,17 +22,5 @@ export class TerminalTabComponent {
   onClose(event: Event): void {
     event.stopPropagation();
     this.close.emit(this.session.id);
-  }
-
-  onRenameStart(event: Event): void {
-    this.renameStart.emit(event);
-  }
-
-  onRenameFinish(event: Event): void {
-    this.renameFinish.emit({ event, session: this.session });
-  }
-
-  onRenameEnter(event: Event): void {
-    this.renameEnter.emit(event);
   }
 }
