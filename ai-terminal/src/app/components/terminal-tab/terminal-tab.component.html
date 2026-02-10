@@ -1,1 +1,14 @@
-<p>terminal-tab works!</p>
+<div class="tab" [class.active]="session.isActive" (click)="onSelect()">
+  <span
+    class="tab-name"
+    [contentEditable]="false"
+    (dblclick)="onRenameStart($event)"
+    (blur)="onRenameFinish($event)"
+    (keydown.enter)="onRenameEnter($event)"
+  >
+    {{ session.currentWorkingDirectory }}
+  </span>
+  <button class="close-tab" (click)="onClose($event)" *ngIf="canClose" title="Close tab">
+    ×
+  </button>
+</div>

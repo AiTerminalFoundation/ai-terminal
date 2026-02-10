@@ -13,35 +13,14 @@ import { invoke } from "@tauri-apps/api/core";
 import { FormsModule } from '@angular/forms';
 import { listen, UnlistenFn } from '@tauri-apps/api/event';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
-
-interface CommandHistory {
-  command: string;
-  output: string[];
-  timestamp: Date;
-  isComplete: boolean;
-  isStreaming?: boolean;
-  success?: boolean;
-  expectingSshEcho?: boolean;
-}
-
-interface ChatHistory {
-  message: string;
-  response: string;
-  timestamp: Date;
-  isCommand?: boolean; // Flag to indicate if this is a command message
-  codeBlocks?: { code: string, language: string }[]; // Store extracted code blocks
-}
-
-interface TerminalSession {
-  id: string;
-  name: string;
-  commandHistory: CommandHistory[];
-  currentWorkingDirectory: string;
-  isActive: boolean;
-  gitBranch: string;
-  isSshSessionActive: boolean;
-  currentSshUserHost: string | null;
-}
+import { CommandHistory } from './models/command-history.model';
+import { ChatHistory } from './models/chat-history.model';
+import { TerminalSession } from './models/terminal-session.model';
+import {
+  COMMAND_FORWARDED_TO_ACTIVE_SSH_MARKER,
+  SSH_NEEDS_PASSWORD_MARKER,
+  SSH_PRE_EXEC_PASSWORD_EVENT
+} from './constants/ssh.constants';
 
 @Component({
   selector: 'app-root',
@@ -118,11 +97,6 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
   // Commit popup
   showCommitPopup: boolean = false;
   commitMessage: string = '';
-
-  // Constants for SSH interaction
-  readonly SSH_NEEDS_PASSWORD_MARKER = "SSH_INTERACTIVE_PASSWORD_PROMPT_REQUESTED";
-  readonly SSH_PRE_EXEC_PASSWORD_EVENT = "ssh_pre_exec_password_request";
-  readonly COMMAND_FORWARDED_TO_ACTIVE_SSH_MARKER = "COMMAND_FORWARDED_TO_ACTIVE_SSH";
 
   constructor(private sanitizer: DomSanitizer, private ngZone: NgZone, private elRef: ElementRef) { }
 
@@ -267,7 +241,7 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
       });
 
       // NEW: Listen for proactive SSH password request from backend
-      const unlisten_ssh_prompt = await listen(this.SSH_PRE_EXEC_PASSWORD_EVENT, (event) => {
+      const unlisten_ssh_prompt = await listen(SSH_PRE_EXEC_PASSWORD_EVENT, (event) => {
         this.ngZone.run(() => {
           const originalCommandFromEvent = event.payload as string;
 
@@ -853,14 +827,14 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
           sessionId: this.activeSessionId
         })
           .then(result => {
-            if (result === this.SSH_NEEDS_PASSWORD_MARKER) {
+            if (result === SSH_NEEDS_PASSWORD_MARKER) {
               // The 'ssh_pre_exec_password_request' event listener will handle:
               // - Creating the CommandHistory entry with the password prompt.
               // - Setting up isSSHPasswordPrompt, originalSSHCommand, etc.
               // - Setting isProcessing = false to allow password input.
               // So, no CommandHistory entry is created here for this specific case.
               // isProcessing will be set to false by the listener.
-            } else if (result === this.COMMAND_FORWARDED_TO_ACTIVE_SSH_MARKER) {
+            } else if (result === COMMAND_FORWARDED_TO_ACTIVE_SSH_MARKER) {
               // Command was forwarded to an already active SSH session.
               // Create a history entry for the command that was forwarded.
               const forwardedCommandEntry: CommandHistory = {
@@ -896,7 +870,7 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
               // or if it's a success that doesn't stream (less common for SSH connect),
               // isProcessing should be false. The command_end event is the primary way to set this.
               // For now, optimistically set to false if no streaming indicators.
-              if (!result || (!result.includes("Output will stream") && !result.includes(this.COMMAND_FORWARDED_TO_ACTIVE_SSH_MARKER))) {
+              if (!result || (!result.includes("Output will stream") && !result.includes(COMMAND_FORWARDED_TO_ACTIVE_SSH_MARKER))) {
                 this.isProcessing = false;
               }
               // If backend sends "Output will stream...", isProcessing remains true until command_end
@@ -967,7 +941,7 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
         });
 
         // If the result indicates the command was forwarded to an active SSH session
-        if (result === this.COMMAND_FORWARDED_TO_ACTIVE_SSH_MARKER) {
+        if (result === COMMAND_FORWARDED_TO_ACTIVE_SSH_MARKER) {
           this.isProcessing = false;
           // Mark that we expect the SSH shell to echo the command
           if (commandEntry) { // commandEntry is the last pushed entry
