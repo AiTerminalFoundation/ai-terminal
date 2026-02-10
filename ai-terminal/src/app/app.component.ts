@@ -124,7 +124,11 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
     this.terminal = new Terminal({
       fontFamily: '"JetBrains Mono", "Menlo", "Monaco", "Courier New", monospace',
       fontSize: 12,
+      fontWeight: '300',
+      fontWeightBold: '500',
       cursorBlink: true,
+      cursorStyle: 'bar',
+      cursorWidth: 1,
       scrollback: 5000,
       convertEol: false,
       theme: {
