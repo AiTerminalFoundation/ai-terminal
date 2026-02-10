@@ -25,9 +25,11 @@ pub fn get_git_branch(
     let key = session_id;
 
     let current_dir = if let Some(state) = states.get(&key) {
-        &state.current_dir
+        state.current_dir.clone()
     } else {
-        return Ok("".to_string());
+        std::env::current_dir()
+            .map(|path| path.to_string_lossy().to_string())
+            .map_err(|e| e.to_string())?
     };
 
     // Get current branch
@@ -35,7 +37,7 @@ pub fn get_git_branch(
     cmd.arg("rev-parse")
         .arg("--abbrev-ref")
         .arg("HEAD")
-        .current_dir(current_dir);
+        .current_dir(&current_dir);
 
     let output = cmd.output().map_err(|e| e.to_string())?;
 

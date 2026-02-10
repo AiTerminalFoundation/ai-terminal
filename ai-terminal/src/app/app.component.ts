@@ -239,10 +239,9 @@ export class AppComponent implements OnInit, OnDestroy {
 
               currentCmdEntry.success = payload === "Command completed successfully.";
 
-              const commandText = currentCmdEntry.command.trim();
-              const isCdCommand = commandText === 'cd' || commandText.startsWith('cd ');
-
-              if (isCdCommand && !this.isSshSessionActive) {
+              // Refresh local prompt metadata after every command, so tab title and git branch
+              // stay in sync even when commands affect cwd/branch indirectly.
+              if (!this.isSshSessionActive) {
                 await this.getCurrentDirectory();
               }
 
@@ -287,6 +286,7 @@ export class AppComponent implements OnInit, OnDestroy {
                 this.currentWorkingDirectory = newRemotePath;
               }
               this.gitBranch = '';
+              this.syncActiveSessionState();
             }
           });
         },
@@ -394,10 +394,12 @@ export class AppComponent implements OnInit, OnDestroy {
         this.gitBranch = '';
       }
 
+      this.syncActiveSessionState();
     } catch (error) {
       console.error('Failed to get current directory:', error);
       this.currentWorkingDirectory = this.isSshSessionActive ? "remote:error" : "local:error";
       this.gitBranch = ''; // Clear git branch on error too
+      this.syncActiveSessionState();
     }
   }
 
@@ -1689,6 +1691,24 @@ export class AppComponent implements OnInit, OnDestroy {
     // Exit history search mode before saving state
     if (this.isHistorySearchActive) {
       this.exitHistorySearch(false);
+    }
+
+    this.terminalSessions = this.terminalSessionService.saveCurrentSessionState(
+      this.terminalSessions,
+      this.activeSessionId,
+      {
+        commandHistory: this.commandHistory,
+        currentWorkingDirectory: this.currentWorkingDirectory,
+        gitBranch: this.gitBranch,
+        isSshSessionActive: this.isSshSessionActive,
+        currentSshUserHost: this.currentSshUserHost
+      }
+    );
+  }
+
+  private syncActiveSessionState(): void {
+    if (!this.activeSessionId) {
+      return;
     }
 
     this.terminalSessions = this.terminalSessionService.saveCurrentSessionState(

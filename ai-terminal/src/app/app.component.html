@@ -15,7 +15,7 @@
             (renameFinish)="finishRenaming($event.event, $event.session)"
             (renameEnter)="handleEnterKey($event)"
           ></app-terminal-tab>
-          <button class="new-tab" (click)="createNewSession()" title="New tab">
+          <button class="new-tab" (click)="createNewSession(undefined, true)" title="New tab">
             +
           </button>
         </div>
@@ -24,6 +24,7 @@
       <div class="output-area" #outputArea>
         <div class="command-history">
           <div *ngFor="let entry of commandHistory; trackBy: trackByCommandEntry" class="command-entry"
+            [ngClass]="{ 'command-entry-error': entry.isComplete && entry.success === false }"
             [attr.data-command-id]="entry.timestamp.getTime()">
             <div class="command-line">
               <span class="command" [ngClass]="{

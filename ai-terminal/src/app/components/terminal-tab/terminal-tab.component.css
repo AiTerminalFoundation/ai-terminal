@@ -5,38 +5,37 @@
 .tab {
   display: flex;
   align-items: center;
-  padding: 6px 12px;
-  margin-right: 2px;
-  background-color: #282a36;
-  border: 1px solid #44475a;
-  border-bottom: none;
-  border-radius: 6px 6px 0 0;
+  padding: 5px 10px;
+  margin-right: 6px;
+  background-color: transparent;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s ease;
   min-width: 100px;
   max-width: 200px;
   position: relative;
   font-size: 12px;
-  height: 28px;
+  height: 24px;
   box-sizing: border-box;
 }
 
 .tab:hover {
-  background-color: #44475a;
-  border-color: rgba(189, 147, 249, 0.3);
+  background-color: rgba(122, 162, 247, 0.08);
+  border-color: rgba(122, 162, 247, 0.35);
 }
 
 .tab.active {
-  background-color: #21222c;
-  border-color: rgba(80, 250, 123, 0.5);
-  color: #50fa7b;
-  font-weight: 600;
-  box-shadow: 0 2px 8px rgba(80, 250, 123, 0.1);
+  background-color: rgba(122, 162, 247, 0.13);
+  border-color: rgba(122, 162, 247, 0.45);
+  color: #e6edf3;
+  font-weight: 500;
+  box-shadow: none;
 }
 
 .tab.active:hover {
-  background-color: #21222c;
-  border-color: rgba(80, 250, 123, 0.7);
+  background-color: rgba(122, 162, 247, 0.18);
+  border-color: rgba(122, 162, 247, 0.55);
 }
 
 .tab-name {
@@ -44,7 +43,7 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  color: white;
+  color: #9ba7b4;
   font-size: 12px;
   line-height: 1;
   outline: none;
@@ -54,9 +53,13 @@
   font-family: 'JetBrains Mono', 'Menlo', 'Monaco', 'Courier New', monospace;
 }
 
+.tab.active .tab-name {
+  color: #e6edf3;
+}
+
 .tab-name[contenteditable='true'] {
-  background-color: rgba(189, 147, 249, 0.1);
-  border: 1px solid rgba(189, 147, 249, 0.3);
+  background-color: rgba(122, 162, 247, 0.15);
+  border: 1px solid rgba(122, 162, 247, 0.35);
   border-radius: 3px;
   padding: 2px 4px;
   margin: -2px -4px;
@@ -66,7 +69,7 @@
 .close-tab {
   background: none;
   border: none;
-  color: #6272a4;
+  color: #7f8a98;
   cursor: pointer;
   padding: 2px 4px;
   margin-left: 6px;
@@ -83,6 +86,6 @@
 }
 
 .close-tab:hover {
-  color: #ff5555;
-  background-color: rgba(255, 85, 85, 0.1);
+  color: #f7768e;
+  background-color: rgba(247, 118, 142, 0.12);
 }
