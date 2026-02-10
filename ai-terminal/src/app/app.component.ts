@@ -11,17 +11,20 @@ import {
 import { CommonModule } from '@angular/common';
 import { invoke } from "@tauri-apps/api/core";
 import { FormsModule } from '@angular/forms';
-import { listen, UnlistenFn } from '@tauri-apps/api/event';
+import { UnlistenFn } from '@tauri-apps/api/event';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { CommandHistory } from './models/command-history.model';
 import { ChatHistory } from './models/chat-history.model';
 import { TerminalSession } from './models/terminal-session.model';
 import { TerminalTabComponent } from './components/terminal-tab/terminal-tab.component';
+import { AiResponseFormatService } from './services/ai-response-format.service';
+import { TerminalEventListenerService } from './services/terminal-event-listener.service';
+import { TerminalOutputService } from './services/terminal-output.service';
 import { TerminalSessionService } from './services/terminal-session.service';
+import { buildTerminalAssistantSystemPrompt } from './constants/ai.constants';
 import {
   COMMAND_FORWARDED_TO_ACTIVE_SSH_MARKER,
-  SSH_NEEDS_PASSWORD_MARKER,
-  SSH_PRE_EXEC_PASSWORD_EVENT
+  SSH_NEEDS_PASSWORD_MARKER
 } from './constants/ssh.constants';
 
 @Component({
@@ -104,6 +107,9 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
     private sanitizer: DomSanitizer,
     private ngZone: NgZone,
     private elRef: ElementRef,
+    private aiResponseFormatService: AiResponseFormatService,
+    private terminalEventListenerService: TerminalEventListenerService,
+    private terminalOutputService: TerminalOutputService,
     private terminalSessionService: TerminalSessionService
   ) { }
 
@@ -153,168 +159,137 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
 
     // Set up event listeners for command output streaming
     try {
-      // Listen for command output
-      const unlisten1 = await listen('command_output', (event) => {
-        this.ngZone.run(() => {
-          if (this.commandHistory.length > 0) {
-            const currentCmdEntry = this.commandHistory[this.commandHistory.length - 1];
-            const outputLine = event.payload as string;
+      const unlisteners = await this.terminalEventListenerService.registerListeners({
+        onCommandOutput: async (outputLine: string) => {
+          this.ngZone.run(() => {
+            if (this.commandHistory.length > 0) {
+              const currentCmdEntry = this.commandHistory[this.commandHistory.length - 1];
 
-            const { lineToDisplay, newExpectingSshEchoState } = this.cleanOutputLine(
-              outputLine,
-              currentCmdEntry.command,
-              this.isSshSessionActive,
-              currentCmdEntry.expectingSshEcho || false
-            );
-            currentCmdEntry.expectingSshEcho = newExpectingSshEchoState;
+              const { lineToDisplay, newExpectingSshEchoState } = this.terminalOutputService.cleanOutputLine(
+                outputLine,
+                currentCmdEntry.command,
+                this.isSshSessionActive,
+                currentCmdEntry.expectingSshEcho || false
+              );
+              currentCmdEntry.expectingSshEcho = newExpectingSshEchoState;
 
-            if (lineToDisplay === null) {
-              return; // Line was a prompt/echo/artifact and should be hidden
-            }
+              if (lineToDisplay === null) {
+                return;
+              }
 
-            // Mark command as streaming and handle initial system messages
-            if (!currentCmdEntry.isStreaming) {
-              currentCmdEntry.isStreaming = true;
-              // If the output array currently contains only a system message, clear it.
-              if (currentCmdEntry.output.length === 1 &&
-                (currentCmdEntry.output[0] === "Processing..." ||
-                  currentCmdEntry.output[0] === "Processing sudo command..." ||
-                  currentCmdEntry.output[0] === "Command started. Output will stream in real-time." ||
-                  currentCmdEntry.output[0] === "Sudo command started. Output will stream in real-time." ||
-                  currentCmdEntry.output[0] === "Command sent to active SSH session.")) {
-                currentCmdEntry.output = [];
+              if (!currentCmdEntry.isStreaming) {
+                currentCmdEntry.isStreaming = true;
+                if (
+                  currentCmdEntry.output.length === 1 &&
+                  (currentCmdEntry.output[0] === "Processing..." ||
+                    currentCmdEntry.output[0] === "Processing sudo command..." ||
+                    currentCmdEntry.output[0] === "Command started. Output will stream in real-time." ||
+                    currentCmdEntry.output[0] === "Sudo command started. Output will stream in real-time." ||
+                    currentCmdEntry.output[0] === "Command sent to active SSH session.")
+                ) {
+                  currentCmdEntry.output = [];
+                }
+              }
+
+              const skipLine =
+                lineToDisplay === "Command started. Output will stream in real-time." ||
+                lineToDisplay === "Sudo command started. Output will stream in real-time." ||
+                (currentCmdEntry.command.startsWith('sudo ') && outputLine.includes("[sudo] password for"));
+
+              if (!skipLine) {
+                currentCmdEntry.output.push(lineToDisplay);
+                this.shouldScroll = true;
               }
             }
-
-            // Skip specific system messages we don't want to display further
-            const skipLine =
-              lineToDisplay === "Command started. Output will stream in real-time." ||
-              lineToDisplay === "Sudo command started. Output will stream in real-time." ||
-              (currentCmdEntry.command.startsWith('sudo ') &&
-                outputLine.includes("[sudo] password for"));
-
-            if (!skipLine) {
-              currentCmdEntry.output.push(lineToDisplay);
+          });
+        },
+        onCommandError: async (payload: string) => {
+          this.ngZone.run(() => {
+            if (this.commandHistory.length > 0) {
+              const currentCmdEntry = this.commandHistory[this.commandHistory.length - 1];
+              currentCmdEntry.output.push(payload);
               this.shouldScroll = true;
             }
-          }
-        });
-      });
+          });
+        },
+        onCommandEnd: async (payload: string) => {
+          await this.ngZone.run(async () => {
+            if (this.commandHistory.length > 0) {
+              const currentCmdEntry = this.commandHistory[this.commandHistory.length - 1];
+              currentCmdEntry.isComplete = true;
+              currentCmdEntry.isStreaming = false;
 
-      // Listen for command errors
-      const unlisten2 = await listen('command_error', (event) => {
-        this.ngZone.run(() => {
-          if (this.commandHistory.length > 0) {
-            const currentCmdEntry = this.commandHistory[this.commandHistory.length - 1];
-            currentCmdEntry.output.push(event.payload as string);
-            this.shouldScroll = true;
-          }
-        });
-      });
+              currentCmdEntry.success = payload === "Command completed successfully.";
 
-      // Listen for command completion
-      const unlisten3 = await listen('command_end', async (event) => {
-        await this.ngZone.run(async () => {
-          if (this.commandHistory.length > 0) {
-            const currentCmdEntry = this.commandHistory[this.commandHistory.length - 1];
-            currentCmdEntry.isComplete = true;
-            currentCmdEntry.isStreaming = false;
+              const commandText = currentCmdEntry.command.trim();
+              const isCdCommand = commandText === 'cd' || commandText.startsWith('cd ');
 
-            // Set success flag based on the exit message
-            const message = event.payload as string;
-            currentCmdEntry.success = message === "Command completed successfully.";
+              if (isCdCommand && !this.isSshSessionActive) {
+                await this.getCurrentDirectory();
+              }
 
-            // Handle directory updates for cd commands
-            const commandText = currentCmdEntry.command.trim();
-            const isCdCommand = commandText === 'cd' || commandText.startsWith('cd ');
-
-            // Only update for local cd. SSH cd relies on remote_directory_updated event.
-            if (isCdCommand && !this.isSshSessionActive) {
-              await this.getCurrentDirectory();
+              this.isProcessing = false;
+              this.shouldScroll = true;
             }
-
+          });
+        },
+        onCommandForwardedToSsh: async () => {
+          this.ngZone.run(() => {
             this.isProcessing = false;
+          });
+        },
+        onSshPreExecPasswordRequest: async (originalCommandFromEvent: string) => {
+          this.ngZone.run(() => {
+            const sshPromptEntry: CommandHistory = {
+              command: originalCommandFromEvent,
+              output: [`SSH Password for ${this.extractUserHostFromSshCommand(originalCommandFromEvent)}:`],
+              timestamp: new Date(),
+              isComplete: false,
+              isStreaming: false
+            };
+            this.commandHistory.push(sshPromptEntry);
+
+            this.originalSSHCommand = originalCommandFromEvent;
+            this.isSSHPasswordPrompt = true;
+            this.passwordValue = '';
+            this.displayValue = '';
+            this.currentCommand = '';
+
             this.shouldScroll = true;
-          }
-        });
-      });
-
-      // When a command is forwarded to an existing SSH session, we only get this custom event.
-      // Treat it like an immediate completion so the input textbox is re-enabled right away.
-      const unlistenSshForward = await listen('command_forwarded_to_ssh', (_event) => {
-        this.ngZone.run(() => {
-          this.isProcessing = false;
-        });
-      });
-
-      // NEW: Listen for proactive SSH password request from backend
-      const unlisten_ssh_prompt = await listen(SSH_PRE_EXEC_PASSWORD_EVENT, (event) => {
-        this.ngZone.run(() => {
-          const originalCommandFromEvent = event.payload as string;
-
-          // This listener is now responsible for creating the CommandHistory entry for the password prompt.
-          const sshPromptEntry: CommandHistory = {
-            command: originalCommandFromEvent, // Store the original command
-            output: [`SSH Password for ${this.extractUserHostFromSshCommand(originalCommandFromEvent)}:`],
-            timestamp: new Date(),
-            isComplete: false, // Not complete until password submitted or cancelled
-            isStreaming: false // Not streaming yet, just prompting
-          };
-          this.commandHistory.push(sshPromptEntry);
-
-          this.originalSSHCommand = originalCommandFromEvent;
-          this.isSSHPasswordPrompt = true;
-          this.passwordValue = '';
-          this.displayValue = '';
-          this.currentCommand = ''; // Clear the input field for password
-
-          this.shouldScroll = true;
-          this.isProcessing = false; // Allow password input
-          this.focusTerminalInput();
-        });
-      });
-
-      this.unlistenFunctions.push(unlisten1, unlisten2, unlisten3, unlistenSshForward, unlisten_ssh_prompt);
-
-      // Listen for remote directory updates from SSH
-      const unlistenRemoteDir = await listen('remote_directory_updated', (event) => {
-        this.ngZone.run(() => {
-          const newRemotePath = event.payload as string;
-          if (this.isSshSessionActive) {
-            if (this.currentSshUserHost) {
-              this.currentWorkingDirectory = `${this.currentSshUserHost}:${newRemotePath}`;
-            } else {
-              this.currentWorkingDirectory = newRemotePath; // Fallback
+            this.isProcessing = false;
+            this.focusTerminalInput();
+          });
+        },
+        onRemoteDirectoryUpdated: async (newRemotePath: string) => {
+          this.ngZone.run(() => {
+            if (this.isSshSessionActive) {
+              if (this.currentSshUserHost) {
+                this.currentWorkingDirectory = `${this.currentSshUserHost}:${newRemotePath}`;
+              } else {
+                this.currentWorkingDirectory = newRemotePath;
+              }
+              this.gitBranch = '';
             }
-            // Git branch is not applicable for remote, ensure it's clear
+          });
+        },
+        onSshSessionStarted: async () => {
+          await this.ngZone.run(async () => {
+            this.isSshSessionActive = true;
+            await this.getCurrentDirectory();
             this.gitBranch = '';
-          }
-        });
+            this.isProcessing = false;
+          });
+        },
+        onSshSessionEnded: async () => {
+          await this.ngZone.run(async () => {
+            this.isSshSessionActive = false;
+            this.currentSshUserHost = null;
+            await this.getCurrentDirectory();
+          });
+        }
       });
-      this.unlistenFunctions.push(unlistenRemoteDir);
 
-      // Listen for SSH session start and end events
-      const unlistenSshStarted = await listen('ssh_session_started', (event) => {
-        this.ngZone.run(async () => {
-          this.isSshSessionActive = true;
-          // When SSH starts, explicitly fetch the directory, which should now be remote.
-          await this.getCurrentDirectory();
-          this.gitBranch = ''; // Clear local git branch on SSH start
-          this.isProcessing = false; // <<< Added this line to re-enable input
-        });
-      });
-      this.unlistenFunctions.push(unlistenSshStarted);
-
-      const unlistenSshEnded = await listen('ssh_session_ended', (event) => {
-        this.ngZone.run(async () => {
-          this.isSshSessionActive = false;
-          this.currentSshUserHost = null; // Clear user@host
-          // On SSH end, revert to local directory and git branch.
-          await this.getCurrentDirectory();
-        });
-      });
-      this.unlistenFunctions.push(unlistenSshEnded);
-
+      this.unlistenFunctions.push(...unlisteners);
     } catch (error) {
       console.error('Failed to set up event listeners:', error);
     }
@@ -980,244 +955,14 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
     }
   }
 
-  private stripAnsiCodes(text: string): string {
-    // Regex to remove ANSI escape codes
-    return text.replace(/\x1B\[[0-?]*[ -/]*[@-~]/g, '');
-  }
-
-  private stripTerminalTitle(text: string): string {
-    // Regex to remove terminal title escape sequences like \x1b]0;...\x07
-    return text.replace(/\x1b\]0;.*\x07/g, '');
-  }
-
-  private cleanOutputLine(rawLine: string, commandText: string, isSsh: boolean, isCurrentlyExpectingEcho: boolean): { lineToDisplay: string | null, newExpectingSshEchoState: boolean } {
-    let cleanedLine = this.stripAnsiCodes(rawLine);
-    cleanedLine = this.stripTerminalTitle(cleanedLine);
-
-    let finalLineToDisplay: string | null = cleanedLine;
-    let updatedExpectingEcho = isCurrentlyExpectingEcho;
-
-    if (isSsh) {
-      const trimmedCleanedLine = cleanedLine.trim();
-      const trimmedCommandText = commandText.trim();
-
-      if (isCurrentlyExpectingEcho) {
-        // For 'cd' commands in SSH, our backend appends marker logic.
-        // The echoed line will be complex. If we see our marker, hide it.
-        if (trimmedCommandText.startsWith('cd ') && cleanedLine.includes('__REMOTE_CD_PWD_MARKER_')) {
-          finalLineToDisplay = null;
-          updatedExpectingEcho = false; // Echo handled
-          return { lineToDisplay: finalLineToDisplay, newExpectingSshEchoState: updatedExpectingEcho };
-        }
-
-        // Original echo hiding logic for other commands:
-        const commandStartIndex = trimmedCleanedLine.indexOf(trimmedCommandText);
-        if (commandStartIndex !== -1) {
-          // Consider it an echo if the command is found.
-          // More sophisticated checks could verify what comes before (prompt) and after (nothing).
-          finalLineToDisplay = null; // Hide this line
-          updatedExpectingEcho = false; // We've processed the expected echo
-          return { lineToDisplay: finalLineToDisplay, newExpectingSshEchoState: updatedExpectingEcho };
-        }
-        // If command not found on this line, but we were expecting echo, maybe it's a multi-line prompt or just a weird first line.
-        // For safety, stop expecting echo after the first line is processed when in this state.
-        // updatedExpectingEcho = false; 
-        // ^ Let's be more conservative: only stop expecting if we positively ID the echo.
-        // If the first line wasn't it, subsequent lines are definitely not the echo.
-        // However, if the first line *was* an empty line after stripping, we should still expect echo.
-        if (trimmedCleanedLine !== "") { // if it wasn't just an empty line
-          updatedExpectingEcho = false;
-        }
-
-      }
-
-      // Try to detect and hide lines that are *only* a shell prompt.
-      // Example: `pi@pi:~$ ` or `$`
-      // This regex is a basic attempt and might need refinement for different prompts.
-      const promptRegex = /^([\w\W]*?([\w.-]+@[\w.-]+(:\s?[\/\w\.~-]+)?)\s*)?([\$#%])\s*$/;
-      if (promptRegex.test(trimmedCleanedLine)) {
-        // Check if this line *only* contains the prompt and nothing else of substance
-        // For example, if `trimmedCleanedLine` is `pi@pi:~$ ` or `$`
-        // A simple check: if removing the prompt leaves an empty string.
-        const potentialPromptOnly = trimmedCleanedLine.replace(promptRegex, "").trim();
-        if (potentialPromptOnly === "") {
-          finalLineToDisplay = null; // Hide this line as it's just a prompt
-          // Don't change updatedExpectingEcho here, a prompt can appear before or after an echo.
-        }
-      }
-    }
-
-    // If, after all stripping, the line is empty, don't display it unless it was an intentional empty line from the command.
-    // However, the newline characters are preserved if the original rawLine had them, 
-    // so `cleanedLine` might be "\n" which is fine.
-    // What we want to avoid is displaying lines that become empty *after* stripping codes/prompts.
-    if (finalLineToDisplay !== null && finalLineToDisplay.trim() === "" && rawLine.trim() !== "") {
-      // It became empty after cleaning, and wasn't originally empty. Hide it.
-      // Exception: if the original line was just ANSI codes that we stripped, that's fine.
-      // This case is mostly for prompts that are stripped entirely.
-      // if (this.stripAnsiCodes(rawLine).trim() === "") {
-      // Original was just ANSI, now empty, this is an empty line effectively, display if not null already
-      // } else {
-      finalLineToDisplay = null;
-      // }
-    }
-
-    return { lineToDisplay: finalLineToDisplay, newExpectingSshEchoState: updatedExpectingEcho };
-  }
-
   // Add a new method to parse commands from AI responses
   parseCommandFromResponse(response: string): { command: string, fullText: string }[] {
-    const results: { command: string, fullText: string }[] = [];
-    let lastIndex = 0;
-
-    // First handle triple backtick blocks
-    const tripleCommandRegex = /```([^`]+)```/g;
-    let match;
-
-    while ((match = tripleCommandRegex.exec(response)) !== null) {
-      // Get the text before this command block
-      const textBefore = response.slice(lastIndex, match.index);
-
-      // Process any single backticks in the text before
-      if (textBefore) {
-        const processedText = this.processSingleBackticks(textBefore);
-        if (processedText) {
-          results.push({
-            command: '',
-            fullText: processedText
-          });
-        }
-      }
-
-      // Add the command with its backticks
-      results.push({
-        command: match[1].trim(),
-        fullText: match[0] // Include the full match with backticks
-      });
-
-      lastIndex = match.index + match[0].length;
-
-      // Check if there's an escaped newline (\\n) after this command
-      const nextChars = response.slice(lastIndex, lastIndex + 4);
-      if (nextChars === '\\n') {
-        results.push({
-          command: '',
-          fullText: '\n'
-        });
-        lastIndex += 4; // Skip the \\n
-      }
-    }
-
-    // Process any remaining text for single backticks
-    const textAfter = response.slice(lastIndex);
-    if (textAfter) {
-      const processedText = this.processSingleBackticks(textAfter);
-      if (processedText) {
-        results.push({
-          command: '',
-          fullText: processedText
-        });
-      }
-    }
-
-    return results;
-  }
-
-  // Helper method to process single backticks into bold text
-  private processSingleBackticks(text: string): string {
-    // Replace single backticks with bold markers and sanitize
-    const processed = text.replace(/`([^`]+)`/g, '<b>$1</b>');
-    return processed;
+    return this.aiResponseFormatService.parseCommandFromResponse(response);
   }
 
   // Extract code blocks from response text
   extractCodeBlocks(text: string): { formattedText: string, codeBlocks: { code: string, language: string }[] } {
-    const codeBlocks: { code: string, language: string }[] = [];
-
-    // Special handling for command responses (single line enclosed in triple backticks)
-    const commandParts = this.parseCommandFromResponse(text);
-    if (commandParts.length > 0) {
-      // Build the formatted text with placeholders and collect code blocks
-      const formattedParts = commandParts.map((part) => {
-        if (part.command) {
-          // This is a command block
-          codeBlocks.push({
-            code: part.command,
-            language: 'command'
-          });
-          return `<code-block-${codeBlocks.length - 1}></code-block-${codeBlocks.length - 1}>`;
-        } else {
-          // This is regular text
-          return part.fullText;
-        }
-      });
-
-      // Join with newlines to preserve the model's formatting
-      return {
-        formattedText: formattedParts.join(''),
-        codeBlocks
-      };
-    }
-
-    // First, check if the entire response is just a single code block with backticks
-    if (text.trim().startsWith('```') && text.trim().endsWith('```')) {
-      const trimmedText = text.trim();
-      // Check if there's any content inside the backticks
-      const content = trimmedText.slice(3, -3).trim();
-      if (content) {
-        // Check if the first line might be a language identifier
-        const lines = content.split('\n');
-        let code: string;
-        let language: string = 'text';
-
-        if (lines.length > 1 && !lines[0].includes(' ') && lines[0].length < 20) {
-          // First line might be a language identifier
-          language = lines[0];
-          code = lines.slice(1).join('\n').trim();
-        } else {
-          // No language identifier
-          code = content;
-        }
-
-        codeBlocks.push({ code, language });
-        return { formattedText: `<code-block-0></code-block-0>`, codeBlocks };
-      }
-    }
-
-    // If this is a very short response (e.g., just a command), treat it as a command
-    if (text.length < 100 && !text.includes('\n') && !text.includes('```')) {
-      codeBlocks.push({
-        code: text.trim(),
-        language: 'command'
-      });
-
-      return { formattedText: `<code-block-0></code-block-0>`, codeBlocks };
-    }
-
-    // If not a single block, use regex to find all occurrences of text between triple backticks
-    // This regex handles the triple backtick pattern with optional language identifier
-    const codeBlockRegex = /```([\w-]*)?(?:\s*\n)?([\s\S]*?)```/gm;
-
-    // Replace code blocks with placeholders while storing extracted code
-    let formattedText = text.replace(codeBlockRegex, (language, code) => {
-      // Skip empty matches
-      if (!code || !code.trim()) {
-        return '';
-      }
-
-      const trimmedCode = code.trim();
-      const index = codeBlocks.length;
-
-      codeBlocks.push({
-        code: trimmedCode,
-        language: language ? language.trim() : 'text'
-      });
-
-      // Return a placeholder that won't be confused with actual content
-      return `<code-block-${index}></code-block-${index}>`;
-    });
-
-    return { formattedText, codeBlocks };
+    return this.aiResponseFormatService.extractCodeBlocks(text);
   }
 
   // Handle code copy button click
@@ -1249,42 +994,7 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
 
   // Check if a code block is a simple command (no special formatting needed)
   isSimpleCommand(code: string): boolean {
-    if (!code) return false;
-
-    // Clean the code first by removing any backticks
-    const cleanCode = code.replace(/```/g, '').trim();
-
-    // For commands extracted by parseCommandFromResponse, we always return true
-    // if they're relatively short and simple
-    if (cleanCode.length < 100 && !cleanCode.includes('\n')) {
-      // Check if it has common terminal command patterns
-      if (cleanCode.split(' ').length <= 5) {
-        return true;
-      }
-    }
-
-    // A simple command is a single line terminal command that doesn't need
-    // a full code block for display
-    const isSimple = !cleanCode.includes('\n') &&
-      !cleanCode.includes('|') &&
-      !cleanCode.includes('>') &&
-      !cleanCode.includes('<') &&
-      !cleanCode.includes('=') &&
-      cleanCode.length < 80;
-
-    // Specific check for common commands
-    const isCommonCommand = cleanCode.startsWith('ls') ||
-      cleanCode.startsWith('cd') ||
-      cleanCode.startsWith('mkdir') ||
-      cleanCode.startsWith('rm') ||
-      cleanCode.startsWith('cp') ||
-      cleanCode.startsWith('mv') ||
-      cleanCode.startsWith('cat') ||
-      cleanCode.startsWith('grep') ||
-      cleanCode.startsWith('find') ||
-      cleanCode.startsWith('echo');
-
-    return isSimple && (isCommonCommand || cleanCode.split(' ').length <= 3);
+    return this.aiResponseFormatService.isSimpleCommand(code);
   }
 
   // Helper method to directly call Ollama API from frontend
@@ -1294,42 +1004,7 @@ export class AppComponent implements OnInit, AfterViewChecked, OnDestroy {
       const os = navigator.platform.toLowerCase().includes('mac') ?
         'macOS' : 'Linux';
 
-      // Create a system prompt that includes OS information and formatting instructions
-      const systemPrompt = `You are a helpful terminal assistant. The user is using a ${os} operating system. 
-When providing terminal commands, you MUST follow this EXACT format without any deviations:
-
-CRITICAL FORMAT RULES:
-1. Each command block must be on ONE LINE ONLY - NO NEWLINES INSIDE COMMAND BLOCKS
-2. Each command must be followed by a colon and a space, then the explanation
-3. Use exactly three backticks to wrap each command
-4. Put each command-explanation pair on its own line using \\n
-5. NEVER include language identifiers (like 'bash')
-6. NEVER include newlines or line breaks inside the command blocks
-
-Examples of INCORRECT format:
-❌ \`\`\`ls
-\`\`\` : Lists files (NO NEWLINES IN COMMAND)
-❌ \`\`\`bash ls\`\`\` : Lists files (NO LANGUAGE IDENTIFIERS)
-❌ \`\`\`ls\`\`\` Lists files (MISSING COLON)
-❌ \`\`\`ls -la\`\`\`
-   : Lists all files (NO SEPARATE LINES)
-
-Your response must look EXACTLY like the correct format above, with:
-- One command per line or if you need to run multiple commands together, put them on the same line separated by a & symbol
-- No newlines within command blocks
-- A colon and space after each command block
-- A brief explanation after the colon
-- Use the html new line character to separate each command-explanation pair, do not use any other newline method
-
-Example of CORRECT format:
-\`\`\`ls\`\`\` : Lists files in current directory \`\`\`pwd && ls\`\`\` : Shows current directory path and lists files\`\`\`cd Documents\`\`\` : Changes to Documents directory
-
-IMPORTANT RULES:
-1. NEVER use 'bash' or any other language identifier
-2. NEVER include backticks within the command itself
-3. ALWAYS put each command on a new line using the html new line character
-4. ALWAYS use exactly three backticks (\`\`\`) around each command
-5. ALWAYS follow each command with : and a brief explanation`;
+      const systemPrompt = buildTerminalAssistantSystemPrompt(os);
 
       // Combine the system prompt with the user's question
       const combinedPrompt = `${systemPrompt}\n\nUser: ${question}`;
@@ -1468,27 +1143,11 @@ IMPORTANT RULES:
 
   // Code specific functions
   isCodeBlockPlaceholder(text: string): boolean {
-    // Check for exact match of <code-block-N> format
-    const exactMatch = /^<code-block-\d+><\/code-block-\d+>$/.test(text);
-
-    if (exactMatch) {
-      return true;
-    }
-
-    // More flexible check for variations of the format
-    return text.trim().startsWith('<code-block-') && text.trim().includes('>');
+    return this.aiResponseFormatService.isCodeBlockPlaceholder(text);
   }
 
   getCodeBlockIndex(placeholder: string): number {
-    // First try to match the full placeholder with opening and closing tags
-    let match = placeholder.match(/<code-block-(\d+)><\/code-block-\d+>/);
-
-    // If that doesn't work, try a more flexible approach for partial matches
-    if (!match) {
-      match = placeholder.match(/<code-block-(\d+)>/);
-    }
-
-    return match ? parseInt(match[1]) : -1;
+    return this.aiResponseFormatService.getCodeBlockIndex(placeholder);
   }
 
   // Handle AI commands starting with /
@@ -1575,34 +1234,12 @@ Available commands:
 
   // Method to get command explanation from code block
   getCommandExplanation(code: string): string | null {
-    if (!code) return null;
-
-    // Split by colon to separate command from explanation
-    const parts = code.split(':');
-
-    // If there's more than one part and the second part isn't empty
-    if (parts.length > 1 && parts[1].trim()) {
-      // Return everything after the first colon
-      return parts.slice(1).join(':').trim();
-    }
-
-    return null;
+    return this.aiResponseFormatService.getCommandExplanation(code);
   }
 
   // Update transformCodeForDisplay to handle explanations
   transformCodeForDisplay(code: string): string {
-    if (!code) return '';
-
-    // Remove any backticks
-    let cleanCode = code.replace(/```/g, '').trim();
-
-    // If there's a colon, only show the command part
-    const colonIndex = cleanCode.indexOf(':');
-    if (colonIndex > -1) {
-      cleanCode = cleanCode.substring(0, colonIndex).trim();
-    }
-
-    return cleanCode;
+    return this.aiResponseFormatService.transformCodeForDisplay(code);
   }
 
   // Make sure all code blocks in the chat history are properly sanitized
