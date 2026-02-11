@@ -15,6 +15,13 @@
           <button class="new-tab" (click)="createNewSession(undefined, true)" title="New tab">
             +
           </button>
+          <button
+            class="ai-panel-toggle"
+            (click)="toggleAIPanel()"
+            [title]="isAIPanelVisible ? 'Hide AI panel' : 'Show AI panel'"
+          >
+            <app-icon [name]="isAIPanelVisible ? 'ai-panel-visible' : 'ai-panel-hidden'" [size]="16"></app-icon>
+          </button>
         </div>
       </div>
 
@@ -55,26 +62,15 @@
                           <span class="command-actions">
                             <button class="command-action-button" data-tooltip="Copy"
                               (click)="copyCodeBlock(entry.codeBlocks[getCodeBlockIndex(segment)].code)">
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                              </svg>
+                              <app-icon name="copy" [size]="12"></app-icon>
                             </button>
                             <button class="command-action-button" data-tooltip="Copy to terminal"
                               (click)="sendCodeToTerminal(entry.codeBlocks[getCodeBlockIndex(segment)].code)">
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <polyline points="9 10 4 15 9 20"></polyline>
-                                <path d="M20 4v7a4 4 0 0 1-4 4H4"></path>
-                              </svg>
+                              <app-icon name="copy-to-terminal" [size]="12"></app-icon>
                             </button>
                             <button class="command-action-button" data-tooltip="Execute"
                               (click)="executeCodeDirectly(entry.codeBlocks[getCodeBlockIndex(segment)].code)">
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <polygon points="5 3 19 12 5 21 5 3"></polygon>
-                              </svg>
+                              <app-icon name="execute" [size]="12"></app-icon>
                             </button>
                           </span>
                         </span>

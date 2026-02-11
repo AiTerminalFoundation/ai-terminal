@@ -106,6 +106,29 @@
   background: rgba(122, 162, 247, 0.08);
 }
 
+.ai-panel-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-left: auto;
+  min-width: 28px;
+  height: 24px;
+  padding: 0 6px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, background-color 0.15s ease;
+}
+
+.ai-panel-toggle:hover {
+  border-color: rgba(122, 162, 247, 0.45);
+  color: var(--accent);
+  background: rgba(122, 162, 247, 0.08);
+}
+
 .output-area {
   flex: 1;
   overflow-y: auto;

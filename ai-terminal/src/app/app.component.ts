@@ -18,6 +18,7 @@ import { CommandHistory } from './models/command-history.model';
 import { ChatHistory } from './models/chat-history.model';
 import { TerminalSession } from './models/terminal-session.model';
 import { TerminalTabComponent } from './components/terminal-tab/terminal-tab.component';
+import { IconComponent } from './components/icon/icon.component';
 import { AiCommandService } from './services/ai-command.service';
 import { AiResponseFormatService } from './services/ai-response-format.service';
 import { OllamaConnectionService } from './services/ollama-connection.service';
@@ -26,7 +27,7 @@ import { buildTerminalAssistantSystemPrompt } from './constants/ai.constants';
 
 @Component({
   selector: 'app-root',
-  imports: [CommonModule, FormsModule, TerminalTabComponent],
+  imports: [CommonModule, FormsModule, TerminalTabComponent, IconComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css'
 })
@@ -713,6 +714,13 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
     // Toggle to the terminal panel if we're on mobile
     if (window.innerWidth < 768) {
       this.isAIPanelVisible = false;
+    }
+  }
+
+  toggleAIPanel(): void {
+    this.isAIPanelVisible = !this.isAIPanelVisible;
+    if (this.terminal && this.fitAddon) {
+      setTimeout(() => this.fitAddon!.fit(), 0);
     }
   }
 
