@@ -674,9 +674,9 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
-  // Method to copy code to terminal input
+  // Method to copy code to terminal input (adds to prompt for editing, does not execute)
   sendCodeToTerminal(code: string): void {
-    const command = `${this.transformCodeForDisplay(code)}\n`;
+    const command = this.transformCodeForDisplay(code);
     if (this.activeSessionId) {
       invoke<void>('pty_write', { sessionId: this.activeSessionId, data: command }).catch((error) => {
         console.error('Failed to send command to PTY:', error);

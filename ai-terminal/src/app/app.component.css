@@ -370,7 +370,7 @@
 }
 
 .chat-entry {
-  margin: 10px;
+  margin: 16px 10px;
   padding: 10px 12px;
   border: 1px solid var(--border-subtle);
   border-radius: 8px;
@@ -460,24 +460,21 @@
   border: none;
   border-radius: 4px;
   background: none;
-  color: transparent;
+  color: var(--text-secondary);
   cursor: pointer;
   opacity: 0.6;
 }
 
 .command-action-button:hover {
   opacity: 1;
+  color: var(--text-primary);
 }
 
-.command-action-button svg {
+/* Icons use currentColor - ensure stroke is visible (works through app-icon) */
+.command-action-button ::ng-deep svg {
   width: 14px;
   height: 14px;
-  stroke: var(--text-secondary);
-  stroke-width: 1.5;
-}
-
-.command-action-button:hover svg {
-  stroke: var(--text-primary);
+  stroke: currentColor;
 }
 
 .command-action-button::after {
