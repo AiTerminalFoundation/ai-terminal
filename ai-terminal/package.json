@@ -26,7 +26,7 @@
     "@xterm/xterm": "^6.0.0",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
-    "zone.js": "~0.15.0"
+    "zone.js": "~0.16.0"
   },
   "devDependencies": {
     "@angular/build": "^19.2.13",
