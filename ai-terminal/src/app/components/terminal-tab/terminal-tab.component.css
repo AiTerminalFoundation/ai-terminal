@@ -1,0 +1,91 @@
+:host {
+  display: contents;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  padding: 5px 10px;
+  margin-right: 6px;
+  background-color: transparent;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 100px;
+  max-width: 200px;
+  position: relative;
+  font-size: 12px;
+  height: 24px;
+  box-sizing: border-box;
+}
+
+.tab:hover {
+  background-color: rgba(122, 162, 247, 0.08);
+  border-color: rgba(122, 162, 247, 0.35);
+}
+
+.tab.active {
+  background-color: rgba(122, 162, 247, 0.13);
+  border-color: rgba(122, 162, 247, 0.45);
+  color: #e6edf3;
+  font-weight: 500;
+  box-shadow: none;
+}
+
+.tab.active:hover {
+  background-color: rgba(122, 162, 247, 0.18);
+  border-color: rgba(122, 162, 247, 0.55);
+}
+
+.tab-name {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #9ba7b4;
+  font-size: 12px;
+  line-height: 1;
+  outline: none;
+  border: none;
+  background: transparent;
+  cursor: inherit;
+  font-family: 'JetBrains Mono', 'Menlo', 'Monaco', 'Courier New', monospace;
+}
+
+.tab.active .tab-name {
+  color: #e6edf3;
+}
+
+.tab-name[contenteditable='true'] {
+  background-color: rgba(122, 162, 247, 0.15);
+  border: 1px solid rgba(122, 162, 247, 0.35);
+  border-radius: 3px;
+  padding: 2px 4px;
+  margin: -2px -4px;
+  cursor: text;
+}
+
+.close-tab {
+  background: none;
+  border: none;
+  color: #7f8a98;
+  cursor: pointer;
+  padding: 2px 4px;
+  margin-left: 6px;
+  border-radius: 3px;
+  font-size: 14px;
+  line-height: 1;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  font-weight: bold;
+}
+
+.close-tab:hover {
+  color: #f7768e;
+  background-color: rgba(247, 118, 142, 0.12);
+}

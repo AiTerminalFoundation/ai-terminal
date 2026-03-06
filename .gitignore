@@ -74,4 +74,7 @@ Thumbs.db
 /ai-terminal/.angular
 /ai-terminal/node_modules
 .DS_Store
-ai-terminal/.DS_Store
+ai-terminal/.DS_Stor
+
+# Node modules
+*/node_modules

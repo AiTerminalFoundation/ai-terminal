@@ -1,0 +1,14 @@
+# GitHub Copilot Ignore File
+# This file specifies intentionally untracked files that GitHub Copilot should ignore.
+# See: https://docs.github.com/en/copilot/managing-copilot/configure-personal-settings/ignoring-files-from-github-copilot
+# Virtual environments
+venv/
+env/
+ENV/
+.env/
+/.pat-cache/
+# =====================
+# Temporary/Cache Files
+# =====================
+.DS_Store
+.temp/

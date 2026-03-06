@@ -2,134 +2,31 @@
   <!-- Left Panel - Terminal -->
   <div class="panel terminal-panel" [style.width.px]="leftPanelWidth" [ngClass]="{'full-width': !isAIPanelVisible}">
     <div class="panel-content">
-      <div class="terminal-header">
-        <span class="panel-title">Terminal v{{version}}</span>
-        <!-- Show AI button - only visible when AI panel is hidden -->
-        <button class="toggle-ai-button" (click)="toggleAIPanel()" *ngIf="!isAIPanelVisible">
-          Show AI
-        </button>
-      </div>
-
       <!-- Terminal Tabs -->
       <div class="terminal-tabs">
         <div class="tabs-container">
-          <div *ngFor="let session of terminalSessions" class="tab" [class.active]="session.isActive"
-            (click)="switchToSession(session.id)">
-            <span class="tab-name" [contentEditable]="false" (dblclick)="startRenaming($event)"
-              (blur)="finishRenaming($event, session)" (keydown.enter)="handleEnterKey($event)">
-              {{ session.name }}
-            </span>
-            <button class="close-tab" (click)="closeSession(session.id); $event.stopPropagation()"
-              *ngIf="terminalSessions.length > 1" title="Close tab">
-              ×
-            </button>
-          </div>
-          <button class="new-tab" (click)="createNewSession()" title="New tab">
+          <app-terminal-tab
+            *ngFor="let session of terminalSessions; trackBy: trackBySessionId"
+            [session]="session"
+            [canClose]="terminalSessions.length > 1"
+            (select)="switchToSession($event)"
+            (close)="closeSession($event)"
+          ></app-terminal-tab>
+          <button class="new-tab" (click)="createNewSession(undefined, true)" title="New tab">
             +
           </button>
+          <button
+            class="ai-panel-toggle"
+            (click)="toggleAIPanel()"
+            [title]="isAIPanelVisible ? 'Hide AI panel' : 'Show AI panel'"
+          >
+            <app-icon [name]="isAIPanelVisible ? 'ai-panel-visible' : 'ai-panel-hidden'" [size]="16"></app-icon>
+          </button>
         </div>
       </div>
 
-      <div class="output-area" #outputArea>
-        <div class="command-history">
-          <div *ngFor="let entry of commandHistory" class="command-entry"
-            [attr.data-command-id]="entry.timestamp.getTime()">
-            <div class="command-line">
-              <span class="prompt">$</span>
-              <span class="command" [ngClass]="{
-                  'command-success': entry.isComplete && entry.success === true,
-                  'command-error': entry.isComplete && entry.success === false,
-                  'command-running': !entry.isComplete
-                }">
-                {{ entry.command }}
-              </span>
-              <div class="command-entry-actions">
-                <button class="output-action-button" data-tooltip="Copy output"
-                  (click)="copyToClipboard(getFilteredOutput(entry.output))"
-                  *ngIf="entry.isComplete && entry.output.length > 0">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                    stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                  </svg>
-                </button>
-                <button class="output-action-button" data-tooltip="Scroll to top" (click)="scrollToTop(entry)">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                    stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M18 15l-6-6-6 6" />
-                  </svg>
-                </button>
-                <button class="output-action-button" data-tooltip="Scroll to end" (click)="scrollToEnd(entry)">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                    stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M6 9l6 6 6-6" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-            <div class="command-output">
-
-              <!-- Output content - show always -->
-              <ng-container *ngFor="let line of entry.output">
-                <div *ngIf="!line.includes('Command completed successfully') && 
-                           !line.includes('Command failed.') && 
-                           !line.includes('Command started. Output will stream')">{{ line }}</div>
-              </ng-container>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="current-directory">
-        <span>{{ currentWorkingDirectory }}</span>
-        <div class="git-branch-container" *ngIf="gitBranch">
-          <button class="git-branch-button" (click)="toggleBranchSelector($event)">
-            git({{ gitBranch }})
-          </button>
-          <button class="git-action-button" (click)="fetchAndPull()" title="Fetch and Pull">
-            Fetch & Pull
-          </button>
-          <button class="git-action-button" (click)="commitAndPush()" title="Commit and Push">
-            Commit & Push
-          </button>
-          <button class="git-action-button" (click)="openPullRequest()" title="Open Pull Request">
-            Open Pull Request
-          </button>
-          <div class="branch-selector-popup" *ngIf="showBranchSelector">
-            <div class="branch-list-container">
-              <div *ngFor="let branch of gitBranches" 
-                   class="branch-item" 
-                   [class.active]="branch === gitBranch"
-                   (click)="switchBranch(branch)">
-                {{ branch }}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="input-area">
-        <!-- Autocomplete suggestions - moved above input -->
-        <div class="autocomplete-container" #autocompleteContainer *ngIf="showSuggestions && autocompleteSuggestions.length > 0" tabindex="0"
-          (keydown.arrowDown)="navigateToSuggestion('down'); $event.preventDefault()"
-          (keydown.arrowUp)="navigateToSuggestion('up'); $event.preventDefault()"
-          (keydown.tab)="navigateToSuggestion('down'); $event.preventDefault()"
-          (keydown.enter)="applySuggestion(autocompleteSuggestions[selectedSuggestionIndex]); focusTerminalInput(); $event.preventDefault()"
-          (keydown.escape)="showSuggestions = false; focusTerminalInput(); $event.preventDefault()">
-          <div class="autocomplete-list">
-            <div *ngFor="let suggestion of autocompleteSuggestions; let i = index" class="autocomplete-item"
-              [class.selected]="i === selectedSuggestionIndex"
-              (click)="applySuggestion(suggestion); focusTerminalInput(); showSuggestions = false; $event.preventDefault(); $event.stopPropagation();">
-              {{ suggestion }}
-            </div>
-          </div>
-        </div>
-        <div class="prompt-container">
-          <span class="prompt" [class.search-mode]="isHistorySearchActive">{{ isHistorySearchActive ? '🔍' : '$'
-            }}</span>
-          <textarea [(ngModel)]="currentCommand" (keydown)="executeCommand($event)"
-            (input)="onKeyInput($event)" [disabled]="isProcessing"
-            [class.password-input]="isSudoPasswordPrompt || isSSHPasswordPrompt"
-            [class.history-search]="isHistorySearchActive" [placeholder]="getPlaceholder()" autofocus spellcheck="false"></textarea>
-        </div>
+      <div class="output-area terminal-output-area">
+        <div class="xterm-wrapper" #terminalContainer></div>
       </div>
     </div>
   </div>
@@ -142,32 +39,15 @@
   <!-- Right Panel - AI Chat - Only show when isAIPanelVisible is true -->
   <div class="panel ai-panel" *ngIf="isAIPanelVisible">
     <div class="panel-content">
-      <div class="ai-header">
-        <span class="ai-title">AI Assistant</span>
-        <!-- Hide AI button - only visible when AI panel is shown -->
-        <button class="toggle-ai-button" (click)="toggleAIPanel()">
-          Hide AI
-        </button>
-      </div>
       <div class="output-area">
         <div class="chat-history">
-          <div *ngFor="let entry of chatHistory" class="chat-entry">
+          <div *ngFor="let entry of chatHistory; trackBy: trackByChatEntry" class="chat-entry">
             <!-- Add question display -->
             <div class="chat-question">
-              <span class="prompt">></span>
-              <span class="message">{{ entry.message }}</span>
-              <button class="refresh-button" title="Ask this question again"
-                (click)="copyQuestionToInput(entry.message)">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                  stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M23 4v6h-6"></path>
-                  <path d="M1 20v-6h6"></path>
-                  <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
-                </svg>
-              </button>
+              <span class="message"><b>{{ entry.message }}</b></span>
             </div>
             <div class="chat-output">
-              <ng-container *ngFor="let segment of entry.response.split('\n')">
+              <ng-container *ngFor="let segment of entry.response.split('\n'); trackBy: trackByResponseSegment">
                 <!-- Check if segment is a code block placeholder -->
                 <ng-container *ngIf="isCodeBlockPlaceholder(segment) && entry.codeBlocks">
                   <!-- Get the index of the code block -->
@@ -182,26 +62,15 @@
                           <span class="command-actions">
                             <button class="command-action-button" data-tooltip="Copy"
                               (click)="copyCodeBlock(entry.codeBlocks[getCodeBlockIndex(segment)].code)">
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                              </svg>
+                              <app-icon name="copy" [size]="12"></app-icon>
                             </button>
                             <button class="command-action-button" data-tooltip="Copy to terminal"
                               (click)="sendCodeToTerminal(entry.codeBlocks[getCodeBlockIndex(segment)].code)">
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <polyline points="9 10 4 15 9 20"></polyline>
-                                <path d="M20 4v7a4 4 0 0 1-4 4H4"></path>
-                              </svg>
+                              <app-icon name="copy-to-terminal" [size]="12"></app-icon>
                             </button>
                             <button class="command-action-button" data-tooltip="Execute"
                               (click)="executeCodeDirectly(entry.codeBlocks[getCodeBlockIndex(segment)].code)">
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <polygon points="5 3 19 12 5 21 5 3"></polygon>
-                              </svg>
+                              <app-icon name="execute" [size]="12"></app-icon>
                             </button>
                           </span>
                         </span>
@@ -217,40 +86,16 @@
                 <!-- Regular text lines -->
                 <div *ngIf="!isCodeBlockPlaceholder(segment)" [innerHTML]="sanitizeHtml(segment)"></div>
               </ng-container>
-
-              <!-- Copy icon for AI response -->
-              <span class="copy-icon" (click)="copyFullResponse(entry)"
-                *ngIf="entry.response && entry.response !== 'Thinking...'">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                  stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                </svg>
-              </span>
             </div>
           </div>
         </div>
       </div>
       <div class="input-area">
         <div class="prompt-container">
-          <span class="prompt">></span>
           <textarea [(ngModel)]="currentQuestion" (keydown)="askAI($event)" (input)="autoResize($event)"
             [disabled]="isProcessingAI" placeholder="Ask AI or type /help, /models, /model..." autofocus spellcheck="false"></textarea>
         </div>
       </div>
-    </div>
-  </div>
-</div>
-
-<!-- Commit Message Popup -->
-<div class="commit-popup-overlay" *ngIf="showCommitPopup">
-  <div class="commit-popup">
-    <h4>Enter Commit Message</h4>
-    <input type="text" [(ngModel)]="commitMessage" (keydown.enter)="submitCommit()"
-      placeholder="Your commit message..." autofocus>
-    <div class="commit-popup-actions">
-      <button (click)="cancelCommit()">Cancel</button>
-      <button (click)="submitCommit()" [disabled]="!commitMessage.trim()">Commit & Push</button>
     </div>
   </div>
 </div>

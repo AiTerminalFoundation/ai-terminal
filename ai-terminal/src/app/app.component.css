@@ -1,309 +1,306 @@
 :host {
+  --bg-0: #0f1115;
+  --bg-1: #141922;
+  --bg-2: #1a2130;
+  --bg-3: #202838;
+  --text-primary: #e6edf3;
+  --text-secondary: #9ba7b4;
+  --border-subtle: rgba(148, 163, 184, 0.16);
+  --accent: #7aa2f7;
+  --success: #73c991;
+  --danger: #f7768e;
+
   display: block;
-  height: 100vh;
   width: 100vw;
+  height: 100vh;
   overflow: hidden;
-  background-color: #282a36;
-  font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
-  font-size: 14px;
-}
-
-/* Remove all other styles */
-
-.logo.angular:hover {
-  filter: drop-shadow(0 0 2em #e32727);
-}
-
-:root {
-  font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
-  font-size: 12px;
-  line-height: 24px;
-  font-weight: 400;
-
-  color: #0f0f0f;
-  background-color: #f6f6f6;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  -webkit-text-size-adjust: 100%;
-}
-
-.container {
-  margin: 0;
-  padding-top: 10vh;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  text-align: center;
-}
-
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: 0.75s;
-}
-
-.logo.tauri:hover {
-  filter: drop-shadow(0 0 2em #24c8db);
-}
-
-.row {
-  display: flex;
-  justify-content: center;
-}
-
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-
-a:hover {
-  color: #535bf2;
-}
-
-h1 {
-  text-align: center;
-}
-
-input,
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 12px;
-  font-weight: 500;
-  font-family: inherit;
-  color: #0f0f0f;
-  background-color: #ffffff;
-  transition: border-color 0.25s;
-  box-shadow: 0 2px 2px rgba(0, 0, 0, 0.2);
-}
-
-button {
-  cursor: pointer;
-}
-
-button:hover {
-  border-color: #396cd8;
-}
-
-button:active {
-  border-color: #396cd8;
-  background-color: #e8e8e8;
-}
-
-input,
-button {
-  outline: none;
-}
-
-#greet-input {
-  margin-right: 5px;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    color: #f6f6f6;
-    background-color: #2f2f2f;
-  }
-
-  a:hover {
-    color: #24c8db;
-  }
-
-  input,
-  button {
-    color: #ffffff;
-    background-color: #0f0f0f98;
-  }
-
-  button:active {
-    background-color: #0f0f0f69;
-  }
+  background: var(--bg-0);
+  color: var(--text-primary);
+  font-family: "JetBrains Mono", "Menlo", "Monaco", "Courier New", monospace;
+  font-size: 13px;
 }
 
 .split-container {
   display: flex;
   width: 100%;
   height: 100%;
-  position: relative;
   user-select: none;
 }
 
 .panel {
-  height: 100%;
-  background-color: #282a36;
-  color: #f8f8f2;
-  font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
   display: flex;
   flex-direction: column;
+  height: 100%;
   overflow: hidden;
-  border-radius: 8px;
+  border: none;
+  border-radius: 0;
+  background: var(--bg-0);
 }
 
 .terminal-panel {
   min-width: 200px;
   max-width: 80%;
-  margin: 8px 4px 8px 8px;
-  overflow-x: hidden;
+  margin: 0;
+}
+
+.terminal-panel.full-width {
+  width: 100% !important;
+  max-width: 100%;
 }
 
 .ai-panel {
   flex: 1;
-  min-width: 200px;
-  margin: 8px 8px 8px 4px;
+  min-width: 220px;
+  margin: 0;
 }
 
 .panel-content {
-  height: 100%;
   display: flex;
   flex-direction: column;
-  border-radius: 8px;
+  height: 100%;
   overflow: hidden;
-  padding: 0;
-  margin: 0;
-  background-color: transparent;
-  max-width: 100%;
+}
+
+.terminal-tabs {
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-0);
+}
+
+.tabs-container {
+  display: flex;
+  align-items: center;
+  height: 34px;
+  padding: 0 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+}
+
+.tabs-container::-webkit-scrollbar {
+  height: 4px;
+}
+
+.tabs-container::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.25);
+  border-radius: 999px;
+}
+
+.new-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  margin-left: 2px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, background-color 0.15s ease;
+}
+
+.new-tab:hover {
+  border-color: rgba(122, 162, 247, 0.45);
+  color: var(--text-primary);
+  background: rgba(122, 162, 247, 0.08);
+}
+
+.ai-panel-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-left: auto;
+  min-width: 28px;
+  height: 24px;
+  padding: 0 6px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, background-color 0.15s ease;
+}
+
+.ai-panel-toggle:hover {
+  border-color: rgba(122, 162, 247, 0.45);
+  color: var(--accent);
+  background: rgba(122, 162, 247, 0.08);
 }
 
 .output-area {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  /* Prevent horizontal scrollbar */
+  background: var(--bg-0);
   font-size: 12px;
-  line-height: 1.5;
-  border-radius: 0;
-  scroll-behavior: smooth;
-  margin-top: 0;
-  background-color: #282a36;
-  box-sizing: border-box;
-  padding-bottom: 32px;
-  position: relative;
-  z-index: 1;
+  line-height: 1.45;
   user-select: text;
+}
+
+.terminal-output-area {
+  overflow: hidden;
+  padding: 6px;
+}
+
+.xterm-wrapper {
   width: 100%;
-  /* Ensure it takes the full width */
+  height: 100%;
+  background: var(--bg-0);
 }
 
-.terminal-panel .input-area {
-  border: 1px solid rgba(80, 250, 123, 0.5);
-  border-top: 1px solid rgba(139, 233, 253, 0.5);
-  box-shadow: 0 4px 12px rgba(80, 250, 123, 0.1), 0 0 3px rgba(80, 250, 123, 0.15);
+.xterm-wrapper .xterm {
+  height: 100%;
 }
 
-.terminal-panel .input-area:hover,
-.terminal-panel .input-area:focus-within {
-  box-shadow: 0 6px 16px rgba(80, 250, 123, 0.15), 0 0 6px rgba(80, 250, 123, 0.2);
+.output-area::-webkit-scrollbar {
+  width: 8px;
 }
 
-.ai-panel .input-area {
-  border: 1px solid rgba(189, 147, 249, 0.5);
-  border-top: 1px solid rgba(255, 121, 198, 0.5);
-  box-shadow: 0 4px 12px rgba(189, 147, 249, 0.1), 0 0 3px rgba(189, 147, 249, 0.15);
+.output-area::-webkit-scrollbar-track {
+  background: transparent;
 }
 
-.ai-panel .input-area:hover,
-.ai-panel .input-area:focus-within {
-  box-shadow: 0 6px 16px rgba(189, 147, 249, 0.15), 0 0 6px rgba(189, 147, 249, 0.2);
+.output-area::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.25);
+  border-radius: 999px;
+}
+
+.command-history,
+.chat-history {
+  user-select: text;
+}
+
+.command-entry {
+  width: 100%;
+  margin: 0;
+  border-top: 1px solid rgba(148, 163, 184, 0.14);
+  background: transparent;
+}
+
+.command-entry:first-child {
+  border-top: none;
+}
+
+.command-entry.command-entry-error {
+  background: rgba(247, 118, 142, 0.08);
+}
+
+.command-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px 0px;
+  background: transparent;
+  border-bottom: none;
+}
+
+.command-line .command {
+  overflow-x: auto;
+  white-space: nowrap;
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.command-success {
+  color: var(--text-primary);
+}
+
+.command-error {
+  color: var(--text-primary);
+}
+
+.command-running {
+  color: var(--text-primary);
+  opacity: 1;
+}
+
+.command-output {
+  margin: 0;
+  padding: 6px 12px 12px;
+  background: transparent;
+}
+
+.command-output div {
+  display: block;
+  max-width: 100%;
+  margin: 2px 0;
+  white-space: pre-wrap !important;
+  overflow-wrap: break-word !important;
+  word-break: break-word !important;
+}
+
+.command-output div.file-list-output {
+  display: inline-block;
+  margin: 2px 8px 2px 0;
+  vertical-align: top;
 }
 
 .input-area {
   position: relative;
-  padding: 12px 16px;
   display: flex;
-  align-items: flex-start;
-  background-color: #282a36;
-  border-radius: 8px;
-  margin: 4px 16px 16px 16px;
   flex-direction: column;
-  width: calc(100% - 32px);
-  box-sizing: border-box;
-  transform: none;
-  z-index: 5;
-  transition: box-shadow 0.3s ease;
-}
-
-.input-area:hover,
-.input-area:focus-within {
-  transform: none;
-}
-
-.terminal-panel .current-directory {
-  color: rgba(80, 250, 123, 0.8);
-}
-
-.ai-panel .current-directory {
-  color: rgba(189, 147, 249, 0.8);
+  align-items: flex-start;
+  min-height: 32px;
+  margin: 8px ;
+  border-radius: 10px;
+  padding: 8px 8px 10px;
+  border: 1px solid var(--border-subtle);
+  background: #1a202c;
 }
 
 .current-directory {
-  padding: 8px 15px;
-  background-color: #282a36;
-  color: #a9a9a9;
-  font-size: 13px;
-  border-top: 1px solid #444;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 6px;
+  margin-top: 0;
+  color: var(--text-secondary);
+  font-size: 11px;
 }
 
+.directory-info,
 .git-branch {
-  color: #ffc107;
-  font-weight: normal;
-  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  background: transparent;
+}
+
+.directory-icon,
+.git-icon {
+  flex-shrink: 0;
+  stroke: currentColor;
+  opacity: 0.85;
 }
 
 .prompt-container {
-  display: flex;
   width: 100%;
-  align-items: center;
-  padding: 0 4px;
-}
-
-.prompt {
-  margin-right: 12px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: inline-block;
-  line-height: 24px;
-}
-
-/* Terminal prompt is softer green */
-.terminal-panel .prompt {
-  color: rgba(80, 250, 123, 0.85);
-}
-
-/* AI prompt is softer purple */
-.ai-panel .prompt {
-  color: rgba(189, 147, 249, 0.85);
-}
-
-/* Command prompt is yellow/gold */
-.prompt-command {
-  color: #ffc107;
+  margin-top: 8px;
 }
 
 .input-area textarea {
-  flex: 1;
-  background: transparent;
+  width: 100%;
+  min-height: 24px;
+  max-height: 180px;
   border: none;
-  color: #c9c9c9;
-  font-family: monospace;
-  font-size: 12px;
   outline: none;
   resize: none;
-  min-height: 24px;
-  overflow-y: auto;
-  line-height: 1.5;
-  width: calc(100% - 24px);
-  padding: 0;
-  letter-spacing: 0.75px;
+  background: transparent;
+  color: var(--text-primary);
+  caret-color: var(--accent);
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.input-area textarea::placeholder {
+  color: var(--text-secondary);
+  opacity: 0.72;
 }
 
 .input-area textarea:disabled {
@@ -311,1238 +308,111 @@ button {
   cursor: not-allowed;
 }
 
-.input-area textarea::placeholder {
-  color: #6272a4;
-  opacity: 0.7;
-}
-
-/* Panel resizing */
-.resizer {
-  width: 8px;
-  background-color: transparent;
-  cursor: col-resize;
-  transition: all 0.2s ease;
-  position: relative;
-  user-select: none;
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-  margin: 8px 0;
-}
-
-.resizer::before {
-  content: '';
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 2px;
-  height: 100%;
-  background-color: #44475a;
-  border-radius: 1px;
-  opacity: 0.5;
-  transition: all 0.2s ease;
-}
-
-.resizer:hover::before {
-  background-color: rgba(189, 147, 249, 0.6);
-  width: 3px;
-  box-shadow: 0 0 8px rgba(189, 147, 249, 0.3);
-  opacity: 0.7;
-}
-
-.resizer.resizing::before {
-  background-color: rgba(189, 147, 249, 0.7);
-  width: 3px;
-  box-shadow: 0 0 12px rgba(189, 147, 249, 0.4);
-  opacity: 0.8;
-}
-
-/* Scrollbar styling */
-.output-area::-webkit-scrollbar {
-  width: 8px;
-}
-
-.output-area::-webkit-scrollbar-track {
-  background: #282a36;
-  border-radius: 4px;
-}
-
-.output-area::-webkit-scrollbar-thumb {
-  background: #44475a;
-  border-radius: 4px;
-  opacity: 0.5;
-}
-
-.output-area::-webkit-scrollbar-thumb:hover {
-  background: #6272a4;
-  opacity: 0.8;
-}
-
-/* Command and chat entry styling */
-.command-entry {
-  border-top: 1px solid #44475a;
-  transition: all 0.2s ease;
-  max-width: 100%;
-  box-sizing: border-box;
-}
-
-.command-entry-actions {
-  display: flex;
-  gap: 8px;
-  margin-left: auto;
-}
-
-.output-action-button {
-  background: none;
-  border: 1px solid rgba(98, 114, 164, 0.3);
-  padding: 4px;
-  color: #f8f8f2;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 4px;
-  opacity: 0.6;
-}
-
-.output-action-button:hover {
-  opacity: 1;
-  background-color: rgba(98, 114, 164, 0.2);
-  border-color: rgba(98, 114, 164, 0.8);
-}
-
-.output-action-button svg {
-  stroke: currentColor;
-}
-
-.chat-entry {
-  margin-bottom: 20px;
-  padding: 8px;
-  border: 1px solid #44475a;
-  border-radius: 8px;
-  opacity: 0.9;
-  transition: all 0.2s ease;
-  max-width: 100%;
-  overflow-x: hidden;
-  /* Prevent horizontal overflow */
-  box-sizing: border-box;
-  position: relative;
-}
-
-.chat-entry:hover {
-  border-color: rgba(189, 147, 249, 0.4);
-  box-shadow: 0 4px 12px rgba(189, 147, 249, 0.15);
-  opacity: 1;
-}
-
-.chat-line {
-  display: flex;
-  align-items: flex-start;
-  margin-bottom: 4px;
-  font-size: 12px;
-  border-bottom: 1px solid rgba(139, 233, 253, 0.2);
-  padding-bottom: 8px;
-  margin-bottom: 8px;
-}
-
-.chat-line .prompt {
-  color: #50fa7b;
-  margin-right: 8px;
-  font-weight: normal;
-}
-
-.chat-line .message {
-  color: #f8f8f2;
-  font-weight: normal;
-}
-
-.chat-output {
-  color: #f8f8f2;
-  line-height: 1.5;
-  font-size: 12px;
-  white-space: pre-wrap;
-  word-wrap: break-word;
-  margin-left: 8px;
-  position: relative;
-  padding-top: 8px;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px;
-  transition: all 0.2s ease;
-  border: 1px solid transparent;
-  border-radius: 4px;
-  padding: 8px;
-}
-
-.chat-output:hover {
-  transform: none;
-  border: 1px solid transparent;
-  box-shadow: none;
-  z-index: auto;
-}
-
-.chat-output>div {
-  display: inline-flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 4px;
-}
-
-.copy-icon {
-  position: absolute;
-  bottom: 8px;
-  right: 8px;
-  background: none;
-  border: 1px solid rgba(255, 255, 255, 0);
-  padding: 4px;
-  color: transparent;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 4px;
-  opacity: 0.6;
-  z-index: 1;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.copy-icon:hover {
-  opacity: 1;
-  background-color: rgba(98, 114, 164, 0.1);
-  transform: none;
-  box-shadow: none;
-  border-color: rgba(98, 114, 164, 0.8);
-}
-
-.copy-icon svg {
-  width: 14px;
-  height: 14px;
-  stroke: #fbfbfb;
-  stroke-width: 1.5;
-  fill: transparent;
-  transition: all 0.2s ease;
-}
-
-.copy-icon:hover svg {
-  stroke: #ffffff;
-  width: 16px;
-  height: 16px;
-}
-
-/* Add tooltip styles for copy icon */
-.copy-icon::after {
-  content: "Copy";
-  position: absolute;
-  bottom: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 4px 8px;
-  background-color: #282a36;
-  color: #f8f8f2;
-  font-size: 12px;
-  border-radius: 4px;
-  white-space: nowrap;
-  opacity: 0;
-  visibility: hidden;
-  transition: all 0.2s ease;
-  pointer-events: none;
-  border: 1px solid rgba(98, 114, 164, 0.2);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-  z-index: 1000;
-}
-
-.copy-icon:hover::after {
-  opacity: 1;
-  visibility: visible;
-  transform: translateX(-50%) translateY(0);
-}
-
-/* Add a small arrow to the tooltip */
-.copy-icon::before {
-  content: '';
-  position: absolute;
-  bottom: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  border: 4px solid transparent;
-  border-top-color: rgba(98, 114, 164, 0.2);
-  opacity: 0;
-  visibility: hidden;
-  transition: all 0.2s ease;
-}
-
-.copy-icon:hover::before {
-  opacity: 1;
-  visibility: visible;
-  transform: translateX(-50%) translateY(0);
-}
-
-.command-output:hover .copy-icon,
-.chat-output:hover .copy-icon {
-  opacity: 1;
-}
-
-/* Autocomplete styles */
 .autocomplete-container {
   position: absolute;
   bottom: 100%;
   left: 0;
   width: 100%;
-  max-width: 100%;
   max-height: 200px;
-  background-color: #44475a;
-  border-radius: 4px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  z-index: 20;
   margin-bottom: 8px;
   overflow-y: auto;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--bg-2);
+  z-index: 20;
   outline: none;
-  border: 1px solid rgba(80, 250, 123, 0.2);
 }
 
 .autocomplete-container:focus {
-  outline: none;
-  border: 1px solid rgba(189, 147, 249, 0.7);
-  box-shadow: 0 0 0 2px rgba(189, 147, 249, 0.3);
-}
-
-.autocomplete-list {
-  width: 100%;
+  border-color: rgba(122, 162, 247, 0.6);
 }
 
 .autocomplete-item {
-  padding: 6px 12px;
-  cursor: pointer;
-  transition: all 0.2s;
+  padding: 6px 10px;
   font-size: 11px;
+  color: var(--text-secondary);
+  cursor: pointer;
 }
 
-.autocomplete-item:hover {
-  background-color: #6272a4;
-}
-
+.autocomplete-item:hover,
 .autocomplete-item.selected {
-  background-color: #bd93f9;
-  color: #282a36;
+  background: var(--bg-3);
+  color: var(--text-primary);
 }
 
-/* Dracula theme colors:
-- Background: #282a36
-- Current Line: #44475a
-- Foreground: #f8f8f2
-- Comment: #6272a4
-- Red: #ff5555
-- Orange: #ffb86c
-- Yellow: #f1fa8c
-- Green: #50fa7b
-- Purple: #bd93f9
-- Pink: #ff79c6
-- Cyan: #8be9fd
-*/
-
-/* Dark mode support */
-@media (prefers-color-scheme: dark) {
-  .content-panel {
-    background-color: #2f2f2f;
-    color: #f6f6f6;
-  }
-}
-
-.processing-indicator {
-  color: #8be9fd;
-  font-style: italic;
-  margin-bottom: 8px;
-  font-size: 11px;
-  opacity: 0.8;
-}
-
-@keyframes pulse {
-  0% {
-    opacity: 0.5;
-  }
-
-  50% {
-    opacity: 1;
-  }
-
-  100% {
-    opacity: 0.5;
-  }
-}
-
-/* Make the terminal more responsive */
-@media (max-width: 768px) {
-  .prompt {
-    max-width: 100px;
-  }
-}
-
-/* Add spacing between command output lines */
-.command-output div {
-  white-space: pre-wrap !important;
-  word-wrap: break-word !important;
-  word-break: break-word !important;
-  font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
-  line-height: 1.4;
-  user-select: text;
-  display: block;
-  max-width: 100%;
-  box-sizing: border-box;
-  overflow-x: hidden;
-}
-
-/* Ensure command output line wrapping in all environments */
-.command-output div:not(.processing-indicator) {
-  white-space: pre-wrap !important;
-  overflow-wrap: break-word !important;
-  word-break: break-word !important;
-  display: block;
-  max-width: 100%;
-  box-sizing: border-box;
-  margin: 2px 0;
-}
-
-/* Special styling for file listing outputs (like ls command) */
-.command-output div.file-list-output {
-  display: inline-block;
-  vertical-align: top;
-  margin: 2px 12px 2px 0;
-  padding: 0 4px;
-}
-
-/* Command status colors */
-.command-success {
-  color: #50fa7b;
-}
-
-.command-error {
-  color: #ff5555;
-}
-
-.command-running {
-  color: #f1fa8c;
-  /* Dracula yellow */
-  animation: pulse 1.5s infinite;
-}
-
-@keyframes pulse {
-  0% {
-    opacity: 0.7;
-  }
-
-  50% {
-    opacity: 1;
-  }
-
-  100% {
-    opacity: 0.7;
-  }
-}
-
-/* Terminal panel full width when AI panel is hidden */
-.terminal-panel.full-width {
-  width: calc(100% - 16px) !important;
-  /* Adjust for margins */
-  max-width: 100%;
-}
-
-/* Terminal header styling */
-.terminal-header,
-.ai-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 16px;
-  background-color: #282a36;
-  border-radius: 8px 8px 0 0;
-  height: 40px;
-  box-sizing: border-box;
-}
-
-/* Terminal Tabs Styling */
-.terminal-tabs {
-  background-color: rgba(40, 42, 54, 0.3);;
-  border-bottom: 1px solid rgba(40, 42, 54, 0.3);;
-  padding: 0;
+.resizer {
+  width: 8px;
   margin: 0;
-}
-
-.tabs-container {
-  display: flex;
-  align-items: center;
-  padding: 0 8px;
-  height: 36px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  scrollbar-width: thin;
-  scrollbar-color: #44475a transparent;
-}
-
-.tabs-container::-webkit-scrollbar {
-  height: 3px;
-}
-
-.tabs-container::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.tabs-container::-webkit-scrollbar-thumb {
-  background: #44475a;
-  border-radius: 2px;
-}
-
-.tab {
-  display: flex;
-  align-items: center;
-  padding: 6px 12px;
-  margin-right: 2px;
-  background-color: #282a36;
-  border: 1px solid #44475a;
-  border-bottom: none;
-  border-radius: 6px 6px 0 0;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  min-width: 100px;
-  max-width: 200px;
   position: relative;
-  font-size: 12px;
-  height: 28px;
-  box-sizing: border-box;
+  cursor: col-resize;
 }
 
-.tab:hover {
-  background-color: #44475a;
-  border-color: rgba(189, 147, 249, 0.3);
-}
-
-.tab.active {
-  background-color: #21222c;
-  border-color: rgba(80, 250, 123, 0.5);
-  color: #50fa7b;
-  font-weight: 600;
-  box-shadow: 0 2px 8px rgba(80, 250, 123, 0.1);
-}
-
-.tab.active:hover {
-  background-color: #21222c;
-  border-color: rgba(80, 250, 123, 0.7);
-}
-
-.tab-name {
-  flex: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  color: #f8f8f2;
-  font-size: 12px;
-  line-height: 1;
-  outline: none;
-  border: none;
-  background: transparent;
-  cursor: inherit;
-}
-
-.tab.active .tab-name {
-  color: #50fa7b;
-}
-
-.tab-name[contenteditable="true"] {
-  background-color: rgba(189, 147, 249, 0.1);
-  border: 1px solid rgba(189, 147, 249, 0.3);
-  border-radius: 3px;
-  padding: 2px 4px;
-  margin: -2px -4px;
-  cursor: text;
-}
-
-.close-tab {
-  background: none;
-  border: none;
-  color: #6272a4;
-  cursor: pointer;
-  padding: 2px 4px;
-  margin-left: 6px;
-  border-radius: 3px;
-  font-size: 14px;
-  line-height: 1;
-  width: 16px;
-  height: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-  font-weight: bold;
-}
-
-.close-tab:hover {
-  color: #ff5555;
-  background-color: rgba(255, 85, 85, 0.1);
-}
-
-.new-tab {
-  background: none;
-  border: 1px solid #44475a;
-  color: white;
-  cursor: pointer;
-  padding: 6px 12px;
-  margin-left: 8px;
-  border-radius: 6px;
-  font-size: 16px;
-  line-height: 1;
-  width: 36px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-  flex-shrink: 0;
-}
-
-.new-tab:hover {
-  color: #50fa7b;
-  background-color: rgba(80, 250, 123, 0.1);
-  border-color: rgba(80, 250, 123, 0.3);
-}
-
-/* Panel titles styling */
-.panel-title {
-  font-weight: bold;
-  font-size: 14px;
-  line-height: 24px;
-  color: rgba(139, 233, 253, 0.8);
-}
-
-.ai-title {
-  font-weight: bold;
-  font-size: 14px;
-  line-height: 24px;
-  color: rgba(189, 147, 249, 0.8);
-}
-
-/* Toggle AI button styling */
-.toggle-ai-button {
-  background-color: rgba(189, 147, 249, 0.1);
-  color: rgba(189, 147, 249, 0.9);
-  border: 1px solid rgba(189, 147, 249, 0.3);
-  padding: 6px 12px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 12px;
-  height: 28px;
-  line-height: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-  font-weight: 500;
-  letter-spacing: 0.3px;
-  position: relative;
-  overflow: hidden;
-}
-
-.toggle-ai-button::before {
-  content: '';
+.resizer::before {
+  content: "";
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 2px;
   height: 100%;
-  background: linear-gradient(45deg, rgba(189, 147, 249, 0.1), rgba(255, 121, 198, 0.1));
-  opacity: 0;
-  transition: opacity 0.2s ease;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.3);
 }
 
-.toggle-ai-button:hover {
-  background-color: rgba(189, 147, 249, 0.15);
-  border-color: rgba(189, 147, 249, 0.5);
-  box-shadow: 0 4px 12px rgba(189, 147, 249, 0.2);
-  transform: none;
+.resizer:hover::before,
+.resizer.resizing::before {
+  background: rgba(122, 162, 247, 0.45);
 }
 
-.toggle-ai-button:hover::before {
-  opacity: 1;
-}
-
-.toggle-ai-button:active {
-  transform: translateY(0);
-  box-shadow: 0 2px 6px rgba(189, 147, 249, 0.15);
-}
-
-/* Add a subtle glow effect when the AI panel is visible */
-.ai-panel .toggle-ai-button {
-  background-color: rgba(255, 121, 198, 0.1);
-  color: rgba(255, 121, 198, 0.9);
-  border-color: rgba(255, 121, 198, 0.3);
-}
-
-.ai-panel .toggle-ai-button:hover {
-  background-color: rgba(255, 121, 198, 0.15);
-  border-color: rgba(255, 121, 198, 0.5);
-  box-shadow: 0 4px 12px rgba(255, 121, 198, 0.2);
-}
-
-.ai-panel .toggle-ai-button::before {
-  background: linear-gradient(45deg, rgba(255, 121, 198, 0.1), rgba(189, 147, 249, 0.1));
-}
-
-/* Adjust current directory display in header */
-.terminal-header .current-directory {
-  margin-bottom: 0;
-}
-
-/* Add styles for command messages and responses */
-.message-command {
-  color: #ffc107;
-}
-
-.chat-command-output {
-  background-color: rgba(0, 0, 0, 0.2);
-  padding: 8px;
-  border-left: 2px solid #ffc107;
-  white-space: pre-wrap;
-  font-family: 'Courier New', monospace;
-}
-
-/* Code Block Styling */
-.code-block-container {
-  position: relative;
-  margin: 8px 0;
-  border-radius: 6px;
-  background-color: rgba(80, 250, 123, 0.1);
-  border: 1px solid rgba(80, 250, 123, 0.2);
-  max-width: 100%;
-  overflow: hidden;
-  box-sizing: border-box;
-  display: inline-flex;
-  align-items: center;
-  transition: all 0.2s ease;
-}
-
-.code-block-container:hover {
-  transform: none;
-  border-color: rgba(80, 250, 123, 0.2);
-  box-shadow: none;
-}
-
-.code-block {
-  position: relative;
-  padding: 8px 12px;
-  margin: 0;
-  background-color: transparent;
-  color: #6272a4;
-  font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
-  font-size: 12px;
-  line-height: 1.5;
-  overflow-x: auto;
-  white-space: pre-wrap;
-  word-wrap: break-word;
-  box-sizing: border-box;
-  display: flex;
-  align-items: center;
-  transition: all 0.2s ease;
-  border: 1px solid transparent;
-}
-
-.code-block:hover {
-  transform: none;
-  border: 1px solid transparent;
-  box-shadow: none;
-  z-index: auto;
-}
-
-.code-block code {
-  display: block;
-  white-space: pre-wrap;
-  word-wrap: break-word;
-  max-width: 100%;
-  box-sizing: border-box;
-  font-family: inherit;
-}
-
-.chat-output {
-  margin-top: 8px;
-  color: #f8f8f2;
-  font-size: 12px;
-  line-height: 1.5;
-  white-space: pre-wrap;
-  word-wrap: break-word;
-  max-width: 100%;
-  box-sizing: border-box;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px;
-}
-
-.chat-output>div {
-  display: inline-flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 4px;
-}
-
-/* Single line code blocks (no newlines) */
-.code-block-container.single-line {
-  background-color: rgba(80, 250, 123, 0.1);
-  display: inline-flex;
-  margin: 4px 0;
-  align-items: center;
-  border-radius: 4px;
-  border: 1px solid rgba(80, 250, 123, 0.2);
-  width: fit-content;
-  max-width: 100%;
-  padding: 4px 8px;
-}
-
-.code-block-container.single-line .code-block {
-  padding: 0;
-  max-height: none;
-  display: flex;
-  align-items: center;
-  white-space: nowrap;
-  overflow-x: auto;
-  width: fit-content;
-  background-color: transparent;
-  color: #6272a4;
-}
-
-.code-block-container.single-line .code-block-header {
-  border: none;
-  padding: 0 8px;
-  background-color: transparent;
-}
-
-.code-block-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 4px 8px;
-  background: none;
-  border: none;
-}
-
-.code-language {
-  font-size: 12px;
-  color: #6272a4;
-  font-weight: normal;
-  text-transform: uppercase;
-}
-
-.copy-code-button {
-  background: none;
-  border: none;
-  color: transparent;
-  cursor: pointer;
-  padding: 2px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-}
-
-.copy-code-button:hover {
-  color: transparent;
-  background: none;
-}
-
-.copy-code-button svg {
-  width: 14px;
-  height: 14px;
-  stroke: #fefefe;
-  stroke-width: 1.5;
-  fill: transparent;
-}
-
-/* Code block actions container */
-.command-actions {
-  display: flex;
-  gap: 8px;
-  margin-left: 8px;
-}
-
-.command-action-button {
-  background: none;
-  border: none;
-  padding: 4px;
-  color: transparent;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-}
-
-.command-action-button:hover {
-  color: transparent;
-  background: none;
-}
-
-.command-action-button svg {
-  width: 14px;
-  height: 14px;
-  stroke: #ffffff;
-  stroke-width: 1.5;
-  fill: transparent;
-  transition: all 0.2s ease;
-}
-
-.command-action-button:hover svg {
-  stroke: #ffffff;
-  width: 18px;
-  height: 18px;
-}
-
-/* Add tooltip styles */
-.command-action-button::after {
-  content: attr(data-tooltip);
-  position: absolute;
-  bottom: 100%;
-  left: 50%;
-  transform: translateX(-50%) translateY(10px);
-  padding: 4px 8px;
-  background-color: #282a36;
-  color: #f8f8f2;
-  font-size: 12px;
-  border-radius: 4px;
-  white-space: nowrap;
-  opacity: 0;
-  visibility: hidden;
-  transition: all 0.3s ease;
-  pointer-events: none;
-  border: 1px solid rgba(189, 147, 249, 0.4);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-  z-index: 1000;
-  margin-bottom: 5px;
-}
-
-.command-action-button:hover::after {
-  opacity: 1;
-  visibility: visible;
-  transform: translateX(-50%) translateY(0);
-  transition-delay: 0.3s;
-}
-
-/* Add a small arrow to the tooltip */
-.command-action-button::before {
-  content: '';
-  position: absolute;
-  bottom: 100%;
-  left: 50%;
-  transform: translateX(-50%) translateY(10px);
-  border: 5px solid transparent;
-  border-top-color: rgba(189, 147, 249, 0.4);
-  opacity: 0;
-  visibility: hidden;
-  transition: all 0.3s ease;
-  z-index: 1000;
-  margin-bottom: -2px;
-}
-
-.command-action-button:hover::before {
-  opacity: 1;
-  visibility: visible;
-  transform: translateX(-50%) translateY(0);
-  transition-delay: 0.3s;
-}
-
-/* Copy notification styling */
-.copy-notification {
-  position: fixed;
-  bottom: 30px;
-  right: 30px;
-  background-color: rgba(80, 250, 123, 0.9);
-  color: #282a36;
-  padding: 8px 16px;
-  border-radius: 4px;
-  font-weight: bold;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  opacity: 0;
-  transform: translateY(20px);
-  transition: all 0.3s ease;
-  z-index: 1000;
-}
-
-.copy-notification.show {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-/* Additional styling for terminal command-style code blocks */
-.code-block-container.command-block {
-  background-color: #282a36;
-  border-color: rgba(139, 233, 253, 0.2);
-}
-
-.code-block-container.command-block .code-block {
-  background-color: #282a36;
-  font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
-  color: #50fa7b;
-}
-
-.code-block-container.command-block .code-block-header {
-  background-color: #282a36;
-  border-bottom-color: rgba(139, 233, 253, 0.2);
-}
-
-/* Better styling for the inline single-line code blocks */
-.code-block-container.single-line {
-  background-color: rgba(80, 250, 123, 0.1);
-  display: inline-flex;
-  margin: 4px 0;
-  max-width: 100%;
-  align-items: center;
-  border-radius: 4px;
-  border: 1px solid rgba(80, 250, 123, 0.2);
-  max-width: 100%;
-  overflow: hidden;
-}
-
-.command-history,
-.chat-history {
-  user-select: text;
-  /* Allow selection in command and chat history */
-}
-
-/* Add a class for disabling selection during resize */
 .resizing-active * {
   user-select: none !important;
   cursor: col-resize !important;
 }
 
-/* Command action buttons styling */
-.command-actions {
-  position: absolute;
-  right: 8px;
-  top: 50%;
-  transform: translateY(-50%);
-  display: flex;
-  gap: 4px;
-  padding: 2px 4px;
-  background: none;
-  z-index: 1;
+.chat-entry {
+  margin: 16px 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: rgba(20, 25, 34, 0.45);
 }
 
-.command-action-button {
-  background: none;
-  border: none;
-  padding: 4px;
-  color: transparent;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.command-action-button:hover {
-  color: transparent;
-  background: none;
-}
-
-.command-text {
-  color: transparent;
-  cursor: pointer;
-  white-space: nowrap;
-  font-weight: 500;
-  margin-right: 4px;
-  flex-shrink: 0;
-}
-
-/* Code block actions container */
-.code-block-actions {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  background: none;
-}
-
-.code-block-actions .copy-code-button {
-  margin-left: 0;
-  opacity: 1;
-}
-
-.code-block-actions .copy-code-button:hover {
-  opacity: 1;
-}
-
-/* Simple command styling */
-.simple-command {
-  display: inline-flex;
-  align-items: center;
-  padding: 6px 12px;
-  margin: 0;
-  font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
-  background-color: rgba(35, 214, 81, 0.08);
-  /* More transparent background */
-  border: 1px solid rgba(80, 250, 123, 0.1);
-  border-radius: 6px;
-  transition: all 0.2s ease;
-  width: fit-content;
-  min-width: 100px;
-  position: relative;
-  padding-right: 84px;
-  box-sizing: border-box;
-  flex-shrink: 0;
-  padding-right: 84px;
-  /* Space for icons */
-  max-width: 100%;
-  overflow: hidden;
-}
-
-.command-output {
-  padding: 8px 12px;
-  margin: 4px 0;
-  border-radius: 0;
-  background-color: rgba(40, 42, 54, 0.3);
-  padding-bottom: 40px;
-  /* Add padding to make room for the buttons */
-  max-width: 100%;
-  overflow-x: hidden;
-  /* Explicitly prevent horizontal scrolling */
-}
-
-.command-output div {
-  white-space: pre-wrap !important;
-  word-wrap: break-word !important;
-  word-break: break-word !important;
-  font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
-  line-height: 1.4;
-  user-select: text;
-  display: block;
-  max-width: 100%;
-  box-sizing: border-box;
-  overflow-x: hidden;
-}
-
-/* Ensure command output line wrapping in all environments */
-.command-output div:not(.processing-indicator) {
-  white-space: pre-wrap !important;
-  overflow-wrap: break-word !important;
-  word-break: break-word !important;
-  display: block;
-  max-width: 100%;
-  box-sizing: border-box;
-  margin: 2px 0;
-}
-
-/* Special styling for file listing outputs (like ls command) */
-.command-output div.file-list-output {
-  display: inline-block;
-  vertical-align: top;
-  margin: 2px 12px 2px 0;
-  padding: 0 4px;
-}
-
-.ai-message {
-  position: relative;
-  padding: 8px;
-  margin: 4px 0;
-  border-radius: 4px;
-  background-color: rgba(40, 42, 54, 0.3);
-  transition: all 0.2s ease;
-  border: 1px solid transparent;
-}
-
-.ai-message:hover {
-  transform: none;
-  border: 1px solid transparent;
-  box-shadow: none;
-  z-index: auto;
-}
-
-.ai-message .copy-icon {
-  background-color: rgba(189, 147, 249, 0.1);
-}
-
-.ai-message .copy-icon:hover {
-  background-color: rgba(189, 147, 249, 0.2);
-}
-
-.command-line {
-  position: -webkit-sticky;
-  position: sticky;
-  top: 0;
-  background-color:#363948;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  margin: 0;
-  font-family: monospace;
-  border-bottom: none;
-  box-shadow: 0 1px 0 rgba(139, 233, 253, 0.2);
-  letter-spacing: 0.5px;
-}
-
-.command-line .command {
-  overflow-x: auto;
-  white-space: nowrap;
+.chat-entry:hover {
+  border-color: rgba(122, 162, 247, 0.35);
 }
 
 .chat-question {
   display: flex;
   align-items: center;
-  padding: 2px 0;
-  margin: 2px 0;
-  font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
-  border-bottom: 1px solid rgba(139, 233, 253, 0.2);
-  padding-bottom: 8px;
   margin-bottom: 8px;
-  color: rgba(189, 147, 249, 0.85);
-  margin-left: 8px;
-  position: relative;
-}
-
-.chat-question .prompt {
-  color: rgba(189, 147, 249, 0.85);
-  margin-right: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+  color: var(--text-secondary);
 }
 
 .chat-question .message {
-  color: rgba(189, 147, 249, 0.85);
-  font-weight: normal;
-  margin-right: 4px;
+  color: var(--text-primary);
 }
 
-.refresh-button {
-  background: none;
-  border: none;
-  padding: 2px;
-  color: rgba(189, 147, 249, 0.6);
-  cursor: pointer;
-  transition: all 0.2s ease;
+.chat-output {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  justify-content: center;
-  border-radius: 4px;
-  opacity: 1;
-  margin-left: 2px;
+  gap: 4px;
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  word-wrap: break-word;
 }
 
-.chat-question:hover .refresh-button {
-  color: rgba(189, 147, 249, 0.8);
+.chat-output > div {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
 }
 
-.refresh-button:hover {
-  color: rgba(189, 147, 249, 1);
-  background-color: rgba(189, 147, 249, 0.1);
-  transform: none;
-}
-
-.refresh-button svg {
-  width: 12px;
-  height: 12px;
-}
-
-/* Command block styling */
 .command-block {
-  margin: 8px 0;
   width: 100%;
+  margin: 8px 0;
 }
 
 .command-content {
@@ -1552,13 +422,23 @@ button {
   width: 100%;
 }
 
+.simple-command {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-width: 100px;
+  max-width: 100%;
+  padding: 6px 84px 6px 12px;
+  border: 1px solid rgba(122, 162, 247, 0.22);
+  border-radius: 6px;
+  background: rgba(122, 162, 247, 0.08);
+}
+
 .command-text {
-  color: #50fa7b;
+  color: var(--text-primary);
+  font-weight: 500;
   white-space: pre-wrap;
   word-break: break-word;
-  font-weight: 500;
-  margin-right: 4px;
-  overflow-x: auto;
 }
 
 .command-actions {
@@ -1568,24 +448,102 @@ button {
   transform: translateY(-50%);
   display: flex;
   gap: 4px;
-  padding: 2px 4px;
-  background-color: rgba(35, 214, 81, 0.00);
+}
+
+.command-action-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border: none;
   border-radius: 4px;
-  z-index: 1;
+  background: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  opacity: 0.6;
+}
+
+.command-action-button:hover {
+  opacity: 1;
+  color: var(--text-primary);
+}
+
+/* Icons use currentColor - ensure stroke is visible (works through app-icon) */
+.command-action-button ::ng-deep svg {
+  width: 14px;
+  height: 14px;
+  stroke: currentColor;
+}
+
+.command-action-button::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-4px);
+  padding: 3px 6px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  background: var(--bg-2);
+  color: var(--text-primary);
+  font-size: 11px;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.command-action-button:hover::after {
+  opacity: 1;
+  visibility: visible;
 }
 
 .command-explanation {
-  color: #6272a4;
-  font-size: 12px;
-  padding-left: 12px;
-  border-left: 2px solid rgba(80, 250, 123, 0.2);
-  white-space: pre-wrap;
-  word-break: break-word;
   flex: 1;
   min-width: 0;
+  padding-left: 12px;
+  border-left: 2px solid rgba(122, 162, 247, 0.25);
+  color: var(--text-secondary);
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
-/* Responsive adjustments */
+.copy-notification {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 1000;
+  padding: 8px 12px;
+  border: 1px solid rgba(115, 201, 145, 0.45);
+  border-radius: 6px;
+  background: rgba(15, 17, 21, 0.95);
+  color: var(--success);
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.copy-notification.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.password-input {
+  letter-spacing: 2px;
+}
+
+.history-search {
+  color: var(--text-primary);
+}
+
+.history-search-highlight {
+  padding: 0 2px;
+  border-radius: 2px;
+  background: rgba(122, 162, 247, 0.25);
+}
+
 @media (max-width: 768px) {
   .command-content {
     flex-direction: column;
@@ -1595,360 +553,13 @@ button {
 
   .simple-command {
     width: 100%;
-    padding-right: 92px;
-    font-size: 11px;
-    min-width: 80px;
   }
 
-  .command-text {
-    font-size: 12px;
+  .terminal-panel {
+    margin-right: 4px;
   }
 
-  .command-explanation {
-    font-size: 11px;
+  .ai-panel {
     margin-left: 4px;
-    padding-left: 8px;
-    width: 100%;
   }
-}
-
-/* Improve command action buttons visibility */
-.command-action-button {
-  background: none;
-  border: none;
-  padding: 4px;
-  color: transparent;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.command-action-button:hover {
-  color: transparent;
-  background: none;
-}
-
-.command-action-button svg {
-  width: 14px;
-  height: 14px;
-  stroke: #f5f5f5;
-  stroke-width: 1.5;
-  fill: transparent;
-  transition: all 0.2s ease;
-}
-
-.command-action-button:hover svg {
-  stroke: #ffffff;
-  width: 18px;
-  height: 18px;
-}
-
-.code-block-container.single-line .code-block-header {
-  border-bottom: none;
-  border-right: none;
-  padding: 2px 4px;
-  background-color: #282a36;
-}
-
-/* Scroll to top button styling */
-.scroll-to-top-button {
-  position: absolute;
-  bottom: 8px;
-  right: 40px;
-  background: none;
-  border: 1px solid rgba(98, 114, 164, 0.3);
-  padding: 4px;
-  color: transparent;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 4px;
-  opacity: 0.6;
-  z-index: 1;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.scroll-to-top-button:hover {
-  opacity: 1;
-  background-color: rgba(98, 114, 164, 0.1);
-  transform: none;
-  box-shadow: none;
-  border-color: rgba(98, 114, 164, 0.8);
-}
-
-.scroll-to-top-button svg {
-  width: 14px;
-  height: 14px;
-  stroke: #ffffff;
-  stroke-width: 1.5;
-  fill: transparent;
-  transition: all 0.2s ease;
-}
-
-.scroll-to-top-button:hover svg {
-  stroke: #ffffff;
-  width: 16px;
-  height: 16px;
-}
-
-/* Add tooltip styles for scroll to top button */
-.scroll-to-top-button::after {
-  content: attr(data-tooltip);
-  position: absolute;
-  bottom: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 4px 8px;
-  background-color: #282a3600;
-  color: #f8f8f2;
-  font-size: 12px;
-  border-radius: 4px;
-  white-space: nowrap;
-  opacity: 0;
-  visibility: hidden;
-  transition: all 0.2s ease;
-  pointer-events: none;
-  border: 1px solid rgba(98, 115, 164, 0);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-  z-index: 1000;
-}
-
-.scroll-to-top-button:hover::after {
-  opacity: 1;
-  visibility: visible;
-  transform: translateX(-50%) translateY(0);
-}
-
-/* Add a small arrow to the tooltip */
-.scroll-to-top-button::before {
-  content: '';
-  position: absolute;
-  bottom: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  border: 4px solid transparent;
-  border-top-color: rgba(98, 114, 164, 0.2);
-  opacity: 0;
-  visibility: hidden;
-  transition: all 0.2s ease;
-}
-
-.scroll-to-top-button:hover::before {
-  opacity: 1;
-  visibility: visible;
-  transform: translateX(-50%) translateY(0);
-}
-
-/* Password input styling */
-.password-input {
-  font-family: monospace;
-  letter-spacing: 2px;
-  color: #ffcc00 !important;
-  /* More visible password dots */
-}
-
-/* History search mode styles */
-.prompt.search-mode {
-  color: #4a9eff;
-}
-
-.history-search {
-  color: #ccc;
-  font-family: 'Cascadia Code', 'Fira Code', monospace;
-}
-
-.history-search-highlight {
-  background-color: rgba(74, 158, 255, 0.2);
-  border-radius: 2px;
-  padding: 0 2px;
-}
-
-.git-branch-container {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.git-action-button {
-  background-color: #333;
-  color: #8be9fd;
-  border: 1px solid #444;
-  border-radius: 4px;
-  padding: 2px 8px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-  font-size: 12px;
-}
-
-.git-action-button:hover {
-  background-color: #44475a;
-  border-color: #8be9fd;
-}
-
-.git-branch-button {
-  background-color: #333;
-  color: #8ade96;
-  border: 1px solid #444;
-  border-radius: 4px;
-  padding: 2px 8px;
-  cursor: pointer;
-  font-size: 12px;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.git-branch-button:hover {
-  background-color: #444;
-}
-
-.branch-selector-popup {
-  position: absolute;
-  bottom: 100%;
-  right: 0;
-  margin-bottom: 8px;
-  background-color: #44475a;
-  border: 1px solid rgba(80, 250, 123, 0.2);
-  border-radius: 4px;
-  z-index: 1000;
-  width: max-content;
-  min-width: 200px;
-  max-height: 300px;
-  overflow-y: auto;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-}
-
-.branch-list-container {
-  display: flex;
-  flex-direction: column;
-}
-
-.branch-item {
-  padding: 6px 12px;
-  cursor: pointer;
-  color: #f8f8f2;
-  font-size: 11px;
-  border-bottom: none;
-  transition: all 0.2s;
-}
-
-.branch-item:last-child {
-  border-bottom: none;
-}
-
-.branch-item:hover {
-  background-color: #6272a4;
-}
-
-.branch-item.active {
-  background-color: #bd93f9;
-  color: #282a36;
-  font-weight: normal;
-}
-
-.branch-item.more-items {
-  font-style: italic;
-  color: #888;
-  cursor: default;
-}
-
-.branch-item.more-items:hover {
-  background-color: transparent;
-}
-
-/* Input Area Styles */
-.input-area {
-  padding: 5px;
-  background-color: #1e1e1e;
-}
-
-.command-line .command {
-  overflow-x: auto;
-  white-space: nowrap;
-}
-
-/* Commit Popup Styles */
-.commit-popup-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 2000;
-}
-
-.commit-popup {
-  background-color: #282a36;
-  padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-  width: 400px;
-  max-width: 90%;
-  border: 1px solid #44475a;
-}
-
-.commit-popup h4 {
-  margin-top: 0;
-  color: #f8f8f2;
-}
-
-.commit-popup input {
-  width: 100%;
-  padding: 8px;
-  box-sizing: border-box;
-  background-color: #44475a;
-  border: 1px solid #6272a4;
-  color: #f8f8f2;
-  border-radius: 4px;
-}
-
-.commit-popup-actions {
-  margin-top: 15px;
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-}
-
-.commit-popup-actions button {
-  padding: 8px 16px;
-  border-radius: 4px;
-  border: none;
-  cursor: pointer;
-  background-color: #44475a;
-  color: #f8f8f2;
-  transition: background-color 0.2s;
-}
-
-.commit-popup-actions button:hover {
-  background-color: #6272a4;
-}
-
-.commit-popup-actions button[disabled] {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.commit-popup-actions button:last-child {
-  background-color: #50fa7b;
-  color: #282a36;
-}
-
-.commit-popup-actions button:last-child:hover {
-  background-color: #61ff8c;
-}
-
-.commit-popup-actions button:last-child[disabled] {
-  background-color: #50fa7b;
 }

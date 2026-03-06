@@ -4,10 +4,8 @@ use crate::ollama::types::ollama_model_list::OllamaModelList;
 use crate::ollama::types::ollama_request::OllamaRequest;
 use crate::ollama::types::ollama_response::OllamaResponse;
 use crate::utils::command::handle_special_command;
-use crate::utils::operating_system_utils::get_operating_system;
 use tauri::{command, State};
 
-// Implement the ask_ai function with multi-provider support
 #[command]
 pub async fn ask_ai(
     question: String,
@@ -31,43 +29,12 @@ pub async fn ask_ai(
         )
     };
 
-    // Get the current operating system
-    let os = get_operating_system();
-
-    // Create a system prompt that includes OS information and formatting instructions
-    let system_prompt = format!(
-        "You are a helpful terminal assistant. The user is using a {} operating system. \
-        When providing terminal commands, ensure they are compatible with {}. \
-        When asked for a command, respond with ONLY the command in this format: ```command```\
-        The command should be a single line without any explanation or additional text.",
-        os, os
-    );
-
-    match provider {
-        AIProvider::Ollama => {
-            ask_ollama_ai(api_host, model, system_prompt, question).await
-        }
-        AIProvider::LocalAI | AIProvider::OpenAI => {
-            ask_local_ai(api_host, model, system_prompt, question, temperature, max_tokens).await
-        }
-    }
-}
-
-// Ollama-specific AI request
-async fn ask_ollama_ai(
-    api_host: String,
-    model: String,
-    system_prompt: String,
-    question: String,
-) -> Result<String, String> {
-    let combined_prompt = format!("{}\n\nUser: {}", system_prompt, question);
-
     let client = reqwest::Client::new();
     let res = client
         .post(format!("{}/api/generate", api_host))
         .json(&OllamaRequest {
             model,
-            prompt: combined_prompt,
+            prompt: question,
             stream: false,
         })
         .send()

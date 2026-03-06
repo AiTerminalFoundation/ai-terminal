@@ -1,0 +1,29 @@
+version: 2
+updates:
+  # Enable version updates for npm (ai-terminal directory)
+  - package-ecosystem: "npm"
+    directory: "/ai-terminal"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+
+  # Enable version updates for pip (Python dependencies)
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+
+  # Enable version updates for cargo (Rust dependencies)
+  - package-ecosystem: "cargo"
+    directory: "/ai-terminal/src-tauri"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+
+  # Enable version updates for GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10

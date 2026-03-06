@@ -1,0 +1,10 @@
+<div class="tab" [class.active]="session.isActive" (click)="onSelect()">
+  <span
+    class="tab-name"
+  >
+    {{ session.name }}
+  </span>
+  <button class="close-tab" (click)="onClose($event)" *ngIf="canClose" title="Close tab">
+    ×
+  </button>
+</div>

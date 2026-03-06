@@ -1,6 +1,3 @@
-use crate::ollama::types::ai_provider::AIProvider;
-
-// Add AI state management for multiple providers
 pub struct OllamaState {
     pub current_model: String,
     pub api_host: String,

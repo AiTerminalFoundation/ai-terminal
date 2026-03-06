@@ -1,3 +1,4 @@
+use crate::command::constants::COMMON_COMMANDS;
 use crate::command::types::command_manager::CommandManager;
 use crate::utils::file_system_utils::split_path_prefix;
 use std::fs;
@@ -23,22 +24,9 @@ pub fn autocomplete(
 
     // Autocomplete commands if it's the first word
     if input_parts.len() <= 1 && input_parts.first() != Some(&"cd") {
-        // Common shell commands to suggest
-        let common_commands = vec![
-            "cd", "ls", "pwd", "mkdir", "touch", "cat", "echo", "grep", "find", "cp", "mv", "rm",
-            "tar", "gzip", "ssh", "curl", "wget", "history", "exit", "clear", "top", "ps", "kill",
-            "ping",
-        ];
-
-        // Filter commands that match input prefix
         let input_prefix = input_parts.first().unwrap_or(&"");
 
-        // Case-insensitive filtering for commands
-        let matches: Vec<String> = common_commands
-            .iter()
-            .filter(|&cmd| cmd.to_lowercase().starts_with(&input_prefix.to_lowercase()))
-            .map(|&cmd| cmd.to_string())
-            .collect();
+        let matches: Vec<String> = autocomplete_base_command(input_prefix);
 
         if !matches.is_empty() {
             return Ok(matches);
@@ -135,4 +123,12 @@ pub fn autocomplete(
     }
 
     Ok(Vec::new())
+}
+
+fn autocomplete_base_command(input_prefix: &str) -> Vec<String> {
+    COMMON_COMMANDS
+        .iter()
+        .filter(|&command| command.starts_with(input_prefix))
+        .map(|&command| command.to_string())
+        .collect()
 }
